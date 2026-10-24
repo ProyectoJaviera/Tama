@@ -3,13 +3,9 @@
 import argparse
 import sys
 
+from tama import prompts
 from tama.config import get_settings
 from tama.ollama import Message, OllamaClient, OllamaError
-
-SYSTEM_PROMPT = (
-    "Eres Tama, el asistente personal y acompañante diario de Renzo. "
-    "Respondes en español, con calidez y de forma breve."
-)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -79,7 +75,7 @@ def main(argv: list[str] | None = None, client: OllamaClient | None = None) -> i
     settings = get_settings()
     model = args.modelo or settings.local_model
     client = client or OllamaClient(settings.ollama_host, timeout=settings.timeout)
-    messages: list[Message] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages: list[Message] = [{"role": "system", "content": prompts.identity()}]
     options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
 
     try:
