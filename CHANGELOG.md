@@ -6,6 +6,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 1: cerebro en cascada (nube de Ollama → Claude → Ollama local) con tiempo máximo al
+  primer token, cortacircuitos, detección de conexión y tope de gasto mensual para Claude.
+- Interfaz única de proveedores (`tama.providers`) con eventos comunes.
+- Identidad de Tama versionada en `src/tama/prompts/identidad.md`.
+- Registro de cada turno en `events.db` (SQLite, WAL, migraciones con `PRAGMA user_version`).
+- CLI con `/proveedor`, `/salir`, capa en gris bajo cada respuesta y recorte del historial.
+
 - Esqueleto del repo con `uv`, `ruff`, `pytest` y CI en GitHub Actions (Windows y Linux).
 - CLI mínima `tama` que conversa con el modelo local de Ollama en streaming, con chequeo de
   salud al iniciar (`tama --check`).

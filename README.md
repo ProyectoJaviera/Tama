@@ -3,8 +3,8 @@
 Tama es un asistente de IA personal y acompañante diario: conversa, recuerda, opina y sugiere.
 Funciona **100% sin internet**; la nube solo mejora la calidad.
 
-Estado: Sprint 0 (fundaciones). Por ahora hay una CLI mínima que conversa con un modelo local de
-Ollama y un benchmark para elegir ese modelo. Ver `docs/sprints/` y `CHANGELOG.md`.
+Estado: Sprint 1 (conversación). Tama conversa por CLI con un cerebro en cascada que sigue
+respondiendo sin internet. Ver `docs/sprints/` y `CHANGELOG.md`.
 
 ## Arquitectura de instalación
 
@@ -58,10 +58,27 @@ docker compose build
 
 ```powershell
 docker compose run --rm tama "hola"        # un mensaje, respuesta en streaming
-docker compose run --rm tama               # chat interactivo; 'salir' para terminar
+docker compose run --rm tama               # chat; /proveedor muestra las capas, /salir termina
 docker compose up -d; docker attach tama   # Tama siempre encendido (se reinicia solo)
 docker compose run --rm tama --check       # chequeo de salud
 ```
+
+Debajo de cada respuesta aparece en gris qué capa respondió y cuánto tardó. Cada turno queda
+registrado en `events.db` (en el volumen de datos).
+
+### Cerebro en cascada
+
+Tama prueba tres capas en orden y usa la primera que responda:
+
+1. **Nube de Ollama** (`gemma4:31b-cloud`), si hay `OLLAMA_API_KEY` e internet.
+2. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se superó el tope
+   mensual (`TAMA_CLAUDE_MONTHLY_USD`, US$ 5 por defecto).
+3. **Ollama local**, siempre disponible y sin internet.
+
+Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
+completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
+fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar.
+Sin ninguna API key, todo funciona igual con la capa local.
 
 Ollama debe estar encendido en el host (la app de Ollama se inicia con Windows; si no,
 `ollama serve`). No hace falta exponer Ollama en la red: el contenedor lo alcanza aunque Ollama
@@ -102,7 +119,16 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_NUM_GPU` | `0` | Capas en GPU; 0 = solo CPU y RAM |
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
-| `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (memoria, bases) |
+| `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |
+| `OLLAMA_API_KEY` | vacío | Activa la capa de la nube de Ollama |
+| `TAMA_CLOUD_MODEL` | `gemma4:31b-cloud` | Modelo de la nube de Ollama |
+| `ANTHROPIC_API_KEY` | vacío | Activa la capa de Claude |
+| `TAMA_CLAUDE_MODEL` | `claude-haiku-5-5` | Modelo de Claude |
+| `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |
+| `TAMA_*_FIRST_TOKEN_S` | `8` | Tiempo máximo hasta el primer token (nube y Claude) |
+| `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
+
+La lista completa, con comentarios, está en `.env.example`.
 
 Los secretos (API keys) van solo en `.env`, que nunca se versiona.
 
