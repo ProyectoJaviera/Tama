@@ -1,0 +1,38 @@
+# Sprint 0: Fundaciones
+
+**Estado:** abierto
+**Fase:** 0
+
+## Objetivo
+
+Dejar el repo listo para trabajar con calidad desde el primer día y elegir, con datos medidos en el PC de Renzo, el modelo local de Tama.
+
+## Entregables
+
+1. Esqueleto del repo según `CLAUDE.md`: `pyproject.toml` con `uv`, paquete `src/tama/`, `tests/`, `evals/`, `bench/`, `docs/adr/`, `.gitignore` (excluye `.env`, `*.db`, modelos, `memoria/` privada) y `.env.example`.
+2. `ruff` y `pytest` configurados, con un test trivial que pase.
+3. CI en GitHub Actions: lint + tests en cada push y pull request.
+4. `README.md` con qué es Tama, requisitos e instalación (incluye instalar Ollama y descargar los modelos una vez).
+5. CLI mínima `uv run tama` que envía un mensaje al modelo local de Ollama y muestra la respuesta en streaming.
+6. Script `bench/models.py` que mide, para cada modelo candidato:
+   - tokens por segundo de generación y de procesamiento de prompt (con un prompt de ~1.500 tokens),
+   - RAM usada,
+   - % de llamadas a herramientas correctas en 10 casos simples en español (ej. "¿qué hora es?", "anota que mañana compro filamento").
+7. Tabla de resultados en `bench/RESULTS.md` y `docs/adr/0001-modelo-local.md` con la elección.
+
+## Modelos candidatos (ajustar a lo disponible en Ollama)
+
+- Local: un modelo de ~4B, uno de ~8B y uno de ~1,5–3B para tareas de fondo, todos en Q4 y con soporte de tool calling (p. ej. familia Qwen3).
+- Cloud: el modelo de Ollama Cloud que se usaría como capa 1, solo para tener la referencia de calidad.
+
+## Criterios de aceptación
+
+- [ ] `uv sync && uv run pytest && uv run ruff check .` pasa en limpio en Windows.
+- [ ] CI en verde en GitHub.
+- [ ] `uv run tama "hola"` responde en streaming con el modelo local **con el cable de red desconectado**.
+- [ ] `bench/RESULTS.md` tiene datos reales de los 3 modelos locales.
+- [ ] ADR 0001 elige el modelo local principal y el de fondo, justificado con la tabla.
+
+## Fuera de alcance
+
+Cascada de cerebros, memoria, herramientas MCP, interfaz web, voz. Empiezan en S1 en adelante.
