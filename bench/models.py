@@ -205,7 +205,7 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
                 ],
                 think,
                 tools=TOOLS,
-                options={**options, "num_predict": 256},
+                options={**options, "num_predict": 1024},
             )
             durations.append(time.perf_counter() - start)
             failure = check_case(case, resp.get("message", {}))
