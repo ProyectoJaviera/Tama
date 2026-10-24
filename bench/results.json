@@ -1,0 +1,32 @@
+[
+  {
+    "model": "qwen3:1.7b",
+    "prompt_tokens": 1482,
+    "prompt_tps": 124.78831538828682,
+    "gen_tps": 15.419160092405658,
+    "load_s": 2.3306421999986924,
+    "ram_gb": 1.7570605454966426,
+    "tool_ok": 7,
+    "tool_total": 10,
+    "tool_avg_s": 2.2562136999997167,
+    "failures": [
+      "¿Qué había apuntado sobre la impresora 3D? → no llamó herramienta",
+      "¿Cuánto es el 15% de 2340? → no llamó herramienta",
+      "Dime la hora, por favor → no llamó herramienta"
+    ],
+    "error": null
+  },
+  {
+    "model": "qwen3:4b",
+    "prompt_tokens": 1479,
+    "prompt_tps": 47.42060912656375,
+    "gen_tps": 6.742063470135524,
+    "load_s": 3.7672037000011187,
+    "ram_gb": 2.9672949202358723,
+    "tool_ok": 10,
+    "tool_total": 10,
+    "tool_avg_s": 29.968750320000616,
+    "failures": [],
+    "error": null
+  }
+]
