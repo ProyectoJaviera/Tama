@@ -162,7 +162,8 @@ def check_case(case: Case, message: dict[str, Any]) -> str | None:
 
 def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None) -> Result:
     result = Result(model=model)
-    options = {"temperature": 0, "num_ctx": 4096, "seed": 42}
+    # num_gpu 0: solo CPU y RAM, como correrá Tama en este PC.
+    options = {"temperature": 0, "num_ctx": 4096, "seed": 42, "num_gpu": 0}
     cloud = is_cloud(model)
     try:
         start = time.perf_counter()
@@ -174,6 +175,10 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
             options={**options, "num_predict": 1},
         )
         result.load_s = time.perf_counter() - start
+        if not cloud:
+            vram = sum(m.get("size_vram", 0) for m in client.running())
+            if vram:
+                raise OllamaError(f"el modelo usa {vram / GB:.2f} GB de GPU; debe ser solo CPU")
 
         prompt_tps, gen_tps = [], []
         for _ in range(reps):
@@ -233,7 +238,8 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
         f"- Fecha: {date.today().isoformat()}",
         f"- Equipo: {platform.processor() or platform.machine()}, {ram_total:.0f} GB RAM, "
         f"{platform.system()} {platform.release()}, sin GPU",
-        f"- Ollama {ollama_version} nativo; temperatura 0, `num_ctx` 4096, thinking apagado",
+        f"- Ollama {ollama_version} nativo; solo CPU (`num_gpu` 0), temperatura 0, "
+        "`num_ctx` 4096, thinking apagado",
         f"- Prompt largo: ~{max((r.prompt_tokens for r in results), default=0)} tokens; "
         "herramientas: 10 casos en español (`bench/models.py`)",
         "",

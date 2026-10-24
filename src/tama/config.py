@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     think: bool = False
     # Siempre explícito: si no, Ollama usa su default (puede ser enorme y llenar la RAM).
     num_ctx: int = 8192
+    # 0 = solo CPU y RAM. La GPU de este PC (GTX 660, 2 GB) no sirve para modelos.
+    num_gpu: int = 0
     timeout: float = 300.0
     data_dir: Path = Path("data")
 
