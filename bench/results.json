@@ -1,0 +1,19 @@
+[
+  {
+    "model": "qwen3:1.7b",
+    "prompt_tokens": 1482,
+    "prompt_tps": 114.66967247807034,
+    "gen_tps": 15.122052309243502,
+    "load_s": 2.334184099999675,
+    "ram_gb": 1.7570605454966426,
+    "tool_ok": 7,
+    "tool_total": 10,
+    "tool_avg_s": 2.448016470000084,
+    "failures": [
+      "¿Qué había apuntado sobre la impresora 3D? → no llamó herramienta",
+      "¿Cuánto es el 15% de 2340? → no llamó herramienta",
+      "Dime la hora, por favor → no llamó herramienta"
+    ],
+    "error": null
+  }
+]
