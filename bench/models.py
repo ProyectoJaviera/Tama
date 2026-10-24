@@ -224,6 +224,11 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
     return result
 
 
+def tps(value: float) -> str:
+    # La nube no reporta tiempos de evaluación: "n/d" en vez de un 0 engañoso.
+    return f"{value:.1f}" if value else "n/d"
+
+
 def to_markdown(results: list[Result], ollama_version: str) -> str:
     ram_total = psutil.virtual_memory().total / GB
     lines = [
@@ -248,7 +253,7 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
         ram = f"{r.ram_gb:.1f}" if r.ram_gb is not None else "nube"
         pct = 100 * r.tool_ok / r.tool_total if r.tool_total else 0
         lines.append(
-            f"| {r.model} | {r.prompt_tps:.1f} | {r.gen_tps:.1f} | {r.load_s:.1f} | {ram} "
+            f"| {r.model} | {tps(r.prompt_tps)} | {tps(r.gen_tps)} | {r.load_s:.1f} | {ram} "
             f"| {r.tool_ok}/{r.tool_total} ({pct:.0f}%) | {r.tool_avg_s:.1f} |"
         )
     failures = [(r.model, f) for r in results for f in r.failures]

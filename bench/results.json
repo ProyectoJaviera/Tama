@@ -28,5 +28,31 @@
     "tool_avg_s": 29.968750320000616,
     "failures": [],
     "error": null
+  },
+  {
+    "model": "qwen3:8b",
+    "prompt_tokens": 1485,
+    "prompt_tps": 28.471637097425504,
+    "gen_tps": 4.261547632143422,
+    "load_s": 11.225088699997286,
+    "ram_gb": 5.537333982996643,
+    "tool_ok": 10,
+    "tool_total": 10,
+    "tool_avg_s": 7.184943770000245,
+    "failures": [],
+    "error": null
+  },
+  {
+    "model": "gemma4:31b-cloud",
+    "prompt_tokens": 1261,
+    "prompt_tps": 0.0,
+    "gen_tps": 0.0,
+    "load_s": 0.6193015999997442,
+    "ram_gb": null,
+    "tool_ok": 10,
+    "tool_total": 10,
+    "tool_avg_s": 0.4729081200010114,
+    "failures": [],
+    "error": null
   }
 ]
