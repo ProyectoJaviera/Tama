@@ -1,0 +1,31 @@
+# Tama en un contenedor; Ollama corre nativo en el host (Windows, Linux o macOS).
+#   docker compose build              # una vez, con internet
+#   docker compose run --rm tama "hola"
+#   docker compose up -d && docker attach tama   # chat interactivo
+
+services:
+  tama:
+    build: .
+    image: tama:0.1.0
+    container_name: tama
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
+      TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:4b}
+      TAMA_THINK: ${TAMA_THINK:-false}
+    # En Linux host.docker.internal no existe por defecto.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - tama-data:/data
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "tama", "--check"]
+      interval: 60s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  tama-data:
