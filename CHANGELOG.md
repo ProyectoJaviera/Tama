@@ -11,4 +11,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   salud al iniciar (`tama --check`).
 - `Dockerfile` y `docker-compose.yml`: Tama en un contenedor, Ollama nativo en el host.
 - Configuración con `pydantic-settings` y `.env.example`.
-- Benchmark de modelos `bench/models.py` (velocidad, RAM y llamadas a herramientas).
+- Benchmark de modelos `bench/models.py` (velocidad, RAM y llamadas a herramientas), solo CPU,
+  con resultados en `bench/RESULTS.md`.
+- ADR 0001: `qwen3:8b` como modelo local principal y `qwen3:4b` para tareas de fondo.
+
+### Corregido
+
+- Tama siempre envía `num_ctx` (8192) y `num_gpu` 0: no hereda el contexto global de Ollama
+  (262.144) ni usa la GPU.
+- Con Avast, la variable `SSLKEYLOGFILE` apuntaba a su driver y hacía caer a Python/OpenSSL;
+  Tama la quita de su propio proceso.

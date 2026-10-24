@@ -95,7 +95,8 @@ def test_chat_loop_keeps_history(monkeypatch):
     assert second[2]["content"] == "¡Hola!"
 
 
-def test_num_ctx_is_always_sent():
+def test_num_ctx_and_cpu_only_are_always_sent():
     client = FakeClient()
     cli.main(["hola"], client=client)
-    assert client.options == {"num_ctx": cli.get_settings().num_ctx}
+    settings = cli.get_settings()
+    assert client.options == {"num_ctx": settings.num_ctx, "num_gpu": 0}

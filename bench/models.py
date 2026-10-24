@@ -116,18 +116,12 @@ def is_cloud(model: str) -> bool:
 
 def long_prompt() -> str:
     # El nonce inicial evita que Ollama reutilice la caché de prompt entre corridas.
-    return f"[{uuid.uuid4()}]\n{PARAGRAPH * 22}\nResume en una sola frase lo anterior."
+    return f"[{uuid.uuid4()}]\n{PARAGRAPH * 16}\nResume en una sola frase lo anterior."
 
 
-def runner_ram_gb() -> float:
-    """RAM (RSS) de los procesos de Ollama que ejecutan modelos."""
-    total = 0
-    for proc in psutil.process_iter(["name", "cmdline", "memory_info"]):
-        name = (proc.info["name"] or "").lower()
-        cmd = " ".join(proc.info["cmdline"] or []).lower()
-        if "ollama" in name and "runner" in cmd and proc.info["memory_info"]:
-            total += proc.info["memory_info"].rss
-    return total / GB
+def loaded_ram_gb(client: OllamaClient, model: str) -> float:
+    """Memoria que Ollama reporta para el modelo cargado (pesos + caché KV)."""
+    return sum(m.get("size", 0) for m in client.running() if m.get("name") == model) / GB
 
 
 def chat(client: OllamaClient, model: str, messages, think: bool | None, **kw) -> dict:
@@ -162,7 +156,8 @@ def check_case(case: Case, message: dict[str, Any]) -> str | None:
 
 def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None) -> Result:
     result = Result(model=model)
-    options = {"temperature": 0, "num_ctx": 4096, "seed": 42}
+    # num_gpu 0: solo CPU y RAM, como correrá Tama en este PC.
+    options = {"temperature": 0, "num_ctx": 4096, "seed": 42, "num_gpu": 0}
     cloud = is_cloud(model)
     try:
         start = time.perf_counter()
@@ -174,6 +169,10 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
             options={**options, "num_predict": 1},
         )
         result.load_s = time.perf_counter() - start
+        if not cloud:
+            vram = sum(m.get("size_vram", 0) for m in client.running())
+            if vram:
+                raise OllamaError(f"el modelo usa {vram / GB:.2f} GB de GPU; debe ser solo CPU")
 
         prompt_tps, gen_tps = [], []
         for _ in range(reps):
@@ -192,7 +191,7 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
         result.prompt_tps = statistics.median(prompt_tps) if prompt_tps else 0.0
         result.gen_tps = statistics.median(gen_tps) if gen_tps else 0.0
         if not cloud:
-            result.ram_gb = runner_ram_gb()
+            result.ram_gb = loaded_ram_gb(client, model)
 
         durations = []
         for case in CASES:
@@ -206,7 +205,7 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
                 ],
                 think,
                 tools=TOOLS,
-                options={**options, "num_predict": 256},
+                options={**options, "num_predict": 1024},
             )
             durations.append(time.perf_counter() - start)
             failure = check_case(case, resp.get("message", {}))
@@ -225,6 +224,11 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
     return result
 
 
+def tps(value: float) -> str:
+    # La nube no reporta tiempos de evaluación: "n/d" en vez de un 0 engañoso.
+    return f"{value:.1f}" if value else "n/d"
+
+
 def to_markdown(results: list[Result], ollama_version: str) -> str:
     ram_total = psutil.virtual_memory().total / GB
     lines = [
@@ -233,7 +237,8 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
         f"- Fecha: {date.today().isoformat()}",
         f"- Equipo: {platform.processor() or platform.machine()}, {ram_total:.0f} GB RAM, "
         f"{platform.system()} {platform.release()}, sin GPU",
-        f"- Ollama {ollama_version} nativo; temperatura 0, `num_ctx` 4096, thinking apagado",
+        f"- Ollama {ollama_version} nativo; solo CPU (`num_gpu` 0), temperatura 0, "
+        "`num_ctx` 4096, thinking apagado",
         f"- Prompt largo: ~{max((r.prompt_tokens for r in results), default=0)} tokens; "
         "herramientas: 10 casos en español (`bench/models.py`)",
         "",
@@ -248,7 +253,7 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
         ram = f"{r.ram_gb:.1f}" if r.ram_gb is not None else "nube"
         pct = 100 * r.tool_ok / r.tool_total if r.tool_total else 0
         lines.append(
-            f"| {r.model} | {r.prompt_tps:.1f} | {r.gen_tps:.1f} | {r.load_s:.1f} | {ram} "
+            f"| {r.model} | {tps(r.prompt_tps)} | {tps(r.gen_tps)} | {r.load_s:.1f} | {ram} "
             f"| {r.tool_ok}/{r.tool_total} ({pct:.0f}%) | {r.tool_avg_s:.1f} |"
         )
     failures = [(r.model, f) for r in results for f in r.failures]
@@ -256,6 +261,22 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
         lines += ["", "## Fallos de herramientas", ""]
         lines += [f"- `{model}`: {f}" for model, f in failures]
     return "\n".join(lines) + "\n"
+
+
+def load_previous(models: list[str]) -> list[Result]:
+    path = BENCH_DIR / "results.json"
+    if not path.exists():
+        return []
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return [Result(**r) for r in raw if r["model"] not in models]
+
+
+def save(results: list[Result], version: str) -> None:
+    (BENCH_DIR / "RESULTS.md").write_text(to_markdown(results, version), encoding="utf-8")
+    raw = [asdict(r) for r in results]
+    (BENCH_DIR / "results.json").write_text(
+        json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def main() -> int:
@@ -268,6 +289,9 @@ def main() -> int:
     parser.add_argument("--think", action="store_true", help="activa el razonamiento")
     parser.add_argument("--min-free-gb", type=float, default=8.0, help="RAM libre mínima")
     parser.add_argument("--write", action="store_true", help="escribe bench/RESULTS.md")
+    parser.add_argument(
+        "--append", action="store_true", help="conserva los resultados previos de otros modelos"
+    )
     args = parser.parse_args()
 
     with OllamaClient(args.host, timeout=900) as client:
@@ -275,7 +299,7 @@ def main() -> int:
         installed = set(client.list_models())
         if client.running():
             print("[aviso] hay modelos cargados en Ollama; se miden igual, pero ocupan RAM")
-        results = []
+        results = load_previous(args.models) if args.append else []
         for model in args.models:
             if model not in installed:
                 print(f"[omitido] {model}: no está instalado (ollama pull {model})")
@@ -288,15 +312,11 @@ def main() -> int:
             result = bench_model(client, model, args.reps, think=args.think)
             print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
             results.append(result)
+            if args.write:
+                # Se guarda tras cada modelo para no perder resultados si el PC se cae.
+                save(results, version)
 
-    report = to_markdown(results, version)
-    print(report)
-    if args.write and results:
-        (BENCH_DIR / "RESULTS.md").write_text(report, encoding="utf-8")
-        raw = [asdict(r) for r in results]
-        (BENCH_DIR / "results.json").write_text(
-            json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+    print(to_markdown(results, version))
     return 0
 
 

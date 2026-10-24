@@ -37,11 +37,11 @@ def health_check(client: OllamaClient, host: str, model: str) -> str | None:
 
 
 def reply(
-    client: OllamaClient, model: str, messages: list[Message], think: bool, num_ctx: int
+    client: OllamaClient, model: str, messages: list[Message], think: bool, options: dict
 ) -> str:
     """Muestra la respuesta del modelo en streaming y devuelve el texto completo."""
     parts: list[str] = []
-    for chunk in client.stream_chat(model, messages, think=think, options={"num_ctx": num_ctx}):
+    for chunk in client.stream_chat(model, messages, think=think, options=options):
         print(chunk, end="", flush=True)
         parts.append(chunk)
     print()
@@ -49,7 +49,7 @@ def reply(
 
 
 def chat_loop(
-    client: OllamaClient, model: str, messages: list[Message], think: bool, num_ctx: int
+    client: OllamaClient, model: str, messages: list[Message], think: bool, options: dict
 ) -> None:
     print(f"Tama ({model}). Escribe 'salir' para terminar.")
     while True:
@@ -64,7 +64,7 @@ def chat_loop(
             continue
         messages.append({"role": "user", "content": text})
         try:
-            answer = reply(client, model, messages, think, num_ctx)
+            answer = reply(client, model, messages, think, options)
         except OllamaError as exc:
             messages.pop()
             print(f"\nNo pude hablar con Ollama: {exc}", file=sys.stderr)
@@ -80,6 +80,7 @@ def main(argv: list[str] | None = None, client: OllamaClient | None = None) -> i
     model = args.modelo or settings.local_model
     client = client or OllamaClient(settings.ollama_host, timeout=settings.timeout)
     messages: list[Message] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
 
     try:
         problem = health_check(client, settings.ollama_host, model)
@@ -92,9 +93,9 @@ def main(argv: list[str] | None = None, client: OllamaClient | None = None) -> i
             print(f"OK: Ollama responde en {settings.ollama_host} y tiene {model}.")
         elif args.mensaje:
             messages.append({"role": "user", "content": " ".join(args.mensaje)})
-            reply(client, model, messages, settings.think, settings.num_ctx)
+            reply(client, model, messages, settings.think, options)
         else:
-            chat_loop(client, model, messages, settings.think, settings.num_ctx)
+            chat_loop(client, model, messages, settings.think, options)
         return 0
     except OllamaError as exc:
         print(f"\nError con Ollama: {exc}", file=sys.stderr)

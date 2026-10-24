@@ -20,7 +20,22 @@ Ollama y un benchmark para elegir ese modelo. Ver `docs/sprints/` y `CHANGELOG.m
 - [Ollama](https://ollama.com/download) **0.40.5** (versión probada).
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (en Windows usa WSL2), o
   Docker Engine + Compose en Linux.
-- 16 GB de RAM como mínimo; 32 GB recomendados para el modelo de 8B. No hace falta GPU.
+- 16 GB de RAM como mínimo; 32 GB recomendados. No usa GPU: todo corre en CPU y RAM.
+
+### Ollama solo con CPU
+
+Tama pide `num_gpu: 0` en cada mensaje, pero Ollama puede usar una GPU débil por Vulkan para
+otros programas. Para bloquearla del todo, define estas variables de usuario y reinicia Ollama:
+
+```powershell
+setx GGML_VK_VISIBLE_DEVICES -1
+setx OLLAMA_VULKAN 0
+setx CUDA_VISIBLE_DEVICES -1
+setx OLLAMA_MAX_LOADED_MODELS 1
+setx OLLAMA_NUM_PARALLEL 1
+```
+
+Comprueba con `ollama ps` que la columna PROCESSOR diga `100% CPU`.
 - Para desarrollar sin Docker: [uv](https://docs.astral.sh/uv/) (instala Python 3.12 solo).
 
 ## Instalación (una sola vez, con internet)
@@ -29,8 +44,8 @@ Todo lo que se descarga se descarga aquí; Tama nunca descarga nada al arrancar.
 
 ```powershell
 # 1. Ollama nativo + modelos (Q4). Ver docs/adr/0001-modelo-local.md
-ollama pull qwen3:4b      # modelo principal
-ollama pull qwen3:1.7b    # tareas de fondo
+ollama pull qwen3:8b      # modelo principal
+ollama pull qwen3:4b      # tareas de fondo
 
 # 2. Tama
 git clone https://github.com/ProyectoJaviera/Tama.git
@@ -68,7 +83,7 @@ En la máquina sin internet:
 ```powershell
 # 1. Instalar Ollama con el instalador copiado
 # 2. Copiar la carpeta de modelos a %USERPROFILE%\.ollama\models y reiniciar Ollama
-ollama list                         # deben aparecer qwen3:4b y qwen3:1.7b
+ollama list                         # deben aparecer qwen3:8b y qwen3:4b
 # 3. Cargar la imagen y arrancar (desde una copia del repo)
 docker load -i tama-0.1.0.tar
 docker compose up -d --no-build
@@ -82,7 +97,9 @@ Variables en `.env` (ver `.env.example`):
 |---|---|---|
 | `OLLAMA_HOST` | Compose: `http://host.docker.internal:11434` | Dirección de Ollama |
 | `TAMA_OLLAMA_HOST` | `http://127.0.0.1:11434` | Igual, pero con prioridad (fuera de Docker) |
-| `TAMA_LOCAL_MODEL` | `qwen3:4b` | Modelo local |
+| `TAMA_LOCAL_MODEL` | `qwen3:8b` | Modelo local |
+| `TAMA_NUM_CTX` | `8192` | Contexto por petición (siempre explícito) |
+| `TAMA_NUM_GPU` | `0` | Capas en GPU; 0 = solo CPU y RAM |
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (memoria, bases) |
