@@ -15,6 +15,7 @@ Sprint en curso: ver `docs/sprints/` (el archivo de número más alto sin marcar
 6. **Contexto corto.** En CPU cada token cuesta. Prompts bajo ~2.000 tokens; no inyectar memoria "por si acaso".
 7. **Sin base de datos vectorial.** Memoria = grafo de conocimiento en SQLite + Markdown.
 8. **Simple hasta que duela.** Un proceso, SQLite, archivos. Nada de microservicios sin un problema medido.
+9. **Tama corre en Docker Compose; Ollama, nativo en el host.** Un solo servicio `tama`, imágenes con versión fija (nunca `latest`), datos en volúmenes con nombre. Tama llega a Ollama por `OLLAMA_HOST` (`host.docker.internal`) sin exponer Ollama en la red. Al iniciar, chequeo de salud y mensaje claro si Ollama no responde.
 
 ## Arquitectura (objetivo)
 
@@ -25,7 +26,9 @@ Sprint en curso: ver `docs/sprints/` (el archivo de número más alto sin marcar
 
 ## Stack
 
-Python 3.12, `uv` (dependencias y entorno), FastAPI (más adelante), SQLite + FTS5, Ollama, `ruff` (lint y formato), `pytest`, GitHub Actions.
+Python 3.12, `uv` (dependencias y entorno), FastAPI (más adelante), SQLite + FTS5, Ollama (nativo en el host), Docker Compose (Tama), `ruff` (lint y formato), `pytest`, GitHub Actions.
+
+La voz se capturará desde el navegador, así que el contenedor no necesita micrófono ni parlantes.
 
 ## Estructura del repo
 
@@ -54,4 +57,6 @@ uv sync                 # instalar dependencias
 uv run pytest           # tests
 uv run ruff check .     # lint
 uv run ruff format .    # formato
+docker compose build                 # imagen de Tama
+docker compose run --rm tama "hola"  # Tama en contenedor (Ollama nativo encendido)
 ```

@@ -19,6 +19,7 @@ Dejar el repo listo para trabajar con calidad desde el primer día y elegir, con
    - RAM usada,
    - % de llamadas a herramientas correctas en 10 casos simples en español (ej. "¿qué hora es?", "anota que mañana compro filamento").
 7. Tabla de resultados en `bench/RESULTS.md` y `docs/adr/0001-modelo-local.md` con la elección.
+8. `Dockerfile` (python:3.12-slim, dependencias desde `uv.lock`, usuario no root) y `docker-compose.yml` con un solo servicio `tama` (healthcheck, `restart: unless-stopped`, volumen `tama-data`). Ollama queda nativo en el host; Tama lo alcanza por `OLLAMA_HOST=http://host.docker.internal:11434` con `extra_hosts: host-gateway`. Chequeo de salud al iniciar con mensaje claro si Ollama no responde. README con instalación normal y sin internet (instalador de Ollama + carpeta de modelos + `docker save`).
 
 ## Modelos candidatos (ajustar a lo disponible en Ollama)
 
@@ -30,6 +31,7 @@ Dejar el repo listo para trabajar con calidad desde el primer día y elegir, con
 - [ ] `uv sync && uv run pytest && uv run ruff check .` pasa en limpio en Windows.
 - [ ] CI en verde en GitHub.
 - [ ] `uv run tama "hola"` responde en streaming con el modelo local **con el cable de red desconectado**.
+- [ ] `docker compose up` levanta Tama, que responde con el Ollama nativo del host **con la red desconectada**.
 - [ ] `bench/RESULTS.md` tiene datos reales de los 3 modelos locales.
 - [ ] ADR 0001 elige el modelo local principal y el de fondo, justificado con la tabla.
 
