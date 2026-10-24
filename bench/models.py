@@ -258,6 +258,14 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def save(results: list[Result], version: str) -> None:
+    (BENCH_DIR / "RESULTS.md").write_text(to_markdown(results, version), encoding="utf-8")
+    raw = [asdict(r) for r in results]
+    (BENCH_DIR / "results.json").write_text(
+        json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -288,15 +296,11 @@ def main() -> int:
             result = bench_model(client, model, args.reps, think=args.think)
             print(json.dumps(asdict(result), ensure_ascii=False, indent=2))
             results.append(result)
+            if args.write:
+                # Se guarda tras cada modelo para no perder resultados si el PC se cae.
+                save(results, version)
 
-    report = to_markdown(results, version)
-    print(report)
-    if args.write and results:
-        (BENCH_DIR / "RESULTS.md").write_text(report, encoding="utf-8")
-        raw = [asdict(r) for r in results]
-        (BENCH_DIR / "results.json").write_text(
-            json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
+    print(to_markdown(results, version))
     return 0
 
 
