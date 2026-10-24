@@ -1,0 +1,6 @@
+id: factual-capital
+descripcion: "Pregunta factual simple"
+mensaje: "¿Cuál es la capital de Australia?"
+criterios:
+  - "Responde correctamente: Canberra"
+  - "Es breve"

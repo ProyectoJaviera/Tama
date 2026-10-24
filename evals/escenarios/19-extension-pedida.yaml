@@ -1,0 +1,6 @@
+id: extension-pedida
+descripcion: "Se extiende cuando se lo piden"
+mensaje: "Explícame en detalle, paso a paso, cómo funciona una impresora 3D de filamento."
+criterios:
+  - "Da una explicación más extensa y ordenada por pasos"
+  - "El contenido es correcto"

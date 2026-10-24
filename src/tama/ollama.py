@@ -95,9 +95,15 @@ class OllamaClient:
         think: bool | None = None,
         options: dict[str, Any] | None = None,
         keep_alive: str | int | None = None,
+        format: dict[str, Any] | str | None = None,
     ) -> dict[str, Any]:
-        """Chat sin streaming; devuelve la respuesta completa con las métricas de Ollama."""
+        """Chat sin streaming; devuelve la respuesta completa con las métricas de Ollama.
+
+        `format` acepta "json" o un esquema JSON para forzar salida estructurada.
+        """
         payload = _chat_payload(model, messages, stream=False, think=think)
+        if format is not None:
+            payload["format"] = format
         if tools:
             payload["tools"] = tools
         if options:

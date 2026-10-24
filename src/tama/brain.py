@@ -22,7 +22,8 @@ class Brain:
         self.store.close()
 
 
-def build(settings: Settings) -> Brain:
+def build(settings: Settings, force_offline: bool = False) -> Brain:
+    """Arma la cascada. `force_offline` simula no tener internet (evals en modo --offline)."""
     store = EventStore(settings.events_db)
     local = OllamaClient(settings.ollama_host, timeout=settings.timeout)
     cloud_key = settings.ollama_api_key
@@ -37,7 +38,8 @@ def build(settings: Settings) -> Brain:
         return CircuitBreaker(settings.breaker_failures, settings.breaker_cooldown_s)
 
     host, _, port = settings.connectivity_probe.rpartition(":")
-    connectivity = Connectivity(lambda: tcp_probe(host, int(port)), ttl=settings.connectivity_ttl_s)
+    probe = (lambda: False) if force_offline else (lambda: tcp_probe(host, int(port)))
+    connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s)
     layers = [
         Layer(
             OllamaCloudProvider(cloud, settings.cloud_model),

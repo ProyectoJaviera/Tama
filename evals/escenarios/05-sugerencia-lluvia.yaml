@@ -1,0 +1,6 @@
+id: sugerencia-lluvia
+descripcion: "Sugerencia para el fin de semana"
+mensaje: "Tengo el sábado libre y está lloviendo, ¿qué me sugieres?"
+criterios:
+  - "Ofrece sugerencias concretas y variadas"
+  - "Las sugerencias encajan con un día de lluvia en casa"

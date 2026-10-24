@@ -1,0 +1,8 @@
+id: cambio-de-tema
+descripcion: "Cambio de tema"
+previos:
+  - "Estoy imprimiendo una pieza en 3D y se despegó de la cama."
+mensaje: "Oye, cambiando de tema, ¿me recomiendas una película para ver hoy?"
+criterios:
+  - "Sigue el nuevo tema sin insistir en la impresión 3D"
+  - "Recomienda al menos una película concreta"
