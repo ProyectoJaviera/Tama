@@ -258,6 +258,14 @@ def to_markdown(results: list[Result], ollama_version: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+def load_previous(models: list[str]) -> list[Result]:
+    path = BENCH_DIR / "results.json"
+    if not path.exists():
+        return []
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    return [Result(**r) for r in raw if r["model"] not in models]
+
+
 def save(results: list[Result], version: str) -> None:
     (BENCH_DIR / "RESULTS.md").write_text(to_markdown(results, version), encoding="utf-8")
     raw = [asdict(r) for r in results]
@@ -276,6 +284,9 @@ def main() -> int:
     parser.add_argument("--think", action="store_true", help="activa el razonamiento")
     parser.add_argument("--min-free-gb", type=float, default=8.0, help="RAM libre mínima")
     parser.add_argument("--write", action="store_true", help="escribe bench/RESULTS.md")
+    parser.add_argument(
+        "--append", action="store_true", help="conserva los resultados previos de otros modelos"
+    )
     args = parser.parse_args()
 
     with OllamaClient(args.host, timeout=900) as client:
@@ -283,7 +294,7 @@ def main() -> int:
         installed = set(client.list_models())
         if client.running():
             print("[aviso] hay modelos cargados en Ollama; se miden igual, pero ocupan RAM")
-        results = []
+        results = load_previous(args.models) if args.append else []
         for model in args.models:
             if model not in installed:
                 print(f"[omitido] {model}: no está instalado (ollama pull {model})")
