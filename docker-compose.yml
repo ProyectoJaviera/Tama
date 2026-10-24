@@ -10,7 +10,7 @@ services:
     container_name: tama
     environment:
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
-      TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:8b}
+      TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
       TAMA_THINK: ${TAMA_THINK:-false}
     # En Linux host.docker.internal no existe por defecto.
     extra_hosts:

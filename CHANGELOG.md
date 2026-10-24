@@ -13,7 +13,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Configuración con `pydantic-settings` y `.env.example`.
 - Benchmark de modelos `bench/models.py` (velocidad, RAM y llamadas a herramientas), solo CPU,
   con resultados en `bench/RESULTS.md`.
-- ADR 0001: `qwen3:8b` como modelo local principal y `qwen3:4b` para tareas de fondo.
+- ADR 0001: `qwen3:4b-instruct-2507-q4_K_M` como modelo local principal (alternativa `qwen3:8b`) y
+  `qwen3:4b` para tareas de fondo.
 
 ### Corregido
 
