@@ -34,10 +34,16 @@ class OllamaClient:
         self.close()
 
     def stream_chat(
-        self, model: str, messages: list[Message], think: bool | None = None
+        self,
+        model: str,
+        messages: list[Message],
+        think: bool | None = None,
+        options: dict[str, Any] | None = None,
     ) -> Iterator[str]:
         """Envía un chat y devuelve los fragmentos de texto a medida que llegan."""
         payload = _chat_payload(model, messages, stream=True, think=think)
+        if options:
+            payload["options"] = options
         try:
             with self._http.stream("POST", "/api/chat", json=payload) as response:
                 if response.is_error:

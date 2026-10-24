@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     )
     local_model: str = "qwen3:4b"
     think: bool = False
+    # Siempre explícito: si no, Ollama usa su default (puede ser enorme y llenar la RAM).
+    num_ctx: int = 8192
     timeout: float = 300.0
     data_dir: Path = Path("data")
 

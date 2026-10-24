@@ -18,8 +18,9 @@ class FakeClient:
             raise OllamaError("connection refused")
         return self.models
 
-    def stream_chat(self, model, messages, think=None):
+    def stream_chat(self, model, messages, think=None, options=None):
         self.calls.append((model, list(messages)))
+        self.options = options
         if self.error:
             raise OllamaError(self.error)
         yield from self.chunks
@@ -92,3 +93,9 @@ def test_chat_loop_keeps_history(monkeypatch):
     second = client.calls[1][1]
     assert [m["role"] for m in second] == ["system", "user", "assistant", "user"]
     assert second[2]["content"] == "¡Hola!"
+
+
+def test_num_ctx_is_always_sent():
+    client = FakeClient()
+    cli.main(["hola"], client=client)
+    assert client.options == {"num_ctx": cli.get_settings().num_ctx}
