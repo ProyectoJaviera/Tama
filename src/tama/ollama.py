@@ -1,10 +1,12 @@
-"""Cliente mínimo de la API HTTP de Ollama (sin dependencias extra)."""
+"""Cliente mínimo de la API HTTP de Ollama (local o nube de Ollama)."""
 
 import json
 from collections.abc import Iterator
 from typing import Any
 
 import httpx
+
+from tama.net import tls_context
 
 Message = dict[str, Any]
 
@@ -19,13 +21,17 @@ class OllamaClient:
         host: str = "http://127.0.0.1:11434",
         timeout: float = 300.0,
         transport: httpx.BaseTransport | None = None,
+        api_key: str | None = None,
     ) -> None:
-        # trust_env=False: Ollama local no debe pasar por proxies del sistema.
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
+        # trust_env=False: Ollama no debe pasar por proxies del sistema.
         self._http = httpx.Client(
             base_url=host,
             timeout=httpx.Timeout(timeout, connect=5.0),
             transport=transport,
             trust_env=False,
+            headers=headers,
+            verify=tls_context(),
         )
 
     def close(self) -> None:
@@ -37,15 +43,18 @@ class OllamaClient:
     def __exit__(self, *exc: object) -> None:
         self.close()
 
-    def stream_chat(
+    def stream_raw(
         self,
         model: str,
         messages: list[Message],
+        tools: list[dict[str, Any]] | None = None,
         think: bool | None = None,
         options: dict[str, Any] | None = None,
-    ) -> Iterator[str]:
-        """Envía un chat y devuelve los fragmentos de texto a medida que llegan."""
+    ) -> Iterator[dict[str, Any]]:
+        """Chat en streaming: devuelve cada fragmento JSON tal como lo envía Ollama."""
         payload = _chat_payload(model, messages, stream=True, think=think)
+        if tools:
+            payload["tools"] = tools
         if options:
             payload["options"] = options
         try:
@@ -59,13 +68,24 @@ class OllamaClient:
                     chunk = json.loads(line)
                     if "error" in chunk:
                         raise OllamaError(chunk["error"])
-                    content = chunk.get("message", {}).get("content", "")
-                    if content:
-                        yield content
+                    yield chunk
                     if chunk.get("done"):
                         return
-        except httpx.ConnectError as exc:
-            raise OllamaError(f"no se pudo conectar con Ollama: {exc}") from exc
+        except httpx.HTTPError as exc:
+            raise OllamaError(f"no se pudo hablar con Ollama: {exc}") from exc
+
+    def stream_chat(
+        self,
+        model: str,
+        messages: list[Message],
+        think: bool | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> Iterator[str]:
+        """Envía un chat y devuelve solo los fragmentos de texto a medida que llegan."""
+        for chunk in self.stream_raw(model, messages, think=think, options=options):
+            content = chunk.get("message", {}).get("content", "")
+            if content:
+                yield content
 
     def chat(
         self,
@@ -103,8 +123,8 @@ class OllamaClient:
     ) -> dict[str, Any]:
         try:
             response = self._http.request(method, path, json=payload)
-        except httpx.ConnectError as exc:
-            raise OllamaError(f"no se pudo conectar con Ollama: {exc}") from exc
+        except httpx.HTTPError as exc:
+            raise OllamaError(f"no se pudo hablar con Ollama: {exc}") from exc
         if response.is_error:
             raise OllamaError(_error_text(response))
         return response.json()

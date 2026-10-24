@@ -59,7 +59,7 @@ def test_connect_error_becomes_ollama_error():
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("refused", request=request)
 
-    with make_client(handler) as client, pytest.raises(OllamaError, match="conectar"):
+    with make_client(handler) as client, pytest.raises(OllamaError, match="no se pudo hablar"):
         client.list_models()
 
 
