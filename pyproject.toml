@@ -5,9 +5,12 @@ description = "Tama: asistente de IA personal y acompañante diario, 100% funcio
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "anthropic>=2.3,<3",
     "httpx>=0.28,<0.29",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6,<3",
+    "pyyaml>=6.0,<7",
+    "truststore>=0.10,<1",
 ]
 
 [project.scripts]
