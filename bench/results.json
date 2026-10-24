@@ -54,5 +54,20 @@
     "tool_avg_s": 0.4729081200010114,
     "failures": [],
     "error": null
+  },
+  {
+    "model": "qwen3:4b-instruct-2507-q4_K_M",
+    "prompt_tokens": 1474,
+    "prompt_tps": 46.357195813634576,
+    "gen_tps": 6.348868895430833,
+    "load_s": 4.0495702999978676,
+    "ram_gb": 2.9672949202358723,
+    "tool_ok": 9,
+    "tool_total": 10,
+    "tool_avg_s": 4.950416899999982,
+    "failures": [
+      "¿Cuánto es el 15% de 2340? → no llamó herramienta"
+    ],
+    "error": null
   }
 ]

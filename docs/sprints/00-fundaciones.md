@@ -1,6 +1,6 @@
 # Sprint 0: Fundaciones
 
-**Estado:** abierto
+**Estado:** cerrado (2026-10-24, demo aprobada por Renzo)
 **Fase:** 0
 
 ## Objetivo
@@ -30,8 +30,8 @@ Dejar el repo listo para trabajar con calidad desde el primer día y elegir, con
 
 - [x] `uv sync && uv run pytest && uv run ruff check .` pasa en limpio en Windows.
 - [x] CI en verde en GitHub (Linux y Windows).
-- [ ] `uv run tama "hola"` responde en streaming con el modelo local **con el cable de red desconectado**.
-- [ ] `docker compose up` levanta Tama, que responde con el Ollama nativo del host **con la red desconectada**.
+- [x] `uv run tama "hola"` responde en streaming con el modelo local **con el cable de red desconectado**.
+- [x] `docker compose up` levanta Tama, que responde con el Ollama nativo del host **con la red desconectada**.
 - [x] `bench/RESULTS.md` tiene datos reales de los 3 modelos locales (solo CPU).
 - [x] ADR 0001 elige el modelo local principal y el de fondo, justificado con la tabla.
 
@@ -40,8 +40,8 @@ Dejar el repo listo para trabajar con calidad desde el primer día y elegir, con
 - Contenedor contra el Ollama nativo: `tama --check` OK y respuesta en streaming con `qwen3:8b`
   al 100% en CPU.
 - Sin red, simulado: contenedor sin DNS (internet inalcanzable comprobado en la misma prueba)
-  responde igual. Falta la prueba real con el cable desconectado, que debe hacer Renzo en la demo:
-  desconectar la red, `docker compose run --rm tama "hola"` y `uv run tama "hola"`.
+  responde igual.
+- Sin red, real: Renzo desconectó la red y Tama respondió (demo aprobada, 2026-10-24).
 
 ## Fuera de alcance
 
