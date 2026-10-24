@@ -20,8 +20,7 @@ class OllamaClient:
         timeout: float = 300.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
-        # trust_env=False: Ollama local no necesita proxies, y algunos antivirus (Avast) ponen
-        # SSLKEYLOGFILE apuntando a su driver, lo que hace caer a OpenSSL en Windows.
+        # trust_env=False: Ollama local no debe pasar por proxies del sistema.
         self._http = httpx.Client(
             base_url=host,
             timeout=httpx.Timeout(timeout, connect=5.0),
