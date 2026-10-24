@@ -116,18 +116,12 @@ def is_cloud(model: str) -> bool:
 
 def long_prompt() -> str:
     # El nonce inicial evita que Ollama reutilice la caché de prompt entre corridas.
-    return f"[{uuid.uuid4()}]\n{PARAGRAPH * 22}\nResume en una sola frase lo anterior."
+    return f"[{uuid.uuid4()}]\n{PARAGRAPH * 16}\nResume en una sola frase lo anterior."
 
 
-def runner_ram_gb() -> float:
-    """RAM (RSS) de los procesos de Ollama que ejecutan modelos."""
-    total = 0
-    for proc in psutil.process_iter(["name", "cmdline", "memory_info"]):
-        name = (proc.info["name"] or "").lower()
-        cmd = " ".join(proc.info["cmdline"] or []).lower()
-        if "ollama" in name and "runner" in cmd and proc.info["memory_info"]:
-            total += proc.info["memory_info"].rss
-    return total / GB
+def loaded_ram_gb(client: OllamaClient, model: str) -> float:
+    """Memoria que Ollama reporta para el modelo cargado (pesos + caché KV)."""
+    return sum(m.get("size", 0) for m in client.running() if m.get("name") == model) / GB
 
 
 def chat(client: OllamaClient, model: str, messages, think: bool | None, **kw) -> dict:
@@ -197,7 +191,7 @@ def bench_model(client: OllamaClient, model: str, reps: int, think: bool | None)
         result.prompt_tps = statistics.median(prompt_tps) if prompt_tps else 0.0
         result.gen_tps = statistics.median(gen_tps) if gen_tps else 0.0
         if not cloud:
-            result.ram_gb = runner_ram_gb()
+            result.ram_gb = loaded_ram_gb(client, model)
 
         durations = []
         for case in CASES:
