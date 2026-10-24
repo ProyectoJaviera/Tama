@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     ollama_host: str = Field(
         "http://127.0.0.1:11434", validation_alias=AliasChoices("TAMA_OLLAMA_HOST", "OLLAMA_HOST")
     )
-    local_model: str = "qwen3:4b"
+    local_model: str = "qwen3:8b"
     think: bool = False
     # Siempre explícito: si no, Ollama usa su default (puede ser enorme y llenar la RAM).
     num_ctx: int = 8192
