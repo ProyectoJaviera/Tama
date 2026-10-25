@@ -20,9 +20,11 @@ class ClaudeProvider:
         model: str,
         max_tokens: int = 4096,
         client: Any | None = None,
+        effort: str = "low",
     ) -> None:
         self.model = model
         self._max_tokens = max_tokens
+        self._effort = effort
         self._client = client
         if self._client is None and api_key:
             self._client = anthropic.Anthropic(
@@ -44,8 +46,9 @@ class ClaudeProvider:
             "model": self.model,
             "max_tokens": self._max_tokens,
             "messages": turns,
-            # Conversación diaria: poco razonamiento para responder rápido.
-            "output_config": {"effort": "low"},
+            # Haiku 5.5 razona por defecto con effort "medium"; para charlar basta "low" y responde
+            # antes. Sin temperature/top_p/top_k: la API los rechaza desde el 21-10-2026.
+            "output_config": {"effort": self._effort},
         }
         if system:
             params["system"] = system

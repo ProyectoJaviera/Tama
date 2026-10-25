@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     )
     claude_model: str = "claude-haiku-5-5"
     claude_first_token_s: float = 8.0
+    # low | medium | high | xhigh | max. "low" baja la latencia en conversación.
+    claude_effort: str = "low"
     claude_monthly_usd: float = 5.0
     # Precios en US$ por millón de tokens (Haiku 5.5, prompts de hasta 100K tokens).
     claude_usd_per_mtok_in: float = 0.10
