@@ -1,7 +1,8 @@
 """Proveedores sobre la API de Ollama: el Ollama local del PC y la nube de Ollama."""
 
 import json
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from tama.ollama import OllamaClient, OllamaError
@@ -47,8 +48,14 @@ class _OllamaProvider:
                     yield Done(chunk.get("prompt_eval_count", 0), chunk.get("eval_count", 0))
                     return
             yield Error("Ollama cortó la respuesta sin terminar")
-        except (OllamaError, ValueError) as exc:
+        except OllamaError as exc:
+            self._on_error(exc)
             yield Error(str(exc))
+        except ValueError as exc:
+            yield Error(str(exc))
+
+    def _on_error(self, exc: OllamaError) -> None:
+        pass
 
     @property
     def _api_model(self) -> str:
@@ -68,19 +75,44 @@ class OllamaLocalProvider(_OllamaProvider):
 
 
 class OllamaCloudProvider(_OllamaProvider):
-    """API de la nube de Ollama (ollama.com) con OLLAMA_API_KEY."""
+    """Modelos de la nube de Ollama.
+
+    Por defecto pasa por el Ollama del PC, que usa la sesión iniciada con `ollama signin` (sin
+    API key; el modelo lleva el sufijo "-cloud"). Con `direct=True` habla con ollama.com usando
+    OLLAMA_API_KEY, y ahí el modelo va sin el sufijo.
+    """
 
     name = "nube"
     needs_network = True
 
-    def __init__(self, client: OllamaClient | None, model: str) -> None:
-        super().__init__(client, model)  # type: ignore[arg-type]
+    def __init__(
+        self,
+        client: OllamaClient,
+        model: str,
+        direct: bool = False,
+        retry_after_s: float = 300.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        super().__init__(client, model)
+        self._direct = direct
+        self._retry_after_s = retry_after_s
+        self._clock = clock
+        self._unauthorized_at: float | None = None
 
     def unavailable_reason(self) -> str | None:
-        return None if self._client else "falta OLLAMA_API_KEY"
+        if self._unauthorized_at is None:
+            return None
+        if self._clock() - self._unauthorized_at >= self._retry_after_s:
+            self._unauthorized_at = None  # se vuelve a intentar: quizá ya inició sesión
+            return None
+        if self._direct:
+            return "OLLAMA_API_KEY rechazada"
+        return "sesión de Ollama no iniciada (ejecuta `ollama signin`)"
+
+    def _on_error(self, exc: OllamaError) -> None:
+        if exc.status == 401:
+            self._unauthorized_at = self._clock()
 
     @property
     def _api_model(self) -> str:
-        # El sufijo "-cloud" solo existe al usar la nube a través del Ollama local; la API de
-        # ollama.com usa el nombre base (gemma4:31b-cloud → gemma4:31b).
-        return self.model.removesuffix("-cloud")
+        return self.model.removesuffix("-cloud") if self._direct else self.model

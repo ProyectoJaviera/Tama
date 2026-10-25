@@ -8,6 +8,7 @@ from tama.ollama import OllamaClient
 from tama.providers import Done, Error, Text, ToolCall
 from tama.providers.claude import ClaudeProvider, to_claude_messages, to_claude_tool
 from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
+from tests.fakes import FakeClock
 
 TOOL = {
     "type": "function",
@@ -75,24 +76,53 @@ def test_unfinished_stream_is_an_error():
     assert isinstance(list(provider.stream_chat([]))[-1], Error)
 
 
-def test_cloud_provider_sends_key_and_base_model_name():
-    sent = {}
-
+def capture_cloud(sent, status=200):
     def handler(request):
         sent["auth"] = request.headers.get("authorization")
         sent["model"] = json.loads(request.content)["model"]
+        sent["calls"] = sent.get("calls", 0) + 1
+        if status != 200:
+            return httpx.Response(status, json={"error": "unauthorized"})
         return httpx.Response(200, content=ndjson({"message": {"content": "ok"}, "done": True}))
 
-    provider = OllamaCloudProvider(
-        ollama_client(handler, api_key="clave-de-prueba"), "gemma4:31b-cloud"
-    )
+    return handler
+
+
+def test_cloud_through_local_daemon_needs_no_key():
+    sent = {}
+    provider = OllamaCloudProvider(ollama_client(capture_cloud(sent)), "gemma4:31b-cloud")
+    events = list(provider.stream_chat([]))
+
+    assert events[-1] == Done(0, 0)
+    assert sent["auth"] is None and sent["model"] == "gemma4:31b-cloud"
+    assert provider.needs_network and provider.unavailable_reason() is None
+
+
+def test_cloud_direct_sends_key_and_base_model_name():
+    sent = {}
+    client = ollama_client(capture_cloud(sent), api_key="clave-de-prueba")
+    provider = OllamaCloudProvider(client, "gemma4:31b-cloud", direct=True)
     list(provider.stream_chat([]))
-    assert sent == {"auth": "Bearer clave-de-prueba", "model": "gemma4:31b"}
+    assert (sent["auth"], sent["model"]) == ("Bearer clave-de-prueba", "gemma4:31b")
+
+
+def test_cloud_401_means_no_session_and_is_retried_later():
+    sent, clock = {}, FakeClock()
+    provider = OllamaCloudProvider(
+        ollama_client(capture_cloud(sent, status=401)), "gemma4:31b-cloud", clock=clock
+    )
+    events = list(provider.stream_chat([]))
+
+    assert isinstance(events[-1], Error)
+    assert "ollama signin" in provider.unavailable_reason()
+    clock.now += 300
     assert provider.unavailable_reason() is None
 
 
-def test_cloud_provider_without_key_is_unavailable():
-    assert "OLLAMA_API_KEY" in OllamaCloudProvider(None, "gemma4:31b-cloud").unavailable_reason()
+def test_cloud_other_errors_do_not_mark_session():
+    provider = OllamaCloudProvider(ollama_client(capture_cloud({}, status=500)), "gemma4:31b-cloud")
+    assert isinstance(list(provider.stream_chat([]))[-1], Error)
+    assert provider.unavailable_reason() is None
 
 
 def test_claude_message_conversion():
@@ -198,3 +228,21 @@ def test_claude_api_error_becomes_error_event():
 
 def test_claude_without_key_is_unavailable():
     assert "ANTHROPIC_API_KEY" in ClaudeProvider(None, "m").unavailable_reason()
+
+
+def test_claude_uses_low_effort_and_never_sends_sampling_params():
+    client = FakeAnthropic(FakeStream(["ok"], final()))
+    list(
+        ClaudeProvider(None, "claude-haiku-5-5", client=client).stream_chat(
+            [{"role": "user", "content": "hola"}]
+        )
+    )
+    assert client.params["output_config"] == {"effort": "low"}
+    assert not {"temperature", "top_p", "top_k"} & client.params.keys()
+
+
+def test_claude_effort_is_configurable():
+    client = FakeAnthropic(FakeStream(["ok"], final()))
+    provider = ClaudeProvider(None, "claude-haiku-5-5", client=client, effort="medium")
+    list(provider.stream_chat([{"role": "user", "content": "hola"}]))
+    assert client.params["output_config"] == {"effort": "medium"}

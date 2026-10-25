@@ -14,6 +14,10 @@ Message = dict[str, Any]
 class OllamaError(RuntimeError):
     """Error al hablar con Ollama (servidor caído, modelo ausente, etc.)."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
 
 class OllamaClient:
     def __init__(
@@ -61,7 +65,7 @@ class OllamaClient:
             with self._http.stream("POST", "/api/chat", json=payload) as response:
                 if response.is_error:
                     response.read()
-                    raise OllamaError(_error_text(response))
+                    raise OllamaError(_error_text(response), response.status_code)
                 for line in response.iter_lines():
                     if not line:
                         continue
@@ -132,7 +136,7 @@ class OllamaClient:
         except httpx.HTTPError as exc:
             raise OllamaError(f"no se pudo hablar con Ollama: {exc}") from exc
         if response.is_error:
-            raise OllamaError(_error_text(response))
+            raise OllamaError(_error_text(response), response.status_code)
         return response.json()
 
 

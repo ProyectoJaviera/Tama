@@ -8,38 +8,56 @@ import time
 import tama  # noqa: F401  (quita el SSLKEYLOGFILE de Avast antes de usar SSL)
 from evals import runner
 from tama import brain as brain_module
+from tama.cli import health_check
 from tama.config import get_settings
 from tama.net import tcp_probe
-from tama.ollama import OllamaClient
+from tama.ollama import OllamaClient, OllamaError
 
 
 def make_judge(settings, offline: bool):
-    """Juez en la nube si hay clave y red; si no, el modelo de fondo local."""
+    """Juez en la nube si hay red (vía el Ollama local o con OLLAMA_API_KEY); si no, o si la nube
+    falla, el modelo de fondo local."""
+    local = OllamaClient(settings.ollama_host, timeout=900)
+    local_judge = (
+        local,
+        settings.background_model,
+        True,
+        {"num_ctx": 8192, "num_gpu": settings.num_gpu, "num_predict": 4096},
+    )
+    judges = [local_judge]
     host, _, port = settings.connectivity_probe.rpartition(":")
-    if settings.ollama_api_key and not offline and tcp_probe(host, int(port)):
-        client = OllamaClient(
-            settings.cloud_host, timeout=120, api_key=settings.ollama_api_key.get_secret_value()
-        )
-        model, think, options = settings.cloud_model.removesuffix("-cloud"), None, None
-    else:
-        client = OllamaClient(settings.ollama_host, timeout=900)
-        model, think = settings.background_model, True
-        options = {"num_ctx": 8192, "num_gpu": settings.num_gpu, "num_predict": 4096}
+    if not offline and tcp_probe(host, int(port)):
+        if settings.ollama_api_key:
+            key = settings.ollama_api_key.get_secret_value()
+            cloud = OllamaClient(settings.cloud_host, timeout=120, api_key=key)
+            judges.insert(0, (cloud, settings.cloud_model.removesuffix("-cloud"), None, None))
+        else:
+            judges.insert(0, (local, settings.cloud_model, None, None))
+    used: list[str] = []
 
     def judge(prompt: str) -> dict:
-        response = client.chat(
-            model,
-            [
-                {"role": "system", "content": runner.JUDGE_SYSTEM},
-                {"role": "user", "content": prompt},
-            ],
-            think=think,
-            options=options,
-            format=runner.JUDGE_SCHEMA,
-        )
-        return json.loads(response["message"]["content"])
+        messages = [
+            {"role": "system", "content": runner.JUDGE_SYSTEM},
+            {"role": "user", "content": prompt},
+        ]
+        error: Exception | None = None
+        for client, model, think, options in judges:
+            try:
+                response = client.chat(
+                    model, messages, think=think, options=options, format=runner.JUDGE_SCHEMA
+                )
+                if model not in used:
+                    used.append(model)
+                return json.loads(response["message"]["content"])
+            except (OllamaError, ValueError, KeyError) as exc:
+                error = exc
+        raise ValueError(f"ningún juez respondió: {error}")
 
-    return judge, model, client
+    def close() -> None:
+        for client, *_ in judges:
+            client.close()
+
+    return judge, used, close
 
 
 def main() -> int:
@@ -59,6 +77,11 @@ def main() -> int:
 
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
     brain = brain_module.build(settings, force_offline=args.offline)
+    problem = health_check(brain.local, settings.ollama_host, settings.local_model)
+    if problem:
+        brain.close()
+        print(f"No se corren las evals: {problem}", file=sys.stderr)
+        return 1
     try:
         runner.answer(brain.cascade, [{"role": "user", "content": "hola"}])
         outcomes = []
@@ -77,13 +100,14 @@ def main() -> int:
     # Fase 2: el juez puntúa (después, para no alternar modelos en la RAM).
     judge_name = "ninguno"
     if not args.sin_juez:
-        judge, judge_name, client = make_judge(settings, args.offline)
+        judge, used, close = make_judge(settings, args.offline)
         try:
             for scenario, outcome in zip(scenarios, outcomes, strict=True):
                 runner.apply_judgement(scenario, outcome, judge)
                 print(f"[juez] {scenario.id}: {outcome.puntajes or outcome.error}", flush=True)
         finally:
-            client.close()
+            close()
+        judge_name = ", ".join(used) or "ninguno"
 
     runner.save_mode(mode, judge_name, outcomes)
     (runner.EVALS_DIR / "RESULTS.md").write_text(runner.render_report(), encoding="utf-8")
