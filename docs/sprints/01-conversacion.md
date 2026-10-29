@@ -28,3 +28,22 @@ Herramientas y MCP (S2), memoria (S3), interfaz web (S5) y voz (S6).
 
 ## Necesita de Renzo
 Sesión iniciada en Ollama (`ollama signin`) para la nube, y ANTHROPIC_API_KEY (console.anthropic.com) en .env. OLLAMA_API_KEY es opcional. Sin ellas, todo se desarrolla y prueba igual: las capas se saltan y Tama responde en local.
+
+## Demo para Renzo (unos 10 minutos)
+
+Antes: Ollama encendido (`ollama ps` responde), sesión de Ollama iniciada y `ANTHROPIC_API_KEY` en `.env`.
+Abrir PowerShell **propio** (no desde la app de Claude) en `D:\Estudio\IA\Proyecto_Tama\Tama`.
+
+1. `uv run tama --check`: las tres capas aparecen como "lista" y Ollama local responde.
+2. `uv run tama` y conversar unos 5 minutos: saludo, pedir una opinión, pedir una sugerencia y
+   volver sobre algo dicho antes. Bajo cada respuesta aparece en gris la capa (debería ser `nube`)
+   y el tiempo hasta el primer token.
+3. Escribir `/proveedor` para ver el estado de las capas.
+4. **Cortar la red** (desactivar Wi-Fi o desenchufar el cable) y seguir conversando. En menos de
+   30 s Tama deja de intentar las capas de red y responde con `local`, sin esperas largas.
+   `/proveedor` muestra "sin internet" en nube y claude.
+5. Reconectar la red, esperar unos 30 s y escribir de nuevo: vuelve a responder `nube`.
+6. `/salir`. Cada turno quedó registrado en `data/events.db`.
+
+Qué esperar: con la nube, primer token en menos de 1 s; en local, unos segundos (más si el modelo
+estaba descargado de la RAM). Si algo se ve raro, copiar la salida y avisar.
