@@ -138,3 +138,13 @@ def test_failed_turn_is_not_kept_in_history(tmp_path, monkeypatch):
     flaky.stream_chat = stream_chat
     cli.main([], brain=make_brain(tmp_path, [flaky]), settings=Settings())
     assert [m["content"] for m in flaky.calls[1] if m["role"] == "user"] == ["segundo"]
+
+
+def test_build_can_keep_only_some_layers(tmp_path):
+    from tama import brain as brain_module
+
+    brain = brain_module.build(Settings(data_dir=tmp_path), only=["claude"])
+    try:
+        assert [layer.provider.name for layer in brain.cascade.layers] == ["claude"]
+    finally:
+        brain.close()

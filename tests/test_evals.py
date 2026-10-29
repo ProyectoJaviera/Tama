@@ -84,3 +84,12 @@ def test_saved_results_round_trip(tmp_path, monkeypatch):
     runner.save_mode("offline", "qwen3:4b", [outcome])
     judge, outcomes = runner.load_mode("offline")
     assert judge == "qwen3:4b" and outcomes == [outcome]
+
+
+def test_report_shows_layer_modes_and_latency_per_layer(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "EVALS_DIR", tmp_path)
+    runner.save_mode("online-claude", "j", [runner.Outcome("a", "x", "claude", "m", 1.5, 2.0)])
+    runner.save_mode("online", "j", [runner.Outcome("a", "x", "nube", "m", 0.4, 1.0)])
+    report = runner.render_report()
+    assert report.index("Con red (cascada completa)") < report.index("Con red, solo claude")
+    assert "Primer token en claude: p50 1.5 s, p95 1.5 s" in report

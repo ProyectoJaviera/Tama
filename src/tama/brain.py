@@ -22,8 +22,11 @@ class Brain:
         self.store.close()
 
 
-def build(settings: Settings, force_offline: bool = False) -> Brain:
-    """Arma la cascada. `force_offline` simula no tener internet (evals en modo --offline)."""
+def build(settings: Settings, force_offline: bool = False, only: list[str] | None = None) -> Brain:
+    """Arma la cascada.
+
+    `force_offline` simula no tener internet y `only` deja solo las capas nombradas (evals).
+    """
     store = EventStore(settings.events_db)
     local = OllamaClient(settings.ollama_host, timeout=settings.timeout)
     # La nube de Ollama pasa por el daemon local (sesión de `ollama signin`), salvo que haya
@@ -72,4 +75,6 @@ def build(settings: Settings, force_offline: bool = False) -> Brain:
             breaker(),
         ),
     ]
+    if only:
+        layers = [layer for layer in layers if layer.provider.name in only]
     return Brain(Cascade(layers, connectivity), store, local)

@@ -86,6 +86,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--offline", action="store_true", help="solo la capa local, sin red")
     parser.add_argument("--solo", nargs="*", help="ids de escenarios a correr")
+    parser.add_argument(
+        "--capas", nargs="+", help="usa solo estas capas (nube, claude, local) para medir cada una"
+    )
     parser.add_argument("--sin-juez", action="store_true", help="no puntuar (solo latencias)")
     parser.add_argument(
         "--rejuzgar",
@@ -99,12 +102,14 @@ def main() -> int:
     if args.solo:
         scenarios = [s for s in scenarios if s.id in args.solo]
     mode = "offline" if args.offline else "online"
+    if args.capas and not args.offline:
+        mode = "online-" + "-".join(args.capas)
 
     if args.rejuzgar:
         return rejudge(settings, mode, scenarios, args.offline)
 
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
-    brain = brain_module.build(settings, force_offline=args.offline)
+    brain = brain_module.build(settings, force_offline=args.offline, only=args.capas)
     problem = health_check(brain.local, settings.ollama_host, settings.local_model)
     if problem:
         brain.close()

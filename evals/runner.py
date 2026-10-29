@@ -169,6 +169,13 @@ def summarize(outcomes: list[Outcome]) -> dict[str, Any]:
         "total_p50": percentile(totals, 50),
         "total_p95": percentile(totals, 95),
         "capas": layers,
+        "ttft_por_capa": {
+            capa: {
+                "p50": percentile([o.ttft_s for o in outcomes if o.capa == capa and o.ttft_s], 50),
+                "p95": percentile([o.ttft_s for o in outcomes if o.capa == capa and o.ttft_s], 95),
+            }
+            for capa in layers
+        },
     }
 
 
@@ -194,6 +201,19 @@ def fmt(value: float | None, unit: str = " s") -> str:
     return "—" if value is None else f"{value:.1f}{unit}"
 
 
+def mode_title(mode: str) -> str:
+    if mode == "offline":
+        return "Sin red (solo capa local)"
+    if mode == "online":
+        return "Con red (cascada completa)"
+    return f"Con red, solo {mode.removeprefix('online-').replace('-', ' y ')}"
+
+
+def _mode_order(path: Path) -> tuple[int, str]:
+    mode = path.stem.removeprefix("results-")
+    return ({"online": 0, "offline": 2}.get(mode, 1), mode)
+
+
 def render_report() -> str:
     lines = [
         "# Resultados de las evals de conversación",
@@ -201,22 +221,24 @@ def render_report() -> str:
         "Generado por `uv run python -m evals`. Cada escenario se puntúa de 1 a 5 por criterio con",
         f'un juez LLM; a todos se suma el criterio "{GENERIC_CRITERION}". Aprobado = media ≥ 4.',
     ]
-    for mode, title in (("online", "Con red"), ("offline", "Sin red (solo capa local)")):
-        path = EVALS_DIR / f"results-{mode}.json"
-        if not path.exists():
-            continue
+    for path in sorted(EVALS_DIR.glob("results-*.json"), key=_mode_order):
+        mode = path.stem.removeprefix("results-")
         data = json.loads(path.read_text(encoding="utf-8"))
         r = data["resumen"]
         capas = ", ".join(f"{k}: {v}" for k, v in r["capas"].items()) or "—"
         lines += [
             "",
-            f"## {title}",
+            f"## {mode_title(mode)}",
             "",
             f"- Fecha: {data['fecha']} · juez: `{data['juez']}` · capas: {capas}",
             f"- Puntaje medio: {fmt(r['puntaje_medio'], '')} · aprobados: {r['aprobados']}/"
             f"{r['escenarios']} · errores: {r['errores']}",
             f"- Primer token: p50 {fmt(r['ttft_p50'])}, p95 {fmt(r['ttft_p95'])} · "
             f"respuesta completa: p50 {fmt(r['total_p50'])}, p95 {fmt(r['total_p95'])}",
+            *[
+                f"- Primer token en {capa}: p50 {fmt(v['p50'])}, p95 {fmt(v['p95'])}"
+                for capa, v in r.get("ttft_por_capa", {}).items()
+            ],
             "",
             "| Escenario | Capa | Primer token | Total | Puntajes | Media | Comentario del juez |",
             "|---|---|---:|---:|---|---:|---|",
