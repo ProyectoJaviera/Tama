@@ -185,6 +185,11 @@ def save_mode(mode: str, judge_name: str, outcomes: list[Outcome]) -> None:
     )
 
 
+def load_mode(mode: str) -> tuple[str, list[Outcome]]:
+    data = json.loads((EVALS_DIR / f"results-{mode}.json").read_text(encoding="utf-8"))
+    return data["juez"], [Outcome(**o) for o in data["resultados"]]
+
+
 def fmt(value: float | None, unit: str = " s") -> str:
     return "—" if value is None else f"{value:.1f}{unit}"
 

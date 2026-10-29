@@ -76,3 +76,11 @@ def test_report_includes_both_modes(tmp_path, monkeypatch):
     assert "| saludo | local | 1.0 s | 2.0 s | 5 4 | 4.5 |" in report
     data = json.loads((tmp_path / "results-online.json").read_text(encoding="utf-8"))
     assert data["resumen"]["aprobados"] == 1
+
+
+def test_saved_results_round_trip(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "EVALS_DIR", tmp_path)
+    outcome = runner.Outcome("x", "¡Hola!", "local", "m", 0.5, 2.0, error="juez: vacío")
+    runner.save_mode("offline", "qwen3:4b", [outcome])
+    judge, outcomes = runner.load_mode("offline")
+    assert judge == "qwen3:4b" and outcomes == [outcome]

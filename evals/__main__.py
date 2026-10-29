@@ -22,7 +22,7 @@ def make_judge(settings, offline: bool):
         local,
         settings.background_model,
         True,
-        {"num_ctx": 8192, "num_gpu": settings.num_gpu, "num_predict": 4096},
+        {"num_ctx": 8192, "num_gpu": settings.num_gpu, "num_predict": 8192},
     )
     judges = [local_judge]
     host, _, port = settings.connectivity_probe.rpartition(":")
@@ -60,6 +60,26 @@ def make_judge(settings, offline: bool):
     return judge, used, close
 
 
+def rejudge(settings, mode: str, scenarios, offline: bool) -> int:
+    """Puntúa de nuevo los escenarios cuyo juicio falló, sin volver a generar las respuestas."""
+    judge_name, outcomes = runner.load_mode(mode)
+    by_id = {s.id: s for s in scenarios}
+    judge, used, close = make_judge(settings, offline)
+    try:
+        for outcome in outcomes:
+            if not (outcome.error or "").startswith("juez:") or outcome.scenario not in by_id:
+                continue
+            outcome.error = None
+            runner.apply_judgement(by_id[outcome.scenario], outcome, judge)
+            print(f"[juez] {outcome.scenario}: {outcome.puntajes or outcome.error}", flush=True)
+    finally:
+        close()
+    names = [n for n in [judge_name, *used] if n and n != "pendiente"]
+    runner.save_mode(mode, ", ".join(dict.fromkeys(names)), outcomes)
+    (runner.EVALS_DIR / "RESULTS.md").write_text(runner.render_report(), encoding="utf-8")
+    return 0
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -67,6 +87,11 @@ def main() -> int:
     parser.add_argument("--offline", action="store_true", help="solo la capa local, sin red")
     parser.add_argument("--solo", nargs="*", help="ids de escenarios a correr")
     parser.add_argument("--sin-juez", action="store_true", help="no puntuar (solo latencias)")
+    parser.add_argument(
+        "--rejuzgar",
+        action="store_true",
+        help="vuelve a puntuar solo los escenarios con error del juez en los resultados guardados",
+    )
     args = parser.parse_args()
 
     settings = get_settings().model_copy(update={"data_dir": runner.EVALS_DIR / "data"})
@@ -74,6 +99,9 @@ def main() -> int:
     if args.solo:
         scenarios = [s for s in scenarios if s.id in args.solo]
     mode = "offline" if args.offline else "online"
+
+    if args.rejuzgar:
+        return rejudge(settings, mode, scenarios, args.offline)
 
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
     brain = brain_module.build(settings, force_offline=args.offline)
@@ -96,6 +124,8 @@ def main() -> int:
             )
     finally:
         brain.close()
+    # Se guarda tras cada fase y cada escenario juzgado: si el proceso se corta, no se pierde todo.
+    runner.save_mode(mode, "pendiente", outcomes)
 
     # Fase 2: el juez puntúa (después, para no alternar modelos en la RAM).
     judge_name = "ninguno"
@@ -105,6 +135,7 @@ def main() -> int:
             for scenario, outcome in zip(scenarios, outcomes, strict=True):
                 runner.apply_judgement(scenario, outcome, judge)
                 print(f"[juez] {scenario.id}: {outcome.puntajes or outcome.error}", flush=True)
+                runner.save_mode(mode, ", ".join(used) or "pendiente", outcomes)
         finally:
             close()
         judge_name = ", ".join(used) or "ninguno"
