@@ -1,3 +1,5 @@
+import pytest
+
 from tama.cascade import (
     Answered,
     Cascade,
@@ -147,3 +149,63 @@ def test_budget_gate_skips_layer_in_cascade():
 
     assert claude.calls == []
     assert texts(events) == "hola desde local"
+
+
+class SwitchableConnectivity(FakeConnectivity):
+    def __init__(self) -> None:
+        super().__init__(True)
+
+    def cut(self) -> None:
+        self._online = False
+
+
+def test_network_cut_mid_conversation_goes_local_without_waiting():
+    import time
+
+    connectivity = SwitchableConnectivity()
+    cloud = FakeProvider("nube", needs_network=True)
+    claude = FakeProvider("claude", needs_network=True)
+    local = FakeProvider("local")
+    cascade = Cascade(
+        [Layer(cloud, first_token_timeout=8), Layer(claude, first_token_timeout=8), Layer(local)],
+        connectivity,
+    )
+    history = [{"role": "user", "content": "hola"}]
+    assert texts(cascade.turn(history)) == "hola desde nube"
+
+    connectivity.cut()
+    start = time.perf_counter()
+    events = list(cascade.turn([*history, {"role": "user", "content": "¿sigues ahí?"}]))
+
+    assert texts(events) == "hola desde local"
+    assert time.perf_counter() - start < 0.5  # sin esperar los 8 s de las capas de red
+    assert len(cloud.calls) == 1 and claude.calls == []
+
+
+@pytest.mark.parametrize("broken", ["nube", "claude", "local"])
+def test_each_layer_breaker_opens_and_next_layer_answers(broken):
+    clock = FakeClock()
+    providers = {
+        name: failing(name, needs_network=name != "local")
+        if name == broken
+        else FakeProvider(name, needs_network=name != "local")
+        for name in ("nube", "claude", "local")
+    }
+    order = [n for n in ("nube", "claude", "local") if n == broken] + [
+        n for n in ("nube", "claude", "local") if n != broken
+    ]
+    layers = [Layer(providers[n], breaker=CircuitBreaker(3, 300, clock)) for n in order]
+    cascade = Cascade(layers, FakeConnectivity())
+
+    for _ in range(3):
+        run(cascade)
+    states = dict((layer.provider.name, state) for layer, state in cascade.status())
+    assert states[broken] == "cortacircuitos abierto"
+
+    events = run(cascade)
+    assert not any(isinstance(e, Switch) for e in events)  # ya ni lo intenta
+    assert len(providers[broken].calls) == 3
+
+    clock.now += 300  # medio abierto: un intento de prueba
+    run(cascade)
+    assert len(providers[broken].calls) == 4
