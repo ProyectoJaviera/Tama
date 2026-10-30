@@ -1,0 +1,3 @@
+id: saludo
+mensaje: "Hola Tama, ¿cómo estás?"
+espera: []  # no debe usar herramientas

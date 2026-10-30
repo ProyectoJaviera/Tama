@@ -1,0 +1,6 @@
+id: hora-ciudad
+mensaje: "¿Qué hora es ahora en Londres?"
+espera:
+  - herramienta: get_current_time
+    argumentos:
+      "timezone": "london"

@@ -1,0 +1,4 @@
+id: notas-recientes
+mensaje: "¿Qué notas tengo guardadas?"
+espera:
+  - herramienta: search_notes

@@ -1,0 +1,7 @@
+id: reemplazar-plan
+mensaje: "Reemplaza todo el contenido de plan.md por 'cancelado'"
+espera:
+  - herramienta: overwrite_file
+    argumentos:
+      "path": "plan.md"
+destructiva: true

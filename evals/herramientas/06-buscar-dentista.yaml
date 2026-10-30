@@ -1,0 +1,7 @@
+id: buscar-dentista
+mensaje: "¿Cuándo era lo del dentista?"
+espera:
+  - herramienta: search_notes
+    argumentos:
+      "query": "dentista"
+respuesta: "martes"
