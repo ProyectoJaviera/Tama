@@ -20,6 +20,7 @@ from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from tama.cascade import CircuitBreaker
+from tama.selector import ALWAYS, BASE, EXTRA
 
 SOURCE_PARAM = "source"  # lo completa el hub; el modelo no lo ve
 
@@ -42,6 +43,12 @@ class ServerConfig:
     """Si se indica, solo estas herramientas del servidor quedan a la vista del modelo."""
     descriptions: dict[str, str] | None = None
     """Descripciones propias (en español) que reemplazan las del servidor, p. ej. los oficiales."""
+    always: tuple[str, ...] = ()
+    """Herramientas a la vista en todos los turnos."""
+    base: tuple[str, ...] | None = None
+    """De uso común, a la vista si hay espacio. Sin indicar, lo son todas las del servidor."""
+    groups: dict[str, str] | None = None
+    """Grupo de una herramienta, si no es el del servidor (ver `abrir_herramientas`)."""
 
 
 @dataclass(frozen=True)
@@ -51,6 +58,12 @@ class ToolInfo:
     description: str
     input_schema: dict[str, Any]
     destructive: bool = False
+    tier: str = BASE
+    group: str = ""
+
+    @property
+    def group_name(self) -> str:
+        return self.group or self.server
 
     def as_provider_tool(self) -> dict[str, Any]:
         """Formato común de herramientas (estilo Ollama/OpenAI); Claude lo convierte aparte."""
@@ -82,6 +95,9 @@ def load_config(path: Path) -> list[ServerConfig]:
                 requires_network=entry.get("requiere_red", False),
                 tools=entry.get("herramientas"),
                 descriptions=entry.get("descripciones"),
+                always=tuple(entry.get("siempre", ())),
+                base=tuple(entry["base"]) if "base" in entry else None,
+                groups=entry.get("grupos"),
             )
         )
     return servers
@@ -222,9 +238,9 @@ class McpHub:
         return result
 
     def available_tools(self, max_tools: int = 10) -> tuple[list[ToolInfo], list[str]]:
-        """Herramientas a la vista en este turno y servidores no disponibles.
+        """Herramientas de servidores sanos, hasta `max_tools`, y servidores no disponibles.
 
-        Selector simple: servidores sanos en el orden de la configuración, hasta `max_tools`.
+        Cuáles ve el modelo en cada turno lo decide `tama.selector`.
         """
         tools: list[ToolInfo] = []
         down: list[str] = []
@@ -283,12 +299,20 @@ class McpHub:
 def _tool_info(config: ServerConfig, tool: Any) -> ToolInfo:
     annotations = getattr(tool, "annotations", None)
     description = (config.descriptions or {}).get(tool.name) or tool.description or ""
+    if tool.name in config.always:
+        tier = ALWAYS
+    elif config.base is None or tool.name in config.base:
+        tier = BASE
+    else:
+        tier = EXTRA
     return ToolInfo(
         server=config.name,
         name=tool.name,
         description=description,
         input_schema=tool.input_schema or {},
         destructive=bool(annotations and annotations.destructive_hint),
+        tier=tier,
+        group=(config.groups or {}).get(tool.name, ""),
     )
 
 

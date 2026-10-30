@@ -1,11 +1,13 @@
 # Servidores MCP de Tama. Se lanzan por stdio como subprocesos al iniciar.
 # "python" se reemplaza por el Python del entorno de Tama: nada de npx ni descargas al arrancar.
-# El orden importa: si hay más herramientas que el máximo por turno, se priorizan las primeras.
+# Por turno se ven pocas (TAMA_TOOLS_MAX): "siempre", lo usado en el turno anterior y "base".
+# Si un servidor no indica "base", todas las suyas lo son. El resto se pide con abrir_herramientas.
 
 [servidores.tiempo]
 comando = ["python", "-m", "mcp_server_time", "--local-timezone", "America/Santiago"]
 # Solo la hora actual; la conversión entre zonas casi no se usa y ocupa espacio en el prompt.
 herramientas = ["get_current_time"]
+siempre = ["get_current_time"]
 
 [servidores.tiempo.descripciones]
 get_current_time = "Da la fecha y la hora actuales. Úsala siempre que Renzo pregunte la hora o la fecha, o cuando una tarea necesite saberlas: nunca las supongas. Zona por defecto: America/Santiago."
@@ -17,12 +19,16 @@ herramientas = [
     "search_nodes", "create_entities", "add_observations", "create_relations",
     "delete_observations", "recent_events", "proponer_cambio_perfil",
 ]
+siempre = ["search_nodes", "create_entities", "add_observations"]
+base = ["recent_events"]
 
 [servidores.notas]
 comando = ["python", "-m", "tama.mcp_servers.notas"]
+base = ["create_note", "search_notes"]
 
 [servidores.archivos]
 comando = ["python", "-m", "tama.mcp_servers.archivos"]
+base = ["read_file"]
 
 [servidores.web]
 comando = ["python", "-m", "tama.mcp_servers.web"]

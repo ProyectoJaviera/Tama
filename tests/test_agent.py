@@ -4,6 +4,7 @@ from tama import agent
 from tama.cascade import Cascade, Layer
 from tama.mcp_hub import ToolInfo, ToolOutcome
 from tama.providers import Done, Text, ToolCall
+from tama.selector import ALWAYS, EXTRA, OPENER, ToolFocus
 from tests.fakes import FakeConnectivity
 
 SCHEMA = {"type": "object", "properties": {}}
@@ -200,3 +201,27 @@ def test_cli_history_keeps_tool_calls(tmp_path):
     assert cli.turn(brain, messages, "¿hora?", 2000)
     assert [m["role"] for m in messages] == ["system", "user", "assistant", "tool", "assistant"]
     brain.store.close()
+
+
+def test_opener_shows_the_group_and_focus_survives_the_turn():
+    tools = [
+        ToolInfo("tiempo", "get_current_time", "Hora", SCHEMA, tier=ALWAYS),
+        ToolInfo("memoria", "buscar", "Busca", SCHEMA, tier=EXTRA),
+        ToolInfo("memoria", "corregir", "Corrige", SCHEMA, tier=EXTRA),
+        ToolInfo("memoria", "meta", "Meta", SCHEMA, tier=EXTRA, group="objetivos"),
+    ]
+    provider = ScriptedProvider(
+        [ToolCall(OPENER, {"grupo": "objetivos"}, "c1"), Done(1, 1)],
+        [ToolCall("meta", {}, "c2"), Done(1, 1)],
+        [Text("Listo."), Done(1, 1)],
+    )
+    focus = ToolFocus()
+    events, _ = run(provider, FakeToolBox(tools, [], {}), max_tools=3, focus=focus)
+
+    assert final(events) == "Listo."
+    first = [t["function"]["name"] for t in provider.calls[0]["tools"]]
+    second = [t["function"]["name"] for t in provider.calls[1]["tools"]]
+    assert "meta" not in first
+    assert "meta" in second
+    assert not any(isinstance(e, agent.ToolUse) and e.name == OPENER for e in events)
+    assert focus == ToolFocus({"objetivos"}, {"meta"})

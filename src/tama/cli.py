@@ -72,7 +72,12 @@ def reply(
     """Responde un turno en streaming (con herramientas), lo registra y devuelve el cierre."""
     answered: Answered | None = None
     for event in agent.run_turn(
-        brain.cascade, brain.tools, history.trim(messages, max_tokens), confirm, max_tools
+        brain.cascade,
+        brain.tools,
+        history.trim(messages, max_tokens),
+        confirm,
+        max_tools,
+        focus=brain.focus,
     ):
         if isinstance(event, Text):
             print(event.text, end="", flush=True)
@@ -187,7 +192,7 @@ def chat_loop(
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(
-            brain.tools, history.trim(messages, max_tokens), max_tools
+            brain.tools, history.trim(messages, max_tokens), max_tools, brain.focus
         )
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)

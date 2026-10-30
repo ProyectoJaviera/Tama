@@ -65,8 +65,8 @@ class Settings(BaseSettings):
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
-    # El benchmark del ADR 0002 mide 100% con 20 herramientas en la nube; subirlo cuesta tokens.
-    tools_max: int = 17
+    # Máximo a la vista por turno; el resto se pide con abrir_herramientas (ver selector.py).
+    tools_max: int = 10
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000

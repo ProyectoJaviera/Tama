@@ -12,6 +12,7 @@ from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
 from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
+from tama.selector import ToolFocus
 from tama.warmup import LocalWarmer
 
 
@@ -23,6 +24,7 @@ class Brain:
     connectivity: Connectivity | None = None
     warmer: LocalWarmer | None = None
     tools: McpHub | None = None
+    focus: ToolFocus = field(default_factory=ToolFocus)
     _stop: threading.Event = field(default_factory=threading.Event)
 
     def watch_network(self, interval: float, keep_warm: bool = False) -> None:
