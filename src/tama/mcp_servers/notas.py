@@ -71,7 +71,12 @@ def _format(row: sqlite3.Row) -> str:
     return f"[nota {row['id']}] {row['title']} (actualizada {row['updated']})\n{body}"
 
 
-@server.tool(description="Crea una nota nueva con un título y su contenido.")
+@server.tool(
+    description=(
+        "Guarda una nota nueva con título y contenido. Úsala cada vez que Renzo pida anotar, "
+        "apuntar o guardar algo; no basta con decir que lo anotaste."
+    )
+)
 def create_note(title: str, content: str) -> str:
     with connect() as db:
         now = _now()
@@ -84,8 +89,9 @@ def create_note(title: str, content: str) -> str:
 
 @server.tool(
     description=(
-        "Busca en las notas de Renzo por palabras y devuelve las que coinciden con su contenido. "
-        "Sin consulta, devuelve las notas más recientes."
+        "Busca en las notas de Renzo y devuelve su contenido. Úsala de inmediato cuando Renzo "
+        "pregunte por algo que pudo haber anotado (citas, planes, compras, ideas), sin preguntar "
+        "antes. Sin consulta, devuelve las notas más recientes."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )

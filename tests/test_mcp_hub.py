@@ -113,3 +113,21 @@ def test_server_env_drops_avast_keylog(monkeypatch, tmp_path):
     monkeypatch.setenv("SSLKEYLOGFILE", r"\\.\aswMonFltProxy\1")
     env = server_env(tmp_path / "d", tmp_path / "w")
     assert "SSLKEYLOGFILE" not in env and env["TAMA_WORKDIR"].endswith("w")
+
+
+def test_config_description_overrides_server_text(make_hub):
+    custom = ServerConfig(
+        "notas", NOTES.command, descriptions={"search_notes": "Busca en las notas (propia)."}
+    )
+    hub = make_hub([custom])
+    found = hub.find("search_notes")
+    assert found.description == "Busca en las notas (propia)."
+    assert hub.find("create_note").description.startswith("Guarda una nota")
+
+
+def test_real_config_loads_spanish_descriptions():
+    from pathlib import Path
+
+    configs = {c.name: c for c in load_config(Path(__file__).parent.parent / "config" / "mcp.toml")}
+    assert "Úsala" in configs["web"].descriptions["fetch"]
+    assert configs["tiempo"].tools == ["get_current_time"]

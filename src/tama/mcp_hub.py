@@ -29,6 +29,8 @@ class ServerConfig:
     requires_network: bool = False
     tools: list[str] | None = None
     """Si se indica, solo estas herramientas del servidor quedan a la vista del modelo."""
+    descriptions: dict[str, str] | None = None
+    """Descripciones propias (en español) que reemplazan las del servidor, p. ej. los oficiales."""
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,7 @@ def load_config(path: Path) -> list[ServerConfig]:
                 command,
                 requires_network=entry.get("requiere_red", False),
                 tools=entry.get("herramientas"),
+                descriptions=entry.get("descripciones"),
             )
         )
     return servers
@@ -264,10 +267,11 @@ class McpHub:
 
 def _tool_info(config: ServerConfig, tool: Any) -> ToolInfo:
     annotations = getattr(tool, "annotations", None)
+    description = (config.descriptions or {}).get(tool.name) or tool.description or ""
     return ToolInfo(
         server=config.name,
         name=tool.name,
-        description=tool.description or "",
+        description=description,
         input_schema=tool.input_schema or {},
         destructive=bool(annotations and annotations.destructive_hint),
     )
