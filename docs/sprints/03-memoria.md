@@ -42,3 +42,21 @@ Reflexión en inactividad, diario, objetivos (goals) y unificación de entidades
   queda en el volumen `tama-data` y el perfil en `tama-memoria`.
 - Sin datos personales en el repo: las evals usan datos ficticios, y `memoria/`, `data/` y `*.db`
   están en `.gitignore`.
+
+## Demo para Renzo (unos 15 minutos)
+
+Abrir PowerShell **propio** en `D:\Estudio\IA\Proyecto_Tama\Tama`, en la rama del sprint, con
+Ollama encendido.
+
+1. Opcional: crear `memoria\nucleo.md` con tus datos estables (nombre, ciudad, intereses, cómo
+   quieres que te trate). Esa carpeta nunca va al repositorio.
+2. `uv run tama --check`: tres capas "lista" y los servidores, incluido memoria, "listo".
+3. `uv run tama` y contar cosas tuyas en una charla natural: alguien de tu familia, un proyecto,
+   algo que te gusta, una fecha. La línea gris muestra `memoria.create_entities`.
+4. `/memoria` muestra lo guardado. `/salir`.
+5. Abrir Tama de nuevo y preguntar por esas cosas: debe recordarlas (línea gris
+   `memoria.search_nodes`). Pregunta también algo que nunca contaste: debe decir que no tiene el
+   dato, sin inventar. Prueba "¿de qué hablamos ayer?".
+6. Corregir un dato ("ya no vivo ahí, me cambié a...") y volver a preguntar.
+7. Cortar la red, esperar unos 40 s y preguntar de nuevo: recuerda con el modelo local.
+8. `/olvidar <algo>` pide confirmación. `uv run tama memoria export` crea `memoria\grafo.jsonl`.
