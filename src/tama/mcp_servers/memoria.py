@@ -255,10 +255,9 @@ def fts_query(text: str) -> str:
 
 @server.tool(
     description=(
-        "Guarda en la memoria de Tama lo que Renzo cuente de su vida. Llámala en cada turno con un "
-        "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
-        "entidad lleva name, entityType (persona, mascota, proyecto, lugar, gusto, libro, plan) y "
-        "observations (frases cortas). Si la entidad ya existe, se completa."
+        "Guarda lo que Renzo cuente de su vida. Llámala en cada turno con un dato nuevo, antes de "
+        "responder: lo que no se guarda se olvida. Cada entidad lleva name, entityType (persona, "
+        "mascota, proyecto, lugar, gusto, libro, plan) y observations (frases cortas)."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -332,9 +331,9 @@ def add_observations(observations: list[dict[str, Any]], source: int | None = No
 
 @server.tool(
     description=(
-        "Busca lo que Renzo te contó: familia, mascotas, gustos, proyectos, fechas, planes. "
-        "Llámala siempre que pregunte algo sobre él o su vida, antes de responder; tu memoria de "
-        "sesiones anteriores solo está aquí. Si no hay resultados, dile que no tienes ese dato."
+        "Busca lo que Renzo te contó de su vida. Llámala siempre que pregunte algo sobre él, antes "
+        "de responder: lo de sesiones anteriores solo está aquí. Si no hay resultados, dile que no "
+        "tienes ese dato."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )

@@ -28,16 +28,20 @@ MAX_DIARY_CHARS = 300
 DIARY_DAYS_BACK = 3
 
 MERGE_PROMPT = (
-    "Revisas la memoria de un asistente. Te dan dos fichas: decide si hablan de la misma cosa o "
-    "persona. Un nombre parecido no basta: datos incompatibles indican que son distintas. Responde "
-    'en JSON: {"decision": "misma" | "distintas" | "dudo", "conservar": "<nombre de la ficha cuyo '
-    'nombre es más completo>"}.'
+    "Revisas la memoria de un asistente. Dos fichas pueden ser la misma cosa o persona escrita de "
+    "otra forma: con apodo, diminutivo, abreviatura, sin tildes o con más palabras en el nombre. "
+    "Compara sus datos. Si se repiten o son compatibles, es la misma. Si hay un dato incompatible "
+    "(otra edad, otro parentesco, otra especie, otro oficio), son distintas. Si no alcanza para "
+    'saberlo, dudas. Responde en JSON: {"razon": "<una frase>", "decision": "misma" | "distintas" '
+    '| "dudo", "conservar": "<el nombre más completo de los dos>"}.'
 )
 CONTRADICTION_PROMPT = (
-    "Revisas los datos guardados sobre una entidad, con su fecha. Busca datos que ya no pueden ser "
-    "ciertos porque otro más nuevo los contradice (por ejemplo, vivía en un lugar y ahora vive en "
-    "otro). Dos datos que pueden ser ciertos a la vez NO se contradicen. Responde en JSON: "
-    '{"obsoletos": [<números de los datos antiguos contradichos>]}. Si no hay, lista vacía.'
+    "Revisas los datos guardados sobre una entidad, con su fecha. Hay contradicción solo si dos "
+    "datos hablan de lo mismo y no pueden ser ciertos a la vez: vivía en un lugar y se mudó a "
+    "otro, cambió de trabajo, cambió de color. Un dato que agrega detalle o muestra avance NO "
+    'contradice al anterior: "escribe una novela" y "ya lleva 100 páginas" son compatibles. '
+    'Responde en JSON: {"contradicciones": [{"razon": "<una frase>", "antiguo": <número>, '
+    '"nuevo": <número>}]}. Si no hay ninguna, lista vacía.'
 )
 SUGGESTION_PROMPT = (
     "Eres Tama, acompañante de Renzo. Mira sus objetivos activos. Solo si alguno lleva 14 días o "
@@ -46,23 +50,41 @@ SUGGESTION_PROMPT = (
     "vacía."
 )
 DIARY_PROMPT = (
-    "Escribe en español el diario de Tama de un día, en primera persona y en Markdown breve, con "
-    "tres secciones: ## Conversamos, ## Aprendí y ## Objetivos. Usa solo lo que aparece en el "
-    "registro: no inventes ni supongas nada. Si una sección no tiene contenido, escribe "
-    '"Nada en especial." Máximo 150 palabras.'
+    "Escribe en español el diario de un día de Tama, la asistente de Renzo, en Markdown breve. "
+    "Usa solo lo que aparece en el registro; no agregues planes, tareas, opiniones ni sentimientos. "
+    "Renzo es quien escribe y a veces cuenta cosas de otras personas: conserva quién hizo cada "
+    "cosa, con su nombre. Tres secciones:\n"
+    "## Conversamos: de qué habló Renzo, en frases cortas.\n"
+    "## Aprendí: los datos de la parte 'Guardado en la memoria' que empiezan con 'Dato'.\n"
+    "## Objetivos: los que empiezan con 'Avance'.\n"
+    'Si una sección queda vacía, escribe solo "Nada en especial." Máximo 120 palabras.'
 )
 MERGE_SCHEMA = {
     "type": "object",
     "properties": {
+        "razon": {"type": "string"},
         "decision": {"type": "string", "enum": ["misma", "distintas", "dudo"]},
         "conservar": {"type": "string"},
     },
-    "required": ["decision", "conservar"],
+    "required": ["razon", "decision", "conservar"],
 }
 CONTRADICTION_SCHEMA = {
     "type": "object",
-    "properties": {"obsoletos": {"type": "array", "items": {"type": "integer"}}},
-    "required": ["obsoletos"],
+    "properties": {
+        "contradicciones": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "razon": {"type": "string"},
+                    "antiguo": {"type": "integer"},
+                    "nuevo": {"type": "integer"},
+                },
+                "required": ["razon", "antiguo", "nuevo"],
+            },
+        }
+    },
+    "required": ["contradicciones"],
 }
 SUGGESTION_SCHEMA = {
     "type": "object",
@@ -92,7 +114,7 @@ class Thinker:
 
     def text(self, system: str, user: str, max_tokens: int = 400, schema=None) -> str:
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-        options = {**self._options, "num_predict": max_tokens}
+        options = {**self._options, "num_predict": max_tokens, "temperature": 0.2}
         parts: list[str] = []
         stream = self._client.stream_raw(
             self._model, messages, think=False, options=options, format=schema
@@ -108,7 +130,7 @@ class Thinker:
 
     def json(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
         try:
-            return json.loads(self.text(system, user, 200, schema))
+            return json.loads(self.text(system, user, 300, schema))
         except json.JSONDecodeError:
             return {}
 
@@ -144,8 +166,10 @@ def retire_contradictions(thinker: Thinker) -> list[str]:
         answer = thinker.json(
             CONTRADICTION_PROMPT, f"{entity['name']}:\n{lines}", CONTRADICTION_SCHEMA
         )
-        chosen = [i for i in answer.get("obsoletos", []) if 1 <= i < len(listed)]
-        ids = [listed[i - 1]["id"] for i in chosen]
+        found = answer.get("contradicciones", [])
+        pairs = [(c.get("antiguo", 0), c.get("nuevo", 0)) for c in found]
+        chosen = {old for old, new in pairs if 1 <= old < new <= len(listed)}
+        ids = [listed[i - 1]["id"] for i in sorted(chosen)]
         if memoria.retire_observations(entity["id"], ids):
             done.append(f"{entity['name']}: {len(ids)} datos ya no vigentes")
         memoria.mark_reviewed(entity["id"])

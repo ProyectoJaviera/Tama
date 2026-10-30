@@ -9,6 +9,7 @@ los objetivos, en la capa que se indique. El juez verifica que el diario no inve
 """
 
 import argparse
+import contextlib
 import json
 import os
 import sqlite3
@@ -166,6 +167,7 @@ def run_reflection() -> dict[str, Any]:
     marked = [text for _, text in CONTRADICTIONS if not valid(text)]
     kept = [text for seeded in COMPATIBLE for _, text in seeded[2]]
     kept += [text for seeded, _ in CONTRADICTIONS for _, text in seeded[2]]
+    kept += [text for pair in DUPLICATES + TRAPS for seeded in pair for _, text in seeded[2]]
     outdated = {text for _, text in CONTRADICTIONS}
     retired = [text for text in kept if text not in outdated and not valid(text)]
     with memoria.connect() as db:
@@ -289,10 +291,8 @@ def cancel_latency() -> dict[str, Any]:
 
 
 def _quiet(work) -> None:
-    try:
+    with contextlib.suppress(reflection.Cancelled):
         work()
-    except reflection.Cancelled:
-        pass
 
 
 def render(data: dict[str, Any]) -> str:
