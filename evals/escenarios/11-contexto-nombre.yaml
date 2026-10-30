@@ -1,0 +1,8 @@
+id: contexto-nombre
+descripcion: "Seguimiento de contexto"
+previos:
+  - "Tengo un gato que se llama Pixel."
+mensaje: "¿Cómo se llama mi gato?"
+criterios:
+  - "Responde correctamente: Pixel"
+  - "Es breve y natural"

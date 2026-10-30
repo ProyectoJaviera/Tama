@@ -1,0 +1,6 @@
+id: saludo-manana
+descripcion: "Saludo al despertar"
+mensaje: "Buenos días, recién me levanto."
+criterios:
+  - "Responde con un saludo cercano acorde a la mañana"
+  - "Puede proponer algo útil para el día sin sermonear"

@@ -1,0 +1,6 @@
+id: sugerencia-concentracion
+descripcion: "Consejo práctico"
+mensaje: "Me cuesta concentrarme en la tarde, ¿algún consejo?"
+criterios:
+  - "Da consejos prácticos y accionables"
+  - "No sermonea ni se extiende de más"

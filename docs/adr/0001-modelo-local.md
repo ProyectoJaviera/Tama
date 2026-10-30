@@ -3,6 +3,8 @@
 - Estado: aceptado
 - Fecha: 2026-10-24
 - Decisores: Renzo
+- Revisión 2026-10-24: tras evaluar `qwen3:4b-instruct-2507`, pasa a ser el principal en lugar
+  de `qwen3:8b` (más rápido con casi la misma fiabilidad).
 
 ## Contexto y problema
 
@@ -38,8 +40,12 @@ se pida `think=false`; por eso su latencia es de 30 s pese a generar más rápid
 
 ## Decisión
 
-- **Principal: `qwen3:8b`.** 100% de herramientas y la menor latencia útil (7 s) porque respeta
-  `think=false`. Genera a 4,3 tok/s, lento pero legible en streaming. Usa 5,5 GB de RAM.
+- **Principal: `qwen3:4b-instruct-2507-q4_K_M`** (decisión de Renzo, 2026-10-24). Genera un 47% más rápido que el 8B
+  (6,3 vs 4,3 tok/s), llama herramientas en 5 s y usa 3 GB de RAM. Acertó 9 de 10; el fallo
+  (calcular "el 15% de 2340" de cabeza, correctamente) se corrige con la descripción de la
+  herramienta, como piden las reglas del proyecto.
+- **Alternativa: `qwen3:8b`.** 100% de herramientas y 7 s de latencia, pero escribe más lento.
+  Queda instalado; se usa con `TAMA_LOCAL_MODEL=qwen3:8b`.
 - **Fondo: `qwen3:4b`.** 100% de herramientas con 3 GB de RAM; su razonamiento obligatorio y la
   latencia de 30 s no importan en tareas que corren mientras Renzo no está.
 - **Descartado: `qwen3:1.7b`.** Rápido, pero falla 3 de 10 llamadas (no usa herramientas cuando
@@ -47,12 +53,7 @@ se pida `think=false`; por eso su latencia es de 30 s pese a generar más rápid
 
 ## Consecuencias
 
-- Positivas: herramientas fiables sin internet; RAM holgada (5,5 GB de 32 GB).
-- Negativas: respuestas largas del modelo local tardan (≈25 s por 100 tokens). La nube (capa 1 de
+- Positivas: herramientas fiables sin internet; RAM holgada (3 GB de 32 GB).
+- Negativas: respuestas largas del modelo local tardan (≈16 s por 100 tokens). La nube (capa 1 de
   la cascada, Sprint 1) cubre la experiencia rápida cuando hay internet.
 - Cambiar entre principal y fondo implica recargar el modelo (4-11 s), porque solo hay uno cargado.
-- `qwen3:4b-instruct-2507` (evaluado después): genera un 47% más rápido que el 8B (6,3 vs
-  4,3 tok/s) y llama herramientas en 5 s, con 3 GB de RAM. Su único fallo fue calcular "el 15% de
-  2340" de cabeza (bien: 351) en vez de usar `calculate`, lo que según las reglas se corrige con la
-  descripción de la herramienta. Es candidato a principal si Renzo prioriza la velocidad; el cambio
-  es solo `TAMA_LOCAL_MODEL`.

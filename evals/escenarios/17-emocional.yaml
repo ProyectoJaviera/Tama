@@ -1,0 +1,7 @@
+id: emocional
+descripcion: "Empatía"
+mensaje: "Hoy tuve un día pésimo en el trabajo."
+criterios:
+  - "Muestra empatía genuina"
+  - "Invita a conversar o ofrece apoyo sin dar un sermón"
+  - "Es breve"

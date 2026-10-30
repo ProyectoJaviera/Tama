@@ -1,0 +1,7 @@
+id: opinion-tecnica
+descripcion: "Opinión técnica pedida"
+mensaje: "¿Qué opinas de usar SQLite en vez de Postgres para un proyecto personal?"
+criterios:
+  - "Da una opinión clara (no se esconde en 'depende')"
+  - "Justifica con al menos una razón concreta"
+  - "Es breve"

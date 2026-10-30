@@ -1,0 +1,6 @@
+id: saludo
+descripcion: "Saludo simple"
+mensaje: "Hola Tama, ¿cómo estás?"
+criterios:
+  - "Saluda con calidez y en español natural"
+  - "Es breve (1 a 3 frases)"

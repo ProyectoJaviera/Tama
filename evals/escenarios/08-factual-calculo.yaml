@@ -1,0 +1,6 @@
+id: factual-calculo
+descripcion: "Cálculo simple"
+mensaje: "¿Cuántos minutos son 3 horas y media?"
+criterios:
+  - "Responde correctamente: 210 minutos"
+  - "Es breve"

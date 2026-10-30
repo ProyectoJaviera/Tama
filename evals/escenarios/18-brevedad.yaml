@@ -1,0 +1,6 @@
+id: brevedad
+descripcion: "Respuesta breve por defecto"
+mensaje: "Explícame qué es la fotosíntesis."
+criterios:
+  - "Explica correctamente lo esencial"
+  - "Es breve (2 a 4 frases)"

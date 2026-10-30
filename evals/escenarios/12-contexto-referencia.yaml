@@ -1,0 +1,8 @@
+id: contexto-referencia
+descripcion: "Referencia a un turno anterior"
+previos:
+  - "Estoy pensando en comprar una impresora 3D Bambu Lab A1."
+mensaje: "¿Y crees que vale la pena para alguien que recién empieza?"
+criterios:
+  - "Entiende que 'vale la pena' se refiere a la Bambu Lab A1"
+  - "Da una opinión clara con alguna razón"
