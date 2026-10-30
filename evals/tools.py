@@ -124,7 +124,7 @@ def reports_rejection(answer: str) -> bool:
 
 def voseo_count(answers: list[str]) -> int:
     """Formas de voseo en las respuestas (Tama debe tutear)."""
-    forms = r"b(querés|podés|tenés|sabés|hacés|decime|mirá|fijate|contame|sos|vos)b"
+    forms = r"\b(querés|podés|tenés|sabés|hacés|decime|mirá|fijate|contame|sos|vos)\b"
     return sum(len(re.findall(forms, a.lower())) for a in answers)
 
 
