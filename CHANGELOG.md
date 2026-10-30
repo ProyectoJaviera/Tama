@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Sin publicar]
 
+### Añadido
+
+- La línea gris bajo cada respuesta muestra los tokens por segundo de generación, cuando el
+  proveedor informa los tokens de salida.
+
 ## Sprint 1: conversación (2026-10-30)
 
 ### Añadido

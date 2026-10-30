@@ -8,7 +8,7 @@ from tama.cascade import (
     Switch,
     claude_budget_gate,
 )
-from tama.providers import Error, Text
+from tama.providers import Done, Error, Text
 from tests.fakes import FakeClock, FakeConnectivity, FakeProvider, failing, mid_stream_failure
 
 
@@ -209,3 +209,29 @@ def test_each_layer_breaker_opens_and_next_layer_answers(broken):
     clock.now += 300  # medio abierto: un intento de prueba
     run(cascade)
     assert len(providers[broken].calls) == 4
+
+
+def test_generation_speed_prefers_provider_timing():
+    from tama.cascade import generation_speed
+    from tama.providers import Done
+
+    assert generation_speed(Done(10, 40, generation_s=2.0), ttft=0.5, total=3.0) == 20
+    # Sin tiempo del proveedor (Claude): desde el primer token hasta el final.
+    assert generation_speed(Done(10, 30), ttft=0.5, total=2.0) == 20
+    # Sin tokens de salida o sin forma de medir: no se inventa.
+    assert generation_speed(Done(10, 0), ttft=0.5, total=2.0) is None
+    assert generation_speed(Done(10, 30), ttft=None, total=2.0) is None
+
+
+def test_answered_carries_tokens_per_second():
+    clock = FakeClock()
+
+    class Timed(FakeProvider):
+        def stream_chat(self, messages, tools=None):
+            clock.now += 1
+            yield Text("hola")
+            clock.now += 2
+            yield Done(5, 60)
+
+    events = list(Cascade([Layer(Timed("nube"))], FakeConnectivity(), clock=clock).turn([]))
+    assert events[-1].tokens_per_s == 30
