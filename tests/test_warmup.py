@@ -134,3 +134,24 @@ def test_warmer_with_identity_caches_the_system_prompt():
     assert call["messages"][0] == {"role": "system", "content": "Eres Tama."}
     assert call["options"] == {"num_ctx": 8192, "num_gpu": 0, "num_predict": 1}
     assert call["keep_alive"] == "30m" and loader.loads == []
+
+
+def test_warmer_uses_the_next_turn_context_with_tools():
+    loader = FakeLoader()
+    warmer = LocalWarmer(loader, "qwen", {"num_ctx": 8192}, clock=FakeClock(), system_prompt="x")
+    history = [{"role": "system", "content": "Eres Tama."}, {"role": "user", "content": "hola"}]
+    specs = [{"type": "function", "function": {"name": "get_current_time"}}]
+    warmer.context = lambda: (history, specs)
+    warmer.warm()
+    warmer.thread.join(2)
+    call = loader.chats[0]
+    assert call["messages"][:2] == history
+    assert call["tools"] == specs
+
+
+def test_connectivity_rechecks_sooner_while_offline():
+    clock, states = FakeClock(), iter([False, True])
+    connectivity = Connectivity(lambda: next(states), ttl=30, offline_ttl=10, clock=clock)
+    assert connectivity.online() is False
+    clock.now += 10  # sin red no se esperan los 30 s para notar que volvió
+    assert connectivity.online() is True

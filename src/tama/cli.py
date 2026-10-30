@@ -62,7 +62,7 @@ def confirm(call: ToolCall, info) -> bool:
 
 def short(value: object, limit: int = 60) -> str:
     text = str(value).replace("\n", " ")
-    return text if len(text) <= limit else text[: limit - 1] + "…"
+    return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
 def reply(
@@ -87,15 +87,15 @@ def reply(
             print(dim(f"· {event.server or '?'}.{event.name}({args})"))
         elif isinstance(event, agent.ToolResult):
             if event.skipped:
-                print(dim("  ↳ no se ejecutó (sin confirmación)"))
+                print(dim("  -> no se ejecutó (sin confirmación)"))
             elif not event.ok:
-                print(dim(f"  ↳ error: {short(event.text)}"))
+                print(dim(f"  -> error: {short(event.text)}"))
         elif isinstance(event, Answered):
             answered = event
         elif isinstance(event, agent.FinalAnswer):
             print()
             if answered is not None:
-                ttft = f"{answered.ttft_s:.1f} s" if answered.ttft_s is not None else "—"
+                ttft = f"{answered.ttft_s:.1f} s" if answered.ttft_s is not None else "-"
                 where = f"· {answered.provider} ({answered.model})"
                 speed = f" · {answered.tokens_per_s:.0f} tok/s" if answered.tokens_per_s else ""
                 print(dim(f"{where} · primer token {ttft} · total {answered.total_s:.1f} s{speed}"))
@@ -146,6 +146,11 @@ def chat_loop(
     keep_warm: bool = False,
 ) -> None:
     print("Tama. /proveedor muestra las capas, /herramientas las herramientas y /salir termina.")
+    if brain.warmer is not None:
+        # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
+        brain.warmer.context = lambda: agent.prepare(
+            brain.tools, history.trim(messages, max_tokens)
+        )
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)
     while True:

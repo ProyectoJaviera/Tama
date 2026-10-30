@@ -96,7 +96,7 @@ def test_destructive_tool_needs_explicit_yes():
 
     assert box.executed == []  # sin "s" no se ejecuta
     result = next(e for e in events if isinstance(e, agent.ToolResult))
-    assert result.skipped and "no confirmó" in result.text
+    assert result.skipped and "NO se ejecutó" in result.text
 
     box_yes = FakeToolBox([DELETE], [], {})
     run(ScriptedProvider(*script), box_yes, confirm=lambda call, info: True)
@@ -141,3 +141,25 @@ def test_max_tools_limits_what_the_model_sees():
     provider = ScriptedProvider([Text("ok"), Done(1, 1)])
     run(provider, FakeToolBox(many, [], {}), max_tools=10)
     assert len(provider.calls[0]["tools"]) == 10
+
+
+def test_rejected_action_tells_the_model_it_was_not_done():
+    provider = ScriptedProvider(
+        [ToolCall("delete_note", {"note_id": 1}, "c1"), Done(1, 1)],
+        [Text("No la borré; sigue ahí."), Done(1, 1)],
+    )
+    box = FakeToolBox([DELETE], [], {})
+    run(provider, box, confirm=lambda call, info: False)
+    result = provider.calls[1]["messages"][-1]
+    assert result["role"] == "tool"
+    assert "NO se ejecutó" in result["content"] and "CANCELADO" in result["content"]
+    assert box.executed == []
+
+
+def test_prepare_matches_what_the_turn_sends():
+    provider = ScriptedProvider([Text("ok"), Done(1, 1)])
+    box = FakeToolBox([TIME], ["notas"], {})
+    messages = [{"role": "system", "content": "Eres Tama."}, {"role": "user", "content": "x"}]
+    work, specs = agent.prepare(box, messages)
+    list(agent.run_turn(Cascade([Layer(provider)], FakeConnectivity()), box, messages, None))
+    assert provider.calls[0]["messages"] == work and provider.calls[0]["tools"] == specs

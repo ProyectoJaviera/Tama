@@ -152,7 +152,7 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |
 | `TAMA_*_FIRST_TOKEN_S` | `8` | Tiempo máximo hasta el primer token (nube y Claude) |
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
-| `TAMA_CONNECTIVITY_WATCH_S` | `10` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
+| `TAMA_CONNECTIVITY_WATCH_S` | `5` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
 | `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_TOOLS_MAX` | `10` | Máximo de herramientas visibles por turno |

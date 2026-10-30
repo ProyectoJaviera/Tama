@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from tama import cli
@@ -160,3 +162,11 @@ def test_footer_shows_tokens_per_second_only_when_known(tmp_path, capsys):
     without = FakeProvider("local", [Text("hola"), Done(5, 0)])
     cli.main(["hola"], brain=make_brain(tmp_path / "b", [without]), settings=Settings())
     assert "tok/s" not in capsys.readouterr().out
+
+
+def test_cli_output_symbols_fit_the_windows_console():
+    # La consola de Windows muestra "⍰" con flechas y otros símbolos fuera de su página de códigos.
+    source = (Path(cli.__file__)).read_text(encoding="utf-8")
+    for symbol in ("↳", "→ {", "…"):
+        assert symbol not in source.replace('f"{event.frm} → {event.to}: {event.reason}"', "")
+    assert cli.short("x" * 100, 20).endswith("...")

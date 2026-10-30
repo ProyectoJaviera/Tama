@@ -12,6 +12,10 @@ from tama.cascade import Answered, Cascade, Switch
 from tama.providers import Error, Message, Text, ToolCall
 
 MAX_STEPS = 5
+REJECTED = (
+    "CANCELADO: Renzo respondió que NO. La acción NO se ejecutó y todo sigue exactamente igual. "
+    "Dile claramente que no se hizo y que sigue como estaba. No pidas otra confirmación."
+)
 
 
 class ToolBox(Protocol):
@@ -62,6 +66,17 @@ def with_tool_status(messages: list[Message], down: list[str]) -> list[Message]:
     return [first, *messages[1:]]
 
 
+def prepare(
+    tools: ToolBox | None, messages: list[Message], max_tools: int = 10
+) -> tuple[list[Message], list[dict[str, Any]] | None]:
+    """Mensajes y herramientas tal como llegarán al modelo en este turno.
+
+    La precarga usa lo mismo: Ollama solo reaprovecha lo ya procesado si el prefijo es idéntico.
+    """
+    visible, down = tools.available_tools(max_tools) if tools else ([], [])
+    return with_tool_status(messages, down), [t.as_provider_tool() for t in visible] or None
+
+
 def run_turn(
     cascade: Cascade,
     tools: ToolBox | None,
@@ -71,9 +86,7 @@ def run_turn(
     max_steps: int = MAX_STEPS,
 ) -> Iterator[AgentEvent]:
     """Corre un turno completo. `messages` no se modifica: el bucle trabaja sobre una copia."""
-    visible, down = tools.available_tools(max_tools) if tools else ([], [])
-    work = with_tool_status(messages, down)
-    tool_specs = [t.as_provider_tool() for t in visible] or None
+    work, tool_specs = prepare(tools, messages, max_tools)
 
     for step in range(max_steps + 1):
         # El último paso va sin herramientas: el modelo debe responder con lo que tiene.
@@ -114,9 +127,7 @@ def run_turn(
             info = tools.find(call.name) if tools else None
             yield ToolUse(call.name, call.arguments, info.server if info else None)
             if info is not None and info.destructive and not confirm(call, info):
-                result = ToolResult(
-                    call.name, False, "Renzo no confirmó esta acción; no se ejecutó.", skipped=True
-                )
+                result = ToolResult(call.name, False, REJECTED, skipped=True)
             elif tools is None:
                 result = ToolResult(call.name, False, "No hay herramientas disponibles.")
             else:

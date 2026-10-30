@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     connectivity_probe: str = "1.1.1.1:443"
     connectivity_ttl_s: float = 30.0
     # En el chat, cada cuántos segundos se revisa la red en segundo plano (0 = no se revisa).
-    connectivity_watch_s: float = 10.0
+    connectivity_watch_s: float = 5.0
     # Mantener el modelo local siempre cargado en RAM (útil si sobra memoria).
     local_keep_warm: bool = False
 

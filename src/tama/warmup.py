@@ -30,6 +30,8 @@ class LocalWarmer:
         self._last: float | None = None
         self._lock = threading.Lock()
         self.thread: threading.Thread | None = None
+        self.context: Callable[[], tuple[list[dict], list[dict] | None]] | None = None
+        """Da los mensajes y herramientas del próximo turno; lo define la CLI durante el chat."""
 
     def warm(self) -> bool:
         """Lanza la precarga; devuelve False si se hizo hace poco o ya está en curso."""
@@ -46,17 +48,20 @@ class LocalWarmer:
     def _load(self) -> None:
         # Si Ollama no responde, la cascada lo avisará en el siguiente turno.
         with contextlib.suppress(OllamaError):
-            if not self._system_prompt:
+            if self.context is not None:
+                messages, tools = self.context()
+            elif self._system_prompt:
+                messages, tools = [{"role": "system", "content": self._system_prompt}], None
+            else:
                 self._client.load(self._model, self._options)
                 return
-            # En CPU, procesar la identidad (~350 tokens) toma varios segundos. Una petición de 1
-            # token deja ese prefijo en la caché de Ollama, y la primera respuesta real lo reusa.
+            # En CPU, procesar la identidad, las herramientas y la conversación toma varios
+            # segundos. Una petición de 1 token con el mismo prefijo que tendrá el próximo turno
+            # lo deja en la caché de Ollama, y la primera respuesta real lo reusa.
             self._client.chat(
                 self._model,
-                [
-                    {"role": "system", "content": self._system_prompt},
-                    {"role": "user", "content": "."},
-                ],
+                [*messages, {"role": "user", "content": "."}],
+                tools=tools,
                 think=False,
                 options={**self._options, "num_predict": 1},
                 keep_alive="30m",

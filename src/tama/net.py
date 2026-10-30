@@ -35,11 +35,13 @@ class Connectivity:
         self,
         probe: Callable[[], bool] = tcp_probe,
         ttl: float = 30.0,
+        offline_ttl: float = 10.0,
         clock: Callable[[], float] = time.monotonic,
         on_offline: Callable[[], None] | None = None,
     ) -> None:
         self._probe = probe
         self._ttl = ttl
+        self._offline_ttl = offline_ttl
         self._clock = clock
         self._checked_at: float | None = None
         self._online = False
@@ -51,7 +53,9 @@ class Connectivity:
     def online(self) -> bool:
         with self._lock:
             now = self._clock()
-            fresh = self._checked_at is not None and now - self._checked_at < self._ttl
+            # Sin red se revisa más seguido, para volver a la nube apenas regrese la conexión.
+            ttl = self._ttl if self._online else min(self._ttl, self._offline_ttl)
+            fresh = self._checked_at is not None and now - self._checked_at < ttl
             if fresh and not self._stale:
                 return self._online
             was_online = self._checked_at is not None and self._online
