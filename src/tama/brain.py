@@ -7,6 +7,7 @@ from tama import prompts
 from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
 from tama.config import Settings
 from tama.events import EventStore
+from tama.mcp_hub import McpHub, load_config, server_env
 from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
@@ -21,6 +22,7 @@ class Brain:
     local: OllamaClient
     connectivity: Connectivity | None = None
     warmer: LocalWarmer | None = None
+    tools: McpHub | None = None
     _stop: threading.Event = field(default_factory=threading.Event)
 
     def watch_network(self, interval: float, keep_warm: bool = False) -> None:
@@ -37,11 +39,18 @@ class Brain:
 
     def close(self) -> None:
         self._stop.set()
+        if self.tools is not None:
+            self.tools.close()
         self.local.close()
         self.store.close()
 
 
-def build(settings: Settings, force_offline: bool = False, only: list[str] | None = None) -> Brain:
+def build(
+    settings: Settings,
+    force_offline: bool = False,
+    only: list[str] | None = None,
+    with_tools: bool = True,
+) -> Brain:
     """Arma la cascada.
 
     `force_offline` simula no tener internet y `only` deja solo las capas nombradas (evals).
@@ -104,4 +113,24 @@ def build(settings: Settings, force_offline: bool = False, only: list[str] | Non
     ]
     if only:
         layers = [layer for layer in layers if layer.provider.name in only]
-    return Brain(Cascade(layers, connectivity), store, local, connectivity, warmer)
+    tools = build_tools(settings, connectivity, breaker) if with_tools else None
+    return Brain(Cascade(layers, connectivity), store, local, connectivity, warmer, tools)
+
+
+def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpHub | None:
+    """Lanza los servidores MCP de `config/mcp.toml` y espera su chequeo de salud."""
+    if not settings.mcp_enabled or not settings.mcp_config.exists():
+        return None
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    hub = McpHub(
+        load_config(settings.mcp_config),
+        server_env(settings.data_dir, settings.workdir),
+        online=connectivity.online,
+        start_timeout_s=settings.tool_start_timeout_s,
+        call_timeout_s=settings.tool_timeout_s,
+        breaker_factory=breaker,
+        max_result_chars=settings.tool_result_max_chars,
+        errlog=open(settings.data_dir / "mcp.log", "a", encoding="utf-8"),  # noqa: SIM115
+    )
+    hub.start()
+    return hub
