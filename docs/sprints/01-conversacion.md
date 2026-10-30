@@ -1,6 +1,6 @@
 # Sprint 1: Conversación
 
-Estado: en curso (desde 2026-10-24)
+Estado: cerrado (2026-10-30, demo aprobada por Renzo)
 
 ## Objetivo
 Tama conversa por CLI con streaming, con identidad propia y un cerebro en cascada que sigue respondiendo cuando falla la nube o se corta internet. Cada turno queda registrado en events.db.
@@ -46,7 +46,9 @@ Sesión iniciada en Ollama (`ollama signin`) para la nube, y ANTHROPIC_API_KEY (
   nube rota a propósito responde Claude, y tras 3 fallos el cortacircuitos de la nube queda
   abierto y ya no se intenta.
 - Pedir el modelo de la nube por el Ollama local no saca de la RAM al modelo local.
-- Pendiente: demo de Renzo con corte de red real.
+- Demo de Renzo (2026-10-30): conversación libre que siguió el contexto; con la red cortada
+  respondió local (13 s al primer token en el primer turno, por la carga del modelo; luego
+  0,5-0,7 s) y al reconectar volvió a la nube (0,3-0,5 s). Aprobada.
 
 ## Demo para Renzo (unos 10 minutos)
 
