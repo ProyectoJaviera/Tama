@@ -75,13 +75,24 @@ def test_search_without_results_says_so():
     assert "No hay nada" in memoria.search_nodes("marte")
 
 
+def test_search_finds_entities_by_type():
+    memoria.create_entities([entity("Cien años de soledad", "libro", "Lo está leyendo")])
+    assert "Cien años" in memoria.search_nodes("libro")
+
+
+def test_no_match_lists_saved_entities():
+    memoria.create_entities([entity("Cilantro", "gusto", "No le gusta")])
+    result = memoria.search_nodes("hierba")
+    assert "No hay coincidencias" in result and "Cilantro (gusto)" in result
+
+
 def test_contradicted_observation_is_kept_but_not_used():
     memoria.create_entities([entity("Renzo", "persona", "Vive en Valparaíso")])
     memoria.delete_observations([{"entityName": "Renzo", "observations": ["Vive en Valparaíso"]}])
     memoria.add_observations([{"entityName": "Renzo", "contents": ["Vive en Santiago"]}])
     result = memoria.search_nodes("renzo")
     assert "Santiago" in result and "Valparaíso" not in result
-    assert "No hay nada" in memoria.search_nodes("valparaiso")
+    assert "No hay coincidencias" in memoria.search_nodes("valparaiso")
     with memoria.connect() as db:
         assert db.execute("SELECT COUNT(*) FROM observations WHERE valid = 0").fetchone()[0] == 1
 
@@ -94,7 +105,7 @@ def test_relations_and_delete_cascade():
     assert "Renzo desarrolla Tama" in memoria.search_nodes("tama")
     assert "Olvidé" in memoria.delete_entities(["tama"])
     assert count("relations") == 0
-    assert "No hay nada" in memoria.search_nodes("tama")
+    assert "Tama" not in memoria.search_nodes("tama")
 
 
 def test_delete_relations():

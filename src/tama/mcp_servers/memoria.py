@@ -49,6 +49,7 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
 """
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
+MAX_LISTED = 15
 
 server = MCPServer("memoria", instructions="Lo que Tama recuerda de Renzo.")
 
@@ -109,11 +110,11 @@ def same_person(db: sqlite3.Connection, name: str, type_: str) -> sqlite3.Row | 
 
 def reindex(db: sqlite3.Connection, entity_id: int) -> None:
     """Rehace la fila de búsqueda de una entidad con su nombre, alias y observaciones vigentes."""
-    row = db.execute("SELECT name FROM entities WHERE id = ?", (entity_id,)).fetchone()
+    row = db.execute("SELECT name, type FROM entities WHERE id = ?", (entity_id,)).fetchone()
     db.execute("DELETE FROM search WHERE entity_id = ?", (entity_id,))
     if row is None:
         return
-    parts = [row["name"]]
+    parts = [row["name"], row["type"]]
     parts += [
         r[0] for r in db.execute("SELECT norm FROM aliases WHERE entity_id = ?", (entity_id,))
     ]
@@ -187,6 +188,21 @@ def describe(db: sqlite3.Connection, row: sqlite3.Row) -> str:
     lines += [f"- {o}" for o in recent_observations(db, row["id"])]
     lines += [f"- relación: {r}" for r in relations_of(db, row["id"])]
     return "\n".join(lines)
+
+
+def no_match(db: sqlite3.Connection) -> str:
+    """Sin coincidencias: da los nombres guardados para que el modelo pueda revisar alguno."""
+    rows = db.execute(
+        "SELECT name, type FROM entities ORDER BY created_at DESC, id DESC LIMIT ?",
+        (MAX_LISTED,),
+    ).fetchall()
+    if not rows:
+        return "No hay nada anotado sobre eso."
+    listed = ", ".join(f"{r['name']} ({r['type']})" for r in rows)
+    return (
+        "No hay coincidencias con esas palabras. Entidades guardadas: "
+        f"{listed}. Si alguna puede servir, búscala por su nombre; si no, no está anotado."
+    )
 
 
 def fts_query(text: str) -> str:
@@ -290,7 +306,7 @@ def search_nodes(query: str = "") -> str:
                 (MAX_ENTITIES,),
             ).fetchall()
         if not rows:
-            return "No hay nada anotado sobre eso."
+            return no_match(db)
         return "\n\n".join(describe(db, r) for r in rows)
 
 
