@@ -9,7 +9,6 @@ from tama.mcp_hub import load_config
 from tama.mcp_servers import memoria
 from tama.memory import session_prompt
 
-
 CONFIG = Path(__file__).parent.parent / "config" / "mcp.toml"
 
 

@@ -134,6 +134,7 @@ def ask(brain, messages: list[dict], text: str, max_tokens: int, max_tools: int)
         history.trim(messages, max_tokens),
         lambda call, info: False,
         max_tools,
+        focus=brain.focus,
     ):
         if isinstance(event, agent.ToolUse):
             tools_used.append(event.name)
