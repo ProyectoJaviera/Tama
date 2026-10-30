@@ -29,6 +29,25 @@ Herramientas y MCP (S2), memoria (S3), interfaz web (S5) y voz (S6).
 ## Necesita de Renzo
 Sesión iniciada en Ollama (`ollama signin`) para la nube, y ANTHROPIC_API_KEY (console.anthropic.com) en .env. OLLAMA_API_KEY es opcional. Sin ellas, todo se desarrolla y prueba igual: las capas se saltan y Tama responde en local.
 
+## Verificación (2026-10-29)
+
+- Tests: 86 en verde con LLM simulado (cascada, cortacircuitos en cada capa, corte de red a mitad
+  de conversación, tope de gasto, detección de conexión, events.db, proveedores, CLI y evals).
+- Evals, 20 escenarios (detalle en `evals/RESULTS.md`):
+
+  | Modo | Capa que respondió | Aprobados | Media | Primer token p50 / p95 |
+  |---|---|---:|---:|---:|
+  | Con red, cascada completa | nube (20) | 20/20 | 4,9 | 0,3 s / 0,5 s |
+  | Con red, solo Claude | claude (20) | 20/20 | 5,0 | 0,6 s / 1,2 s |
+  | Sin red | local (20) | 20/20 | 4,9 | 0,5 s / 0,7 s (modelo ya cargado) |
+
+- Cascada en vivo con las capas reales: con red responde la nube (0,3 s al primer token); con el
+  corte de red simulado responde local en 3 s sin esperar timeouts y conserva el contexto; con la
+  nube rota a propósito responde Claude, y tras 3 fallos el cortacircuitos de la nube queda
+  abierto y ya no se intenta.
+- Pedir el modelo de la nube por el Ollama local no saca de la RAM al modelo local.
+- Pendiente: demo de Renzo con corte de red real.
+
 ## Demo para Renzo (unos 10 minutos)
 
 Antes: Ollama encendido (`ollama ps` responde), sesión de Ollama iniciada y `ANTHROPIC_API_KEY` en `.env`.

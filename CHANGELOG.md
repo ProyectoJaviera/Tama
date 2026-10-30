@@ -12,6 +12,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Identidad de Tama versionada en `src/tama/prompts/identidad.md`.
 - Registro de cada turno en `events.db` (SQLite, WAL, migraciones con `PRAGMA user_version`).
 - CLI con `/proveedor`, `/salir`, capa en gris bajo cada respuesta y recorte del historial.
+- Evals de conversación: 20 escenarios, juez LLM, modos con y sin red y por capa (`--capas`),
+  resultados en `evals/RESULTS.md`.
+- La nube de Ollama usa la sesión del Ollama local (`ollama signin`); `OLLAMA_API_KEY` es opcional.
 
 - Esqueleto del repo con `uv`, `ruff`, `pytest` y CI en GitHub Actions (Windows y Linux).
 - CLI mínima `tama` que conversa con el modelo local de Ollama en streaming, con chequeo de
