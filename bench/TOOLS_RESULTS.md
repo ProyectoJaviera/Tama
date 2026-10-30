@@ -9,10 +9,10 @@
 
 | Modelo | 5 | 10 | 20 | 40 | Latencia media (s) | Errores de formato | Errores API |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| gemma4:31b-cloud | — | — | — | 93% (27/29) | 0.6 | 0 | 0 |
+| gemma4:31b-cloud | 100% (21/21) | 100% (29/29) | 100% (29/29) | 93% (27/29) | 0.6 | 0 | 0 |
 | gpt-oss:120b-cloud | — | — | — | 86% (25/29) | 0.7 | 0 | 0 |
 | gpt-oss:20b-cloud | — | — | — | 90% (26/29) | 1.2 | 0 | 0 |
-| deepseek-v4-pro:cloud | — | — | — | — | — | — | — |
+| deepseek-v4-pro:cloud | no disponible: no incluido en el plan gratuito de Ollama | | | | | | |
 
 ## Fallos por modelo y escalón
 

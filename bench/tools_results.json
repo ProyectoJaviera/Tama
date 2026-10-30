@@ -11,6 +11,33 @@
         "nota-filamento: llamó todo_add",
         "nota-banco: llamó todo_add"
       ]
+    },
+    "5": {
+      "casos": 21,
+      "correctos": 21,
+      "pct": 100.0,
+      "latencia_media_s": 0.59,
+      "errores_formato": 0,
+      "errores_api": 0,
+      "fallos": []
+    },
+    "10": {
+      "casos": 29,
+      "correctos": 29,
+      "pct": 100.0,
+      "latencia_media_s": 0.6,
+      "errores_formato": 0,
+      "errores_api": 0,
+      "fallos": []
+    },
+    "20": {
+      "casos": 29,
+      "correctos": 29,
+      "pct": 100.0,
+      "latencia_media_s": 0.7,
+      "errores_formato": 0,
+      "errores_api": 0,
+      "fallos": []
     }
   },
   "gpt-oss:120b-cloud": {
@@ -44,5 +71,7 @@
       ]
     }
   },
-  "deepseek-v4-pro:cloud": {}
+  "deepseek-v4-pro:cloud": {
+    "error": "no incluido en el plan gratuito de Ollama"
+  }
 }
