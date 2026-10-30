@@ -1,0 +1,18 @@
+# Servidores MCP de Tama. Se lanzan por stdio como subprocesos al iniciar.
+# "python" se reemplaza por el Python del entorno de Tama: nada de npx ni descargas al arrancar.
+# El orden importa: si hay más herramientas que el máximo por turno, se priorizan las primeras.
+
+[servidores.tiempo]
+comando = ["python", "-m", "mcp_server_time", "--local-timezone", "America/Santiago"]
+# Solo la hora actual; la conversión entre zonas casi no se usa y ocupa espacio en el prompt.
+herramientas = ["get_current_time"]
+
+[servidores.notas]
+comando = ["python", "-m", "tama.mcp_servers.notas"]
+
+[servidores.archivos]
+comando = ["python", "-m", "tama.mcp_servers.archivos"]
+
+[servidores.web]
+comando = ["python", "-m", "tama.mcp_servers.web"]
+requiere_red = true
