@@ -127,6 +127,14 @@ def judge_prompt(scenario: Scenario, outcome: Outcome) -> str:
 Judge = Callable[[str], dict[str, Any]]
 
 
+def parse_json_object(text: str) -> dict[str, Any]:
+    """Lee el objeto JSON de la respuesta del juez, aunque venga dentro de un bloque ```json."""
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end < start:
+        raise ValueError(f"sin JSON en la respuesta del juez: {text[:80]!r}")
+    return json.loads(text[start : end + 1])
+
+
 def apply_judgement(scenario: Scenario, outcome: Outcome, judge: Judge) -> None:
     if outcome.error:
         return

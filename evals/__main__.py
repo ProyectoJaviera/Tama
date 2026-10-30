@@ -1,7 +1,6 @@
 """Corre las evals: `uv run python -m evals` (con red) o `uv run python -m evals --offline`."""
 
 import argparse
-import json
 import sys
 import time
 
@@ -46,9 +45,10 @@ def make_judge(settings, offline: bool):
                 response = client.chat(
                     model, messages, think=think, options=options, format=runner.JUDGE_SCHEMA
                 )
+                verdict = runner.parse_json_object(response["message"]["content"])
                 if model not in used:
                     used.append(model)
-                return json.loads(response["message"]["content"])
+                return verdict
             except (OllamaError, ValueError, KeyError) as exc:
                 error = exc
         raise ValueError(f"ningún juez respondió: {error}")
@@ -67,7 +67,9 @@ def rejudge(settings, mode: str, scenarios, offline: bool) -> int:
     judge, used, close = make_judge(settings, offline)
     try:
         for outcome in outcomes:
-            if not (outcome.error or "").startswith("juez:") or outcome.scenario not in by_id:
+            judge_failed = (outcome.error or "").startswith("juez:")
+            not_judged = not outcome.error and not outcome.puntajes
+            if not (judge_failed or not_judged) or outcome.scenario not in by_id:
                 continue
             outcome.error = None
             runner.apply_judgement(by_id[outcome.scenario], outcome, judge)
@@ -93,7 +95,7 @@ def main() -> int:
     parser.add_argument(
         "--rejuzgar",
         action="store_true",
-        help="vuelve a puntuar solo los escenarios con error del juez en los resultados guardados",
+        help="puntúa los escenarios guardados que no tienen puntaje o cuyo juicio falló",
     )
     args = parser.parse_args()
 

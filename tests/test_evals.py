@@ -93,3 +93,20 @@ def test_report_shows_layer_modes_and_latency_per_layer(tmp_path, monkeypatch):
     report = runner.render_report()
     assert report.index("Con red (cascada completa)") < report.index("Con red, solo claude")
     assert "Primer token en claude: p50 1.5 s, p95 1.5 s" in report
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"puntajes": [5], "comentario": "ok"}',
+        '```json\n{"puntajes": [5], "comentario": "ok"}\n```',
+        'Aquí va: {"puntajes": [5], "comentario": "ok"} listo',
+    ],
+)
+def test_judge_json_is_parsed_even_inside_code_fences(text):
+    assert runner.parse_json_object(text) == {"puntajes": [5], "comentario": "ok"}
+
+
+def test_judge_text_without_json_is_an_error():
+    with pytest.raises(ValueError):
+        runner.parse_json_object("no sé")
