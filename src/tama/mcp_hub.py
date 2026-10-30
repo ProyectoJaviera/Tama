@@ -21,6 +21,17 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 from tama.cascade import CircuitBreaker
 
+SOURCE_PARAM = "source"  # lo completa el hub; el modelo no lo ve
+
+
+def _visible_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Esquema que ve el modelo: sin los parámetros que completa el propio Tama."""
+    if not schema:
+        return {"type": "object", "properties": {}}
+    properties = {k: v for k, v in schema.get("properties", {}).items() if k != SOURCE_PARAM}
+    required = [r for r in schema.get("required", []) if r != SOURCE_PARAM]
+    return {**schema, "properties": properties, "required": required}
+
 
 @dataclass(frozen=True)
 class ServerConfig:
@@ -48,7 +59,7 @@ class ToolInfo:
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self.input_schema or {"type": "object", "properties": {}},
+                "parameters": _visible_schema(self.input_schema),
             },
         }
 
@@ -107,6 +118,8 @@ class McpHub:
         retry_after_s: float = 60.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        self.current_event: int | None = None
+        """Evento en curso de events.db: es el origen (`source`) de lo que se guarda en memoria."""
         self._retry_after_s = retry_after_s
         self._clock = clock
         self._servers = {c.name: _Server(c, breaker_factory()) for c in configs}
@@ -246,6 +259,8 @@ class McpHub:
         reason = self.unavailable_reason(tool.server)
         if reason:
             return ToolOutcome(False, f"El servidor {tool.server} no está disponible: {reason}.")
+        if SOURCE_PARAM in tool.input_schema.get("properties", {}):
+            arguments = {**arguments, SOURCE_PARAM: self.current_event}
         try:
             result = self._submit(
                 server.session.call_tool(
@@ -277,7 +292,7 @@ def _tool_info(config: ServerConfig, tool: Any) -> ToolInfo:
     )
 
 
-def server_env(data_dir: Path, workdir: Path) -> dict[str, str]:
+def server_env(data_dir: Path, workdir: Path, memory_dir: Path | None = None) -> dict[str, str]:
     """Entorno mínimo para los subprocesos (sin la variable SSLKEYLOGFILE de Avast)."""
     keep = ("PATH", "SYSTEMROOT", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "APPDATA")
     env = {k: v for k, v in os.environ.items() if k.upper() in keep}
@@ -287,4 +302,6 @@ def server_env(data_dir: Path, workdir: Path) -> dict[str, str]:
         PYTHONIOENCODING="utf-8",
         PYTHONUTF8="1",
     )
+    if memory_dir is not None:
+        env["TAMA_MEMORY_DIR"] = str(memory_dir.resolve())
     return env

@@ -22,6 +22,19 @@ MIGRATIONS = [
     );
     CREATE INDEX events_provider_ts ON events (provider, ts);
     """,
+    """
+    CREATE VIRTUAL TABLE events_fts USING fts5(
+        content, content='events', content_rowid='id', tokenize='unicode61 remove_diacritics 2'
+    );
+    CREATE TRIGGER events_ai AFTER INSERT ON events
+        WHEN new.type IN ('user_msg', 'assistant_msg') AND new.content IS NOT NULL
+    BEGIN
+        INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
+    END;
+    INSERT INTO events_fts(rowid, content)
+        SELECT id, content FROM events
+        WHERE type IN ('user_msg', 'assistant_msg') AND content IS NOT NULL;
+    """,
 ]
 
 
@@ -59,9 +72,10 @@ class EventStore:
         tokens_out: int | None = None,
         ttft_ms: int | None = None,
         total_ms: int | None = None,
-    ) -> None:
+    ) -> int:
+        """Registra un evento y devuelve su id."""
         with self._db:
-            self._db.execute(
+            cursor = self._db.execute(
                 "INSERT INTO events (ts, type, provider, model, tokens_in, tokens_out, ttft_ms,"
                 " total_ms, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -76,6 +90,17 @@ class EventStore:
                     content,
                 ),
             )
+        return cursor.lastrowid
+
+    def last_conversation(self, max_messages: int = 3) -> tuple[str, list[str]] | None:
+        """Fecha y últimos mensajes de Renzo de la conversación anterior, si hay alguna."""
+        rows = self._db.execute(
+            "SELECT ts, content FROM events WHERE type = 'user_msg' ORDER BY id DESC LIMIT ?",
+            (max_messages,),
+        ).fetchall()
+        if not rows:
+            return None
+        return rows[0][0][:10], [r[1] for r in reversed(rows)]
 
     def month_tokens(self, provider: str) -> tuple[int, int]:
         """Tokens de entrada y salida del mes en curso (UTC) para un proveedor."""
