@@ -27,13 +27,14 @@ RUN uv sync --locked --no-dev --no-group bench
 COPY config ./config
 
 RUN useradd --create-home --uid 1000 tama \
-    && mkdir -p /data /trabajo \
-    && chown tama:tama /data /trabajo
+    && mkdir -p /data /trabajo /memoria \
+    && chown tama:tama /data /trabajo /memoria
 USER tama
 
 ENV PATH="/app/.venv/bin:$PATH" \
     TAMA_DATA_DIR=/data \
-    TAMA_WORKDIR=/trabajo
-VOLUME ["/data", "/trabajo"]
+    TAMA_WORKDIR=/trabajo \
+    TAMA_MEMORY_DIR=/memoria
+VOLUME ["/data", "/trabajo", "/memoria"]
 
 ENTRYPOINT ["tama"]

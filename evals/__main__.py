@@ -13,9 +13,12 @@ from tama.net import tcp_probe
 from tama.ollama import OllamaClient, OllamaError
 
 
-def make_judge(settings, offline: bool):
+def make_judge(settings, local_only: bool = False):
     """Juez en la nube si hay red (vía el Ollama local o con OLLAMA_API_KEY); si no, o si la nube
-    falla, el modelo de fondo local."""
+    falla, el modelo de fondo local, mucho más lento en CPU.
+
+    En `--offline` lo que se prueba es la generación sin red: el juicio puede usar la nube después.
+    """
     local = OllamaClient(settings.ollama_host, timeout=900)
     local_judge = (
         local,
@@ -25,7 +28,7 @@ def make_judge(settings, offline: bool):
     )
     judges = [local_judge]
     host, _, port = settings.connectivity_probe.rpartition(":")
-    if not offline and tcp_probe(host, int(port)):
+    if not local_only and tcp_probe(host, int(port)):
         if settings.ollama_api_key:
             key = settings.ollama_api_key.get_secret_value()
             cloud = OllamaClient(settings.cloud_host, timeout=120, api_key=key)
@@ -60,11 +63,11 @@ def make_judge(settings, offline: bool):
     return judge, used, close
 
 
-def rejudge(settings, mode: str, scenarios, offline: bool) -> int:
+def rejudge(settings, mode: str, scenarios, local_only: bool) -> int:
     """Puntúa de nuevo los escenarios cuyo juicio falló, sin volver a generar las respuestas."""
     judge_name, outcomes = runner.load_mode(mode)
     by_id = {s.id: s for s in scenarios}
-    judge, used, close = make_judge(settings, offline)
+    judge, used, close = make_judge(settings, local_only)
     try:
         for outcome in outcomes:
             judge_failed = (outcome.error or "").startswith("juez:")
@@ -92,6 +95,7 @@ def main() -> int:
         "--capas", nargs="+", help="usa solo estas capas (nube, claude, local) para medir cada una"
     )
     parser.add_argument("--sin-juez", action="store_true", help="no puntuar (solo latencias)")
+    parser.add_argument("--juez-local", action="store_true", help="no usar el juez de la nube")
     parser.add_argument(
         "--rejuzgar",
         action="store_true",
@@ -108,7 +112,7 @@ def main() -> int:
         mode = "online-" + "-".join(args.capas)
 
     if args.rejuzgar:
-        return rejudge(settings, mode, scenarios, args.offline)
+        return rejudge(settings, mode, scenarios, args.juez_local)
 
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
     brain = brain_module.build(settings, force_offline=args.offline, only=args.capas)
@@ -137,7 +141,7 @@ def main() -> int:
     # Fase 2: el juez puntúa (después, para no alternar modelos en la RAM).
     judge_name = "ninguno"
     if not args.sin_juez:
-        judge, used, close = make_judge(settings, args.offline)
+        judge, used, close = make_judge(settings, args.juez_local)
         try:
             for scenario, outcome in zip(scenarios, outcomes, strict=True):
                 runner.apply_judgement(scenario, outcome, judge)
