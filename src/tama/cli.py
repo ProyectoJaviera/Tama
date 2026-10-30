@@ -3,15 +3,19 @@
 import argparse
 import os
 import sys
+import threading
+from datetime import date
 
 from tama import agent, history
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.config import Settings, get_settings
+from tama.mcp_servers.memoria import NO_SUGGESTION
 from tama.memory import session_prompt
 from tama.ollama import OllamaClient, OllamaError
 from tama.providers import Error, Message, Text, ToolCall
+from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
 
@@ -145,8 +149,63 @@ def forget(brain: Brain, entity: str) -> None:
     print(dim(brain.tools.call("delete_entities", {"entityNames": [entity]}).text))
 
 
+def ask_yes(question: str) -> bool:
+    try:
+        return input(f"{question} (s/n) ").strip().lower() in {"s", "si", "sí"}
+    except EOFError:
+        return False
+
+
+def show_goals(brain: Brain, args: str) -> None:
+    """`/objetivos` lista todos; `/objetivos borrar <objetivo>` borra uno, con confirmación."""
+    if brain.tools is None:
+        print(dim("  sin memoria: los servidores MCP no están activos"))
+        return
+    if not args.startswith("borrar"):
+        print(dim(brain.tools.call("list_goals", {"estado": "todos"}).text))
+        return
+    goal = args[len("borrar") :].strip()
+    if not goal or not ask_yes(f"¿Borro el objetivo {goal}?"):
+        print(dim("  no se borró nada"))
+        return
+    print(dim(brain.tools.call("delete_goal", {"objetivo": goal}).text))
+
+
+def show_diary(brain: Brain, args: str) -> None:
+    """`/diario` escribe el de hoy; `/diario AAAA-MM-DD` muestra (o escribe) el de esa fecha."""
+    today = date.today()
+    try:
+        day = date.fromisoformat(args) if args else today
+    except ValueError:
+        print(dim("  uso: /diario [AAAA-MM-DD]"))
+        return
+    path = diary_path(brain.memory_dir, day)
+    if day == today or not path.exists():
+        if brain.thinker is None:
+            print(dim("  sin diario: la memoria no está activa"))
+            return
+        print(dim("· escribiendo el diario con el modelo local..."))
+        try:
+            brain.thinker.cancel = threading.Event()
+            written = write_diary(brain.thinker, brain.store, brain.memory_dir, day)
+        except OllamaError as exc:
+            print(f"No pude escribir el diario: {exc}", file=sys.stderr)
+            return
+        if written is None:
+            print(dim(f"  no hay conversaciones del {day.isoformat()}"))
+            return
+    print(path.read_text(encoding="utf-8"))
+
+
+def pending_suggestion(brain: Brain) -> str:
+    if brain.tools is None:
+        return ""
+    outcome = brain.tools.call("next_suggestion", {})
+    return outcome.text if outcome.ok and outcome.text != NO_SUGGESTION else ""
+
+
 def export_memory(settings: Settings) -> int:
-    """`tama memoria export`: vuelca el grafo a memoria/grafo.jsonl."""
+    """`tama memoria export`: vuelca el grafo y los objetivos a memoria/grafo.jsonl."""
     os.environ["TAMA_DATA_DIR"] = str(settings.data_dir)
     from tama.mcp_servers import memoria
 
@@ -188,7 +247,13 @@ def chat_loop(
     keep_warm: bool = False,
     max_tools: int = 10,
 ) -> None:
-    print("Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <entidad> y /salir.")
+    print(
+        "Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <entidad>, /objetivos, "
+        "/diario [fecha] y /salir."
+    )
+    if brain.reflector is not None:
+        brain.reflector.close_days()
+        brain.reflector.start()
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(
@@ -202,6 +267,8 @@ def chat_loop(
         except EOFError:
             print()
             return
+        if brain.reflector is not None:
+            brain.reflector.activity()
         if text.lower() in EXIT_COMMANDS:
             return
         if text.lower() == "/proveedor":
@@ -216,8 +283,16 @@ def chat_loop(
         if text.lower().startswith("/olvidar"):
             forget(brain, text[len("/olvidar") :].strip())
             continue
+        if text.lower().startswith("/objetivos"):
+            show_goals(brain, text[len("/objetivos") :].strip())
+            continue
+        if text.lower().startswith("/diario"):
+            show_diary(brain, text[len("/diario") :].strip())
+            continue
         if text:
             turn(brain, messages, text, max_tokens, max_tools)
+        if brain.reflector is not None:
+            brain.reflector.activity()
 
 
 def main(
@@ -230,7 +305,8 @@ def main(
     if args.mensaje[:2] == ["memoria", "export"]:
         return export_memory(settings)
     brain = brain or brain_module.build(settings)
-    system = session_prompt(settings.memory_dir, brain.store)
+    suggestion = "" if args.mensaje or args.check else pending_suggestion(brain)
+    system = session_prompt(settings.memory_dir, brain.store, suggestion)
     messages: list[Message] = [{"role": "system", "content": system}]
     try:
         problem = health_check(brain.local, settings.ollama_host, settings.local_model)

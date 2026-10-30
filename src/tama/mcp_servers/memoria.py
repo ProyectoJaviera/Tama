@@ -11,6 +11,7 @@ import re
 import sqlite3
 import unicodedata
 from datetime import UTC, datetime, timedelta
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -46,10 +47,53 @@ CREATE TABLE IF NOT EXISTS relations (
 CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
     entity_id UNINDEXED, text, tokenize='unicode61 remove_diacritics 2'
 );
+CREATE TABLE IF NOT EXISTS goals (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    norm TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'activo'
+        CHECK (status IN ('activo', 'pausado', 'logrado', 'descartado')),
+    target_date TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS goal_progress (
+    id INTEGER PRIMARY KEY,
+    goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    source INTEGER
+);
+CREATE TABLE IF NOT EXISTS goal_entities (
+    goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+    entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    PRIMARY KEY (goal_id, entity_id)
+);
+CREATE TABLE IF NOT EXISTS suggestions (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    mentioned_at TEXT
+);
+CREATE TABLE IF NOT EXISTS reviewed_pairs (
+    a TEXT NOT NULL,
+    b TEXT NOT NULL,
+    verdict TEXT NOT NULL,
+    PRIMARY KEY (a, b)
+);
+CREATE TABLE IF NOT EXISTS reviewed_entities (
+    entity_id INTEGER PRIMARY KEY REFERENCES entities(id) ON DELETE CASCADE,
+    reviewed_at TEXT NOT NULL
+);
 """
+GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
+MIN_SIMILARITY = 0.75
+NO_SUGGESTION = "Nada pendiente."
+MAX_MENTIONS = 3
 
 server = MCPServer("memoria", instructions="Lo que Tama recuerda de Renzo.")
 
@@ -441,8 +485,375 @@ def proponer_cambio_perfil(cambio: str) -> str:
     return "Perfil actualizado."
 
 
+def find_goal(db: sqlite3.Connection, ref: str | int) -> sqlite3.Row | None:
+    """Busca un objetivo por número o por parte de su título."""
+    text = str(ref).strip().lstrip("#")
+    if text.isdigit():
+        return db.execute("SELECT * FROM goals WHERE id = ?", (int(text),)).fetchone()
+    like = f"%{normalize(text)}%"
+    return db.execute(
+        "SELECT * FROM goals WHERE norm LIKE ? ORDER BY status = 'activo' DESC, id DESC LIMIT 1",
+        (like,),
+    ).fetchone()
+
+
+def describe_goal(db: sqlite3.Connection, goal: sqlite3.Row) -> str:
+    target = f", para {goal['target_date']}" if goal["target_date"] else ""
+    lines = [f"#{goal['id']} {goal['title']} ({goal['status']}{target})"]
+    if goal["detail"]:
+        lines.append(goal["detail"])
+    progress = db.execute(
+        "SELECT content, created_at FROM goal_progress WHERE goal_id = ? ORDER BY id DESC LIMIT ?",
+        (goal["id"], MAX_OBSERVATIONS),
+    ).fetchall()
+    lines += [f"- {p['created_at'][:10]}: {p['content']}" for p in reversed(progress)]
+    entities = db.execute(
+        "SELECT e.name FROM goal_entities g JOIN entities e ON e.id = g.entity_id"
+        " WHERE g.goal_id = ? ORDER BY e.norm",
+        (goal["id"],),
+    ).fetchall()
+    if entities:
+        lines.append("Relacionado con: " + ", ".join(e["name"] for e in entities))
+    return "\n".join(lines)
+
+
+@server.tool(
+    description=(
+        "Crea un objetivo de Renzo: algo que quiere lograr y a lo que dar seguimiento. Lleva "
+        "titulo y, si los dijo, detalle, fecha (AAAA-MM-DD) y entidades relacionadas."
+    )
+)
+def create_goal(
+    titulo: str, detalle: str = "", fecha: str = "", entidades: list[str] | None = None
+) -> str:
+    title = titulo.strip()
+    if not title:
+        return "Falta el título del objetivo."
+    with connect() as db:
+        stamp = now()
+        cursor = db.execute(
+            "INSERT INTO goals (title, norm, detail, target_date, created_at, updated_at)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (title, normalize(title), detalle.strip(), fecha.strip(), stamp, stamp),
+        )
+        for name in entidades or []:
+            row = find_entity(db, name)
+            if row:
+                db.execute(
+                    "INSERT OR IGNORE INTO goal_entities (goal_id, entity_id) VALUES (?, ?)",
+                    (cursor.lastrowid, row["id"]),
+                )
+    return f"Objetivo #{cursor.lastrowid} creado: {title}."
+
+
+@server.tool(
+    description=(
+        "Cambia un objetivo existente, indicado por número o título: titulo, detalle, fecha o "
+        "estado (activo, pausado o logrado). Para descartarlo usa discard_goal."
+    )
+)
+def update_goal(
+    objetivo: str, titulo: str = "", detalle: str = "", fecha: str = "", estado: str = ""
+) -> str:
+    status = estado.strip().lower()
+    if status == "descartado":
+        return "Para descartar un objetivo usa discard_goal: Renzo debe confirmarlo."
+    if status and status not in GOAL_STATES:
+        return "Estado no válido: usa activo, pausado o logrado."
+    with connect() as db:
+        goal = find_goal(db, objetivo)
+        if goal is None:
+            return "No encontré ese objetivo."
+        title = titulo.strip() or goal["title"]
+        db.execute(
+            "UPDATE goals SET title = ?, norm = ?, detail = ?, target_date = ?, status = ?,"
+            " updated_at = ? WHERE id = ?",
+            (
+                title,
+                normalize(title),
+                detalle.strip() or goal["detail"],
+                fecha.strip() or goal["target_date"],
+                status or goal["status"],
+                now(),
+                goal["id"],
+            ),
+        )
+        return "Actualizado: " + describe_goal(db, find_goal(db, goal["id"]))
+
+
+@server.tool(
+    description=(
+        "Muestra los objetivos de Renzo con su avance. `estado` filtra: activo (por defecto), "
+        "pausado, logrado, descartado o todos."
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+def list_goals(estado: str = "activo") -> str:
+    status = estado.strip().lower()
+    with connect() as db:
+        if status == "todos":
+            rows = db.execute("SELECT * FROM goals ORDER BY id").fetchall()
+        else:
+            rows = db.execute(
+                "SELECT * FROM goals WHERE status = ? ORDER BY id", (status,)
+            ).fetchall()
+        if not rows:
+            return "No hay objetivos en ese estado."
+        return "\n\n".join(describe_goal(db, r) for r in rows)
+
+
+@server.tool(
+    description=(
+        "Anota un avance de un objetivo, indicado por número o título, cuando Renzo cuente que "
+        "dio un paso hacia él."
+    )
+)
+def add_goal_progress(objetivo: str, avance: str, source: int | None = None) -> str:
+    with connect() as db:
+        goal = find_goal(db, objetivo)
+        if goal is None:
+            return "No encontré ese objetivo."
+        stamp = now()
+        db.execute(
+            "INSERT INTO goal_progress (goal_id, content, created_at, source) VALUES (?, ?, ?, ?)",
+            (goal["id"], avance.strip(), stamp, source),
+        )
+        db.execute("UPDATE goals SET updated_at = ? WHERE id = ?", (stamp, goal["id"]))
+    return f"Avance anotado en: {goal['title']}."
+
+
+@server.tool(
+    description="Descarta un objetivo que Renzo ya no quiere seguir. Se conserva su historial.",
+    annotations=ToolAnnotations(destructive_hint=True),
+)
+def discard_goal(objetivo: str) -> str:
+    with connect() as db:
+        goal = find_goal(db, objetivo)
+        if goal is None:
+            return "No encontré ese objetivo."
+        db.execute(
+            "UPDATE goals SET status = 'descartado', updated_at = ? WHERE id = ?",
+            (now(), goal["id"]),
+        )
+    return f"Objetivo descartado: {goal['title']}."
+
+
+@server.tool(
+    description="Borra un objetivo y su avance.",
+    annotations=ToolAnnotations(destructive_hint=True),
+)
+def delete_goal(objetivo: str) -> str:
+    with connect() as db:
+        goal = find_goal(db, objetivo)
+        if goal is None:
+            return "No encontré ese objetivo."
+        db.execute("DELETE FROM goals WHERE id = ?", (goal["id"],))
+    return f"Objetivo borrado: {goal['title']}."
+
+
+@server.tool(description="Entrega una sugerencia pendiente y la marca como ya mencionada.")
+def next_suggestion() -> str:
+    with connect() as db:
+        row = db.execute(
+            "SELECT id, text FROM suggestions WHERE mentioned_at IS NULL ORDER BY id LIMIT 1"
+        ).fetchone()
+        if row is None:
+            return NO_SUGGESTION
+        db.execute("UPDATE suggestions SET mentioned_at = ? WHERE id = ?", (now(), row["id"]))
+        return row["text"]
+
+
+# --- Reflexión: la usa tama.reflection directamente; el modelo de chat no ve estas funciones. ---
+
+
+def similarity(a: str, b: str) -> float:
+    """1 si un nombre contiene al otro por palabras; si no, parecido entre 0 y 1."""
+    first, second = set(a.split()), set(b.split())
+    if first <= second or second <= first:
+        return 1.0
+    return SequenceMatcher(None, a, b).ratio()
+
+
+def merge_candidates(limit: int = 5) -> list[dict[str, str]]:
+    """Pares que quizá sean la misma entidad y no se han revisado, los más parecidos primero."""
+    with connect() as db:
+        rows = db.execute("SELECT * FROM entities ORDER BY id").fetchall()
+        reviewed = {(r["a"], r["b"]) for r in db.execute("SELECT a, b FROM reviewed_pairs")}
+        by_id = {r["id"]: r for r in rows}
+        pairs: dict[tuple[int, int], float] = {}
+        for i, first in enumerate(rows):
+            for second in rows[i + 1 :]:
+                score = similarity(first["norm"], second["norm"])
+                if score >= MIN_SIMILARITY:
+                    pairs[(first["id"], second["id"])] = score
+            # Un nombre poco común que aparece en los datos de otra entidad también es candidato.
+            mentions = db.execute(
+                "SELECT entity_id FROM search WHERE search MATCH ? LIMIT ?",
+                (f'"{first["norm"]}"', MAX_MENTIONS + 1),
+            ).fetchall()
+            others = [m["entity_id"] for m in mentions if m["entity_id"] != first["id"]]
+            if len(mentions) <= MAX_MENTIONS:
+                for other in others:
+                    key = (min(first["id"], other), max(first["id"], other))
+                    pairs.setdefault(key, MIN_SIMILARITY)
+        result = []
+        for (a, b), _ in sorted(pairs.items(), key=lambda item: -item[1]):
+            first, second = by_id[a], by_id[b]
+            if (first["norm"], second["norm"]) not in reviewed:
+                result.append(
+                    {
+                        "a": first["name"],
+                        "b": second["name"],
+                        "text_a": describe(db, first),
+                        "text_b": describe(db, second),
+                    }
+                )
+        return result[:limit]
+
+
+def review_pair(a: str, b: str, verdict: str) -> None:
+    """Deja anotado un par ya decidido para no preguntarlo de nuevo."""
+    with connect() as db:
+        db.execute(
+            "INSERT OR REPLACE INTO reviewed_pairs (a, b, verdict) VALUES (?, ?, ?)",
+            (normalize(a), normalize(b), verdict),
+        )
+
+
+def merge_entities(keep: str, drop: str) -> bool:
+    """Funde `drop` en `keep`: datos, alias, relaciones y objetivos. Nada se pierde."""
+    with connect() as db:
+        kept, dropped = find_entity(db, keep), find_entity(db, drop)
+        if kept is None or dropped is None or kept["id"] == dropped["id"]:
+            return False
+        new, old = kept["id"], dropped["id"]
+        db.execute("UPDATE observations SET entity_id = ? WHERE entity_id = ?", (new, old))
+        db.execute("UPDATE aliases SET entity_id = ? WHERE entity_id = ?", (new, old))
+        db.execute(
+            "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)", (dropped["norm"], new)
+        )
+        db.execute(
+            "INSERT OR IGNORE INTO relations (from_id, to_id, type)"
+            " SELECT ?, to_id, type FROM relations WHERE from_id = ? AND to_id != ?",
+            (new, old, new),
+        )
+        db.execute(
+            "INSERT OR IGNORE INTO relations (from_id, to_id, type)"
+            " SELECT from_id, ?, type FROM relations WHERE to_id = ? AND from_id != ?",
+            (new, old, new),
+        )
+        db.execute(
+            "INSERT OR IGNORE INTO goal_entities (goal_id, entity_id)"
+            " SELECT goal_id, ? FROM goal_entities WHERE entity_id = ?",
+            (new, old),
+        )
+        db.execute("DELETE FROM entities WHERE id = ?", (old,))
+        reindex(db, old)
+        reindex(db, new)
+    return True
+
+
+def entities_to_review(limit: int = 5) -> list[dict[str, Any]]:
+    """Entidades con dos o más datos vigentes y novedades desde su última revisión."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT e.id, e.name, MAX(o.created_at) AS last FROM entities e"
+            " JOIN observations o ON o.entity_id = e.id AND o.valid = 1"
+            " LEFT JOIN reviewed_entities r ON r.entity_id = e.id"
+            " GROUP BY e.id HAVING COUNT(o.id) >= 2"
+            " AND (MAX(r.reviewed_at) IS NULL OR MAX(o.created_at) > MAX(r.reviewed_at))"
+            " ORDER BY last DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        result = []
+        for row in rows:
+            observations = db.execute(
+                "SELECT id, content, created_at FROM observations"
+                " WHERE entity_id = ? AND valid = 1 ORDER BY created_at, id",
+                (row["id"],),
+            ).fetchall()
+            result.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "observations": [
+                        {"id": o["id"], "text": o["content"], "date": o["created_at"][:10]}
+                        for o in observations
+                    ],
+                }
+            )
+        return result
+
+
+def retire_observations(entity_id: int, ids: list[int]) -> int:
+    """Marca datos de una entidad como no vigentes; no se borran."""
+    with connect() as db:
+        changed = 0
+        for observation in ids:
+            changed += db.execute(
+                "UPDATE observations SET valid = 0 WHERE id = ? AND entity_id = ?",
+                (observation, entity_id),
+            ).rowcount
+        reindex(db, entity_id)
+    return changed
+
+
+def mark_reviewed(entity_id: int) -> None:
+    with connect() as db:
+        db.execute(
+            "INSERT OR REPLACE INTO reviewed_entities (entity_id, reviewed_at) VALUES (?, ?)",
+            (entity_id, now()),
+        )
+
+
+def add_suggestion(text: str) -> bool:
+    """Guarda una sugerencia pendiente, sin repetirla."""
+    with connect() as db:
+        repeated = db.execute("SELECT 1 FROM suggestions WHERE text = ?", (text,)).fetchone()
+        if repeated:
+            return False
+        db.execute("INSERT INTO suggestions (text, created_at) VALUES (?, ?)", (text, now()))
+    return True
+
+
+def pending_suggestions() -> int:
+    with connect() as db:
+        query = "SELECT COUNT(*) FROM suggestions WHERE mentioned_at IS NULL"
+        return db.execute(query).fetchone()[0]
+
+
+def goals_overview() -> str:
+    """Objetivos activos con los días desde su último movimiento, para pensar sugerencias."""
+    with connect() as db:
+        rows = db.execute("SELECT * FROM goals WHERE status = 'activo' ORDER BY id").fetchall()
+    today = datetime.now(UTC)
+    lines = []
+    for row in rows:
+        days = (today - datetime.fromisoformat(row["updated_at"])).days
+        lines.append(f"- {row['title']}: {days} días sin avance")
+    return "\n".join(lines)
+
+
+def day_learned(start: str, end: str) -> list[str]:
+    """Datos y avances guardados entre dos instantes UTC (ISO), para el diario."""
+    with connect() as db:
+        observations = db.execute(
+            "SELECT e.name, o.content FROM observations o JOIN entities e ON e.id = o.entity_id"
+            " WHERE o.created_at >= ? AND o.created_at < ? ORDER BY o.id",
+            (start, end),
+        ).fetchall()
+        progress = db.execute(
+            "SELECT g.title, p.content FROM goal_progress p JOIN goals g ON g.id = p.goal_id"
+            " WHERE p.created_at >= ? AND p.created_at < ? ORDER BY p.id",
+            (start, end),
+        ).fetchall()
+    return [f"Dato sobre {r['name']}: {r['content']}" for r in observations] + [
+        f"Avance en {r['title']}: {r['content']}" for r in progress
+    ]
+
+
 def export_graph(target: Path) -> int:
-    """Vuelca el grafo a JSONL ordenado y estable. Devuelve la cantidad de entidades."""
+    """Vuelca grafo y objetivos a JSONL ordenado y estable. Devuelve cuántas entidades."""
     with connect() as db:
         lines = []
         rows = db.execute("SELECT * FROM entities ORDER BY norm").fetchall()
@@ -471,6 +882,20 @@ def export_graph(target: Path) -> int:
         for r in relations:
             relation = {"type": "relation", "from": r["a"], "relationType": r["t"], "to": r["b"]}
             lines.append(json.dumps(relation, ensure_ascii=False, sort_keys=True))
+        for goal in db.execute("SELECT * FROM goals ORDER BY id").fetchall():
+            progress = db.execute(
+                "SELECT content, created_at FROM goal_progress WHERE goal_id = ? ORDER BY id",
+                (goal["id"],),
+            ).fetchall()
+            item = {
+                "type": "goal",
+                "title": goal["title"],
+                "detail": goal["detail"],
+                "status": goal["status"],
+                "targetDate": goal["target_date"],
+                "progress": [dict(p) for p in progress],
+            }
+            lines.append(json.dumps(item, ensure_ascii=False, sort_keys=True))
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return len(rows)
