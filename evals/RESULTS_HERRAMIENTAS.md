@@ -6,7 +6,7 @@ herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por
 
 | Capa | Correctos | % | Primer token p50 | Voseo |
 |---|---:|---:|---:|---:|
-| nube | 23/23 | 100% | 0.3 s | 0 |
+| nube | 23/23 | 100% | 0.4 s | 0 |
 | claude | 23/23 | 100% | 0.6 s | 0 |
 | local | 21/23 | 91% | 1.3 s | 1 |
 
