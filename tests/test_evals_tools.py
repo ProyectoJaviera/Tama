@@ -64,3 +64,16 @@ def test_seed_creates_notes_and_files(tmp_path):
     tools.seed(tmp_path / "data", tmp_path / "trabajo")
     assert (tmp_path / "data" / "notas.db").exists()
     assert (tmp_path / "trabajo" / "plan.md").read_text(encoding="utf-8").startswith("# Plan")
+
+
+def test_rejection_must_be_reported_clearly():
+    s = scenario(Expected("delete_note"), destructiva=True, rechazo=True)
+    called = [("delete_note", {"note_id": 1})]
+    assert tools.evaluate(s, called, ["delete_note"], "No la borré, sigue ahí.") == ""
+    bad = "Ya mandé la solicitud para borrar la nota. Solo confirma en el sistema."
+    assert "no dijo" in tools.evaluate(s, called, ["delete_note"], bad)
+
+
+def test_voseo_is_counted():
+    assert tools.voseo_count(["Si querés, te ayudo", "¿Qué tenés?"]) == 2
+    assert tools.voseo_count(["Si quieres, te ayudo", "¿Qué tienes?"]) == 0

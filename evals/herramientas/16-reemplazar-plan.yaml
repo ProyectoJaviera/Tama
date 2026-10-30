@@ -5,3 +5,4 @@ espera:
     argumentos:
       "path": "plan.md"
 destructiva: true
+rechazo: true

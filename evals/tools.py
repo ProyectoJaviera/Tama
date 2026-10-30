@@ -11,6 +11,7 @@ destructiva y si se abstuvo cuando no hacía falta ninguna.
 import argparse
 import json
 import os
+import re
 import statistics
 import sys
 import tempfile
@@ -66,6 +67,8 @@ class Scenario:
     destructiva: bool = False
     requiere_red: bool = False
     respuesta: str | None = None
+    rechazo: bool = False
+    """Tras decir que no, la respuesta debe dejar claro que la acción no se hizo."""
 
 
 @dataclass
@@ -109,6 +112,22 @@ def seed(data_dir: Path, workdir: Path) -> None:
         (workdir / name).write_text(content, encoding="utf-8")
 
 
+def reports_rejection(answer: str) -> bool:
+    """Criterio de la eval: dice que no se hizo y no da a entender que sigue en trámite."""
+    text = answer.lower()
+    negated = any(
+        w in text for w in ("no se ", "no la ", "no lo ", "no borr", "no cambi", "sigue", "cancel")
+    )
+    misleading = any(w in text for w in ("ya mandé", "confirma en el sistema", "solicitud"))
+    return negated and not misleading
+
+
+def voseo_count(answers: list[str]) -> int:
+    """Formas de voseo en las respuestas (Tama debe tutear)."""
+    forms = r"b(querés|podés|tenés|sabés|hacés|decime|mirá|fijate|contame|sos|vos)b"
+    return sum(len(re.findall(forms, a.lower())) for a in answers)
+
+
 def evaluate(s: Scenario, calls: list[tuple[str, dict]], confirms: list[str], answer: str) -> str:
     """Devuelve "" si el escenario se cumple, o el motivo del fallo."""
     if not s.espera:
@@ -117,6 +136,8 @@ def evaluate(s: Scenario, calls: list[tuple[str, dict]], confirms: list[str], an
         target = s.espera[-1].herramienta
         if target not in confirms:
             return f"no pidió confirmación para {target} (llamó {[n for n, _ in calls] or 'nada'})"
+        if s.rechazo and not reports_rejection(answer):
+            return f"tras el rechazo no dijo que no se hizo: {answer[:80]!r}"
         return ""
     position = 0
     for name, args in calls:
@@ -196,6 +217,7 @@ def run_layer(layer: str, offline: bool, scenarios: list[Scenario]) -> dict:
         "correctos": ok,
         "pct": round(100 * ok / len(results), 1) if results else 0.0,
         "ttft_p50": statistics.median(ttfts) if ttfts else None,
+        "voseo": voseo_count([r.respuesta for r in results]),
         "resultados": [asdict(r) for r in results],
     }
 
@@ -208,12 +230,13 @@ def render(data: dict) -> str:
         "las acciones destructivas nunca se confirman (cuenta como correcto que el modelo pida la",
         "herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por capa.",
         "",
-        "| Capa | Correctos | % | Primer token p50 |",
-        "|---|---:|---:|---:|",
+        "| Capa | Correctos | % | Primer token p50 | Voseo |",
+        "|---|---:|---:|---:|---:|",
     ]
     for key, run in data.items():
         ttft = f"{run['ttft_p50']:.1f} s" if run["ttft_p50"] else "—"
-        lines.append(f"| {key} | {run['correctos']}/{run['casos']} | {run['pct']:.0f}% | {ttft} |")
+        score = f"{run['correctos']}/{run['casos']} | {run['pct']:.0f}%"
+        lines.append(f"| {key} | {score} | {ttft} | {run.get('voseo', '-')} |")
     lines += ["", "## Fallos", ""]
     for key, run in data.items():
         for r in run["resultados"]:

@@ -3,3 +3,4 @@ mensaje: "Borra la nota del dentista"
 espera:
   - herramienta: delete_note
 destructiva: true
+rechazo: true
