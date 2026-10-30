@@ -163,3 +163,40 @@ def test_prepare_matches_what_the_turn_sends():
     work, specs = agent.prepare(box, messages)
     list(agent.run_turn(Cascade([Layer(provider)], FakeConnectivity()), box, messages, None))
     assert provider.calls[0]["messages"] == work and provider.calls[0]["tools"] == specs
+
+
+def test_final_answer_carries_a_short_tool_trace():
+    provider = ScriptedProvider(
+        [ToolCall("get_current_time", {}, "c1"), Done(1, 1)],
+        [Text("Son las 22:53."), Done(1, 1)],
+    )
+    box = FakeToolBox([TIME], [], {"get_current_time": "x" * 1000})
+    events, _ = run(provider, box)
+    answer = next(e for e in events if isinstance(e, agent.FinalAnswer))
+    assert [m["role"] for m in answer.trace] == ["assistant", "tool"]
+    assert answer.trace[0]["tool_calls"][0]["id"] == "c1"
+    assert len(answer.trace[1]["content"]) == agent.MAX_RESULT_IN_HISTORY
+
+
+def test_cli_history_keeps_tool_calls(tmp_path):
+    import tama.brain as brain_module  # noqa: F401
+    from tama import cli
+    from tama.brain import Brain
+    from tama.events import EventStore
+
+    class Local:
+        def close(self):
+            pass
+
+    provider = ScriptedProvider(
+        [ToolCall("get_current_time", {}, "c1"), Done(1, 1)],
+        [Text("Son las 22:53."), Done(1, 1)],
+    )
+    box = FakeToolBox([TIME], [], {})
+    box.current_event = None
+    cascade = Cascade([Layer(provider)], FakeConnectivity())
+    brain = Brain(cascade, EventStore(tmp_path / "e.db"), Local(), tools=box)
+    messages = [{"role": "system", "content": "x"}]
+    assert cli.turn(brain, messages, "¿hora?", 2000)
+    assert [m["role"] for m in messages] == ["system", "user", "assistant", "tool", "assistant"]
+    brain.store.close()

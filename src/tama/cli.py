@@ -68,8 +68,8 @@ def short(value: object, limit: int = 60) -> str:
 
 def reply(
     brain: Brain, messages: list[Message], max_tokens: int, max_tools: int = 10
-) -> str | None:
-    """Responde un turno en streaming (con herramientas), lo registra y devuelve el texto final."""
+) -> agent.FinalAnswer | None:
+    """Responde un turno en streaming (con herramientas), lo registra y devuelve el cierre."""
     answered: Answered | None = None
     for event in agent.run_turn(
         brain.cascade, brain.tools, history.trim(messages, max_tokens), confirm, max_tools
@@ -110,7 +110,7 @@ def reply(
                     round(answered.ttft_s * 1000) if answered.ttft_s is not None else None,
                     round(answered.total_s * 1000),
                 )
-            return event.text
+            return event
         elif isinstance(event, Error):
             print(f"\nNo pude responder: {event.message}", file=sys.stderr)
             brain.store.log("error", event.message)
@@ -166,11 +166,12 @@ def turn(
     event_id = brain.store.log("user_msg", text)
     if brain.tools is not None:
         brain.tools.current_event = event_id
-    answer = reply(brain, messages, max_tokens, max_tools)
-    if answer is None:
+    final = reply(brain, messages, max_tokens, max_tools)
+    if final is None:
         messages.pop()
         return False
-    messages.append({"role": "assistant", "content": answer})
+    messages.extend(final.trace)
+    messages.append({"role": "assistant", "content": final.text})
     return True
 
 

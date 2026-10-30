@@ -3,17 +3,15 @@
     "capa": "nube",
     "sin_red": false,
     "fecha": "2026-10-30",
-    "hechos": 9,
+    "hechos": 10,
     "total_hechos": 10,
-    "guardados": 8,
+    "guardados": 10,
     "negativos": 3,
     "total_negativos": 3,
-    "tokens_prompt_max": 2047,
+    "tokens_prompt_max": 2031,
     "calidad": {
-      "entidades": 10,
-      "duplicadas": [
-        "lucia / mudanza de lucia"
-      ],
+      "entidades": 11,
+      "duplicadas": [],
       "mal_nombradas": []
     },
     "detalle": [
@@ -25,18 +23,18 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2044
+        "tokens_prompt": 2028
       },
       {
         "pregunta": "¿Qué estoy plantando en el balcón?",
         "ok": true,
-        "respuesta": "Estás plantando tomates cherry en tu huerta del balcón.",
+        "respuesta": "Tienes tomates cherry en tu huerta del balcón.",
         "herramientas": [
           "search_nodes",
           "search_notes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2045
+        "tokens_prompt": 2029
       },
       {
         "pregunta": "¿Cómo se llama mi perro?",
@@ -46,37 +44,37 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2042
+        "tokens_prompt": 2026
       },
       {
         "pregunta": "¿Qué hierba no me gusta?",
-        "ok": false,
-        "respuesta": "No tengo anotado que haya alguna hierba que no te guste. Solo recuerdo que prefieres el té verde antes que el café por las tardes.",
+        "ok": true,
+        "respuesta": "No soportas el cilantro, me dijiste que lo odias.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2043
+        "tokens_prompt": 2027
       },
       {
         "pregunta": "¿Qué libro estoy leyendo?",
         "ok": true,
-        "respuesta": "Estás leyendo \"Cien años de soledad\".",
+        "respuesta": "Estás leyendo Cien años de soledad.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2041
+        "tokens_prompt": 2025
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
         "ok": true,
-        "respuesta": "Tu proyecto para este trimestre es el reloj con Arduino.",
+        "respuesta": "Tu proyecto para este trimestre es el Reloj con Arduino.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2044
+        "tokens_prompt": 2028
       },
       {
         "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
@@ -86,38 +84,37 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2045
+        "tokens_prompt": 2029
       },
       {
         "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
         "ok": true,
-        "respuesta": "El proyecto en el que trabajas con Tomás se llama Faro.",
+        "respuesta": "El proyecto en el que trabajas con Tomás se llama Proyecto Faro.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2047
+        "tokens_prompt": 2031
       },
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
         "ok": true,
-        "respuesta": "Estás aprendiendo portugués en las tardes.",
-        "herramientas": [
-          "search_nodes",
-          "recent_events"
-        ],
-        "capa": "nube",
-        "tokens_prompt": 2042
-      },
-      {
-        "pregunta": "¿Qué prefiero tomar en las tardes?",
-        "ok": true,
-        "respuesta": "Prefieres tomar té verde en las tardes antes que café.",
+        "respuesta": "Estás aprendiendo portugués, y me contaste que lo haces por las tardes.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2044
+        "tokens_prompt": 2026
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "Prefieres tomar té verde antes que café en las tardes.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2028
       },
       {
         "pregunta": "¿Cómo se llama mi dentista?",
@@ -127,27 +124,27 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2043
+        "tokens_prompt": 2027
       },
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No lo tengo anotado, Renzo. No recuerdo que me hayas contado la fecha de tu matrimonio.",
+        "respuesta": "No lo tengo anotado, Renzo. No recuerdo que me hayas contado el año en que te casaste.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2043
+        "tokens_prompt": 2027
       },
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No lo tengo anotado, Renzo. No recuerdo que me hayas dicho cuál es tu color favorito.",
+        "respuesta": "No lo tengo anotado, Renzo. No me habías contado cuál es tu color favorito.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2042
+        "tokens_prompt": 2026
       }
     ]
   },

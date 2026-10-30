@@ -141,6 +141,7 @@ def ask(brain, messages: list[dict], text: str, max_tokens: int, max_tools: int)
             first = event
         elif isinstance(event, agent.FinalAnswer):
             answer = event.text
+            messages.extend(event.trace)
     messages.append({"role": "assistant", "content": answer})
     brain.store.log("assistant_msg", answer, first.provider if first else None)
     return {
