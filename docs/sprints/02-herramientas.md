@@ -34,3 +34,41 @@ Memoria y grafo (S3), interfaz web (S5) y voz.
 - La primera respuesta local tras un corte de red empieza en menos de 3 s (gracias a la precarga).
 - Docker: los servidores corren dentro del contenedor y la carpeta de trabajo está montada como volumen.
 - Demo de Renzo.
+
+## Verificación (2026-10-30)
+
+- Tests: más de 140 en verde (Linux y Windows en CI), incluidos servidores MCP reales por
+  subproceso, el hub con un servidor roto, el cortacircuitos por servidor, la confirmación de
+  acciones destructivas, el bucle de herramientas y la precarga.
+- Benchmark de herramientas de la capa nube (`bench/TOOLS_RESULTS.md`, ADR 0002):
+  `gemma4:31b-cloud` 100% con 5, 10 y 20 herramientas y 93% con 40; se mantiene.
+- Evals de herramientas, 23 escenarios con los servidores reales (`evals/RESULTS_HERRAMIENTAS.md`):
+  nube 100%, Claude 100%, local LOCAL_TOOLS.
+- Evals de conversación tras los cambios de identidad, ya con herramientas (`evals/RESULTS.md`):
+  con red 19/20 (media 4,9), sin red LOCAL_CONV. El escenario "café o té" varía entre corridas
+  (a veces no aclara que es una IA).
+- Sin red y con el servidor de notas apagado: Tama siguió conversando en local, usó la hora y
+  los archivos, y dijo que las notas y la web no estaban disponibles.
+- Precarga: tras un corte de red simulado, la primera respuesta local empezó en 2,2 s (antes,
+  13,3 s); la precarga deja procesada la identidad y tarda unos 9 s en segundo plano.
+- Docker: los 4 servidores corren dentro del contenedor; el servidor de archivos leyó un
+  archivo de `./trabajo` del host montado en `/trabajo`.
+- Reinstalación sin red: entorno nuevo, sin caché ni índice, solo con `vendor/wheels`
+  (72 wheels, Windows y Linux).
+
+## Demo para Renzo (unos 10 minutos)
+
+Abrir PowerShell **propio** en `D:\Estudio\IA\Proyecto_Tama\Tama`, con Ollama encendido.
+
+1. `uv run tama --check`: tres capas "lista" y los servidores tiempo, notas, archivos y web
+   "listo".
+2. `uv run tama` y probar:
+   - "¿Qué hora es?" → usa `tiempo.get_current_time` (línea gris).
+   - "Anota que mañana compro filamento PLA negro" → `notas.create_note`.
+   - "¿Qué tenía anotado sobre el filamento?" → `notas.search_notes`.
+   - Copiar un archivo de texto a `data\trabajo` y pedir "Lee el archivo <nombre>".
+   - "Borra esa nota" → pide confirmación (s/n). Responder `n`: no se borra.
+   - `/herramientas` muestra el estado de cada servidor.
+3. Cortar la red y esperar unos 10 s (la precarga trabaja en segundo plano). Preguntar algo:
+   responde `local` en pocos segundos. "Lee https://example.com" → dice que no hay internet.
+4. Reconectar la red y `/salir`.
