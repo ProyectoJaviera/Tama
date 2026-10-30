@@ -6,6 +6,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 3: memoria entre sesiones. Perfil `memoria/nucleo.md`, servidor MCP de memoria con grafo
+  en SQLite (observaciones con fecha, origen y vigencia, alias y búsqueda FTS5), recuerdo de la
+  última conversación, `recent_events`, `/memoria`, `/olvidar`, `tama memoria export` y evals de
+  memoria (`python -m evals.memoria`).
 - Sprint 2: herramientas con servidores MCP locales (tiempo, notas, archivos y web), cliente MCP
   con chequeo de salud y cortacircuitos por servidor, bucle de herramientas de hasta 5 pasos,
   confirmación (s/n) antes de borrar o reemplazar, `/herramientas` y máximo 10 herramientas

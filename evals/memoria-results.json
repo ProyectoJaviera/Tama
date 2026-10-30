@@ -150,5 +150,155 @@
         "tokens_prompt": 2042
       }
     ]
+  },
+  "claude": {
+    "capa": "claude",
+    "sin_red": false,
+    "fecha": "2026-10-30",
+    "hechos": 10,
+    "total_hechos": 10,
+    "guardados": 12,
+    "negativos": 3,
+    "total_negativos": 3,
+    "tokens_prompt_max": 4228,
+    "calidad": {
+      "entidades": 13,
+      "duplicadas": [],
+      "mal_nombradas": []
+    },
+    "detalle": [
+      {
+        "pregunta": "¿A qué ciudad se muda mi hermana?",
+        "ok": true,
+        "respuesta": "Según lo que tienes anotado, tu hermana Lucía se muda a Temuco en marzo.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4220
+      },
+      {
+        "pregunta": "¿Qué estoy plantando en el balcón?",
+        "ok": true,
+        "respuesta": "Según lo que tienes anotado, estás armando una huerta en el balcón con **tomates cherry**. No tengo registrado nada más en el balcón. Si plantaste algo además de los tomates, cuéntamelo y lo guardo.",
+        "herramientas": [
+          "search_nodes",
+          "search_notes",
+          "recent_events"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4219
+      },
+      {
+        "pregunta": "¿Cómo se llama mi perro?",
+        "ok": true,
+        "respuesta": "Tu perro se llama Bruno y tiene 4 años.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4216
+      },
+      {
+        "pregunta": "¿Qué hierba no me gusta?",
+        "ok": true,
+        "respuesta": "Lo que tengo anotado es que no te gusta el cilantro; de hecho, me dijiste que lo odias. No tengo registrada ninguna otra hierba que no te guste.",
+        "herramientas": [
+          "search_nodes",
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4216
+      },
+      {
+        "pregunta": "¿Qué libro estoy leyendo?",
+        "ok": true,
+        "respuesta": "Según lo que tienes anotado, estás leyendo *Cien años de soledad*, de Gabriel García Márquez. Lo registraste hoy, así que no tengo más detalles de tu avance. ¿Quieres que lo anote con algo más?",
+        "herramientas": [
+          "search_nodes",
+          "recent_events"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4217
+      },
+      {
+        "pregunta": "¿Cuál es mi proyecto de este trimestre?",
+        "ok": true,
+        "respuesta": "Tu proyecto de este trimestre es un **reloj con Arduino**, que consiste en construir un reloj con esa placa. Además tienes en marcha el proyecto Faro, junto a tu colega Tomás, y una huerta de balcón con tomates cherry.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4222
+      },
+      {
+        "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
+        "ok": true,
+        "respuesta": "Tu mamá cumple años el **14 de diciembre**, según lo que tengo anotado. ¿Quieres que te ayude a preparar algo para esa fecha o que guarde un recordatorio en una nota?",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4224
+      },
+      {
+        "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
+        "ok": true,
+        "respuesta": "El proyecto se llama **Proyecto Faro**. Lo tienes anotado como el que trabajas junto a tu colega Tomás.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4228
+      },
+      {
+        "pregunta": "¿Qué idioma estoy aprendiendo?",
+        "ok": true,
+        "respuesta": "Estás aprendiendo portugués. Según lo que tengo anotado, lo empezaste en las tardes el 30 de octubre de 2026.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4220
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "En las tardes prefieres **té verde antes que café**, según lo que me contaste en nuestra última conversación.",
+        "herramientas": [],
+        "capa": "claude",
+        "tokens_prompt": 4220
+      },
+      {
+        "pregunta": "¿Cómo se llama mi dentista?",
+        "ok": true,
+        "respuesta": "No tengo anotado el nombre de tu dentista. En mi memoria aparecen personas como Tomás, Lucía y tú mismo, pero ningún dentista. Si me dices su nombre, lo guardo para la próxima vez.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4217
+      },
+      {
+        "pregunta": "¿En qué año me casé?",
+        "ok": true,
+        "respuesta": "No tengo anotado nada sobre tu matrimonio ni en qué año te casaste. Si me cuentas la fecha, la guardo para que la tenga disponible la próxima vez.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4212
+      },
+      {
+        "pregunta": "¿Cuál es mi color favorito?",
+        "ok": true,
+        "respuesta": "No tengo anotado tu color favorito. Si me lo cuentas, lo guardo para la próxima vez.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4216
+      }
+    ]
   }
 }

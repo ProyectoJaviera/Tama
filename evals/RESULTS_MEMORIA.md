@@ -7,6 +7,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 | Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
 |---|---:|---:|---:|---:|---:|---:|
 | nube | 9/10 | 3/3 | 10 | 1 | 0 | 2047 |
+| claude | 10/10 | 3/3 | 13 | 0 | 0 | 4228 |
 
 ## Fallos
 
