@@ -78,7 +78,9 @@ Tama prueba tres capas en orden y usa la primera que responda:
 
 Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
 completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
-fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar.
+fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar. Durante el chat revisa la red en
+segundo plano y, al detectar un corte, precarga el modelo local para que la primera respuesta
+sin red no espere la carga.
 Sin claves y sin sesión de Ollama, todo funciona igual con la capa local.
 
 Ollama debe estar encendido en el host (la app de Ollama se inicia con Windows; si no,
@@ -129,6 +131,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |
 | `TAMA_*_FIRST_TOKEN_S` | `8` | Tiempo máximo hasta el primer token (nube y Claude) |
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
+| `TAMA_CONNECTIVITY_WATCH_S` | `10` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
+| `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
 
 La lista completa, con comentarios, está en `.env.example`.
 

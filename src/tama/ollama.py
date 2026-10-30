@@ -125,6 +125,16 @@ class OllamaClient:
     def running(self) -> list[dict[str, Any]]:
         return self._request("GET", "/api/ps").get("models", [])
 
+    def load(
+        self, model: str, options: dict[str, Any] | None = None, keep_alive: str = "30m"
+    ) -> None:
+        """Carga el modelo en RAM sin generar nada. `options` debe coincidir con las del chat
+        (p. ej. `num_ctx`); si no, Ollama lo recarga en la primera petición."""
+        payload: dict[str, Any] = {"model": model, "keep_alive": keep_alive}
+        if options:
+            payload["options"] = options
+        self._request("POST", "/api/generate", payload)
+
     def unload(self, model: str) -> None:
         self._request("POST", "/api/generate", {"model": model, "keep_alive": 0})
 

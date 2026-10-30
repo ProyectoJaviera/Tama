@@ -103,8 +103,16 @@ def turn(brain: Brain, messages: list[Message], text: str, max_tokens: int) -> b
     return True
 
 
-def chat_loop(brain: Brain, messages: list[Message], max_tokens: int) -> None:
+def chat_loop(
+    brain: Brain,
+    messages: list[Message],
+    max_tokens: int,
+    watch_s: float = 0.0,
+    keep_warm: bool = False,
+) -> None:
     print("Tama. Escribe /proveedor para ver las capas o /salir para terminar.")
+    if watch_s > 0:
+        brain.watch_network(watch_s, keep_warm)
     while True:
         try:
             text = input("> ").strip()
@@ -148,7 +156,13 @@ def main(
                 if turn(brain, messages, " ".join(args.mensaje), settings.history_max_tokens)
                 else 1
             )
-        chat_loop(brain, messages, settings.history_max_tokens)
+        chat_loop(
+            brain,
+            messages,
+            settings.history_max_tokens,
+            settings.connectivity_watch_s,
+            settings.local_keep_warm,
+        )
         return 0
     except KeyboardInterrupt:
         print()
