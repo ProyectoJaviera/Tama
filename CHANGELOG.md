@@ -6,6 +6,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 2: herramientas con servidores MCP locales (tiempo, notas, archivos y web), cliente MCP
+  con chequeo de salud y cortacircuitos por servidor, bucle de herramientas de hasta 5 pasos,
+  confirmación (s/n) antes de borrar o reemplazar, `/herramientas` y máximo 10 herramientas
+  por turno.
+- Precarga del modelo local (con la identidad ya procesada) al detectar un corte de red; opción
+  `TAMA_LOCAL_KEEP_WARM` para mantenerlo en RAM.
+- `scripts/vendor.py`: wheels fijadas en `vendor/` para reinstalar sin red.
+- Benchmark de herramientas de modelos cloud (`bench/tools_bench.py`) y ADR 0002.
+- Evals de herramientas (`python -m evals.tools`), 23 escenarios por capa.
+
 - La línea gris bajo cada respuesta muestra los tokens por segundo de generación, cuando el
   proveedor informa los tokens de salida.
 
