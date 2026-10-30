@@ -1,7 +1,7 @@
 {
   "modo": "online",
   "fecha": "2026-10-29",
-  "juez": "gemma4:31b-cloud, qwen3:4b",
+  "juez": "qwen3:4b",
   "resumen": {
     "escenarios": 20,
     "errores": 0,
