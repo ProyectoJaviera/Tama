@@ -45,7 +45,12 @@ class _OllamaProvider:
                         args = json.loads(args or "{}")
                     yield ToolCall(fn.get("name", ""), args)
                 if chunk.get("done"):
-                    yield Done(chunk.get("prompt_eval_count", 0), chunk.get("eval_count", 0))
+                    eval_ns = chunk.get("eval_duration")
+                    yield Done(
+                        chunk.get("prompt_eval_count", 0),
+                        chunk.get("eval_count", 0),
+                        eval_ns / 1e9 if eval_ns else None,
+                    )
                     return
             yield Error("Ollama cortó la respuesta sin terminar")
         except OllamaError as exc:

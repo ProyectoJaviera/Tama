@@ -148,3 +148,15 @@ def test_build_can_keep_only_some_layers(tmp_path):
         assert [layer.provider.name for layer in brain.cascade.layers] == ["claude"]
     finally:
         brain.close()
+
+
+def test_footer_shows_tokens_per_second_only_when_known(tmp_path, capsys):
+    from tama.providers import Done, Text
+
+    with_tokens = FakeProvider("local", [Text("hola"), Done(5, 40, generation_s=2.0)])
+    cli.main(["hola"], brain=make_brain(tmp_path / "a", [with_tokens]), settings=Settings())
+    assert "· 20 tok/s" in capsys.readouterr().out
+
+    without = FakeProvider("local", [Text("hola"), Done(5, 0)])
+    cli.main(["hola"], brain=make_brain(tmp_path / "b", [without]), settings=Settings())
+    assert "tok/s" not in capsys.readouterr().out

@@ -124,6 +124,8 @@ class Answered:
     output_tokens: int
     ttft_s: float | None
     total_s: float
+    tokens_per_s: float | None = None
+    """Velocidad de generación; None si el proveedor no informa tokens de salida."""
 
 
 TurnEvent = Text | ToolCall | Switch | Answered | Error
@@ -181,13 +183,15 @@ class Cascade:
                         break
                     if isinstance(event, Done):
                         layer.breaker.success()
+                        total = self._clock() - start
                         yield Answered(
                             name,
                             layer.provider.model,
                             event.input_tokens,
                             event.output_tokens,
                             ttft,
-                            self._clock() - start,
+                            total,
+                            generation_speed(event, ttft, total),
                         )
                         return
                     if ttft is None:
@@ -203,6 +207,20 @@ class Cascade:
             failed = (name, reason or "error", ttft is not None)
         detail = f" (último error en {failed[0]}: {failed[1]})" if failed else ""
         yield Error(f"ninguna capa pudo responder{detail}")
+
+
+def generation_speed(done: Done, ttft: float | None, total: float) -> float | None:
+    """Tokens por segundo de generación con los datos del proveedor, sin inventar nada.
+
+    Usa el tiempo de generación que informa el proveedor (Ollama); si no lo da (Claude), el
+    tiempo desde el primer token hasta el final.
+    """
+    if not done.output_tokens:
+        return None
+    seconds = done.generation_s
+    if seconds is None and ttft is not None:
+        seconds = total - ttft
+    return done.output_tokens / seconds if seconds and seconds > 0 else None
 
 
 def claude_budget_gate(

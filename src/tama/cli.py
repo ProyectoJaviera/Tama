@@ -72,7 +72,8 @@ def reply(brain: Brain, messages: list[Message], max_tokens: int) -> str | None:
             print()
             ttft = f"{event.ttft_s:.1f} s" if event.ttft_s is not None else "—"
             where = f"· {event.provider} ({event.model})"
-            print(dim(f"{where} · primer token {ttft} · total {event.total_s:.1f} s"))
+            speed = f" · {event.tokens_per_s:.0f} tok/s" if event.tokens_per_s else ""
+            print(dim(f"{where} · primer token {ttft} · total {event.total_s:.1f} s{speed}"))
             brain.store.log(
                 "assistant_msg",
                 text,

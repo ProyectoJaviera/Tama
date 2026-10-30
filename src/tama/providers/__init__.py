@@ -27,6 +27,8 @@ class ToolCall:
 class Done:
     input_tokens: int = 0
     output_tokens: int = 0
+    generation_s: float | None = None
+    """Segundos generando la salida, si el proveedor lo informa (Ollama: eval_duration)."""
 
 
 @dataclass(frozen=True)
