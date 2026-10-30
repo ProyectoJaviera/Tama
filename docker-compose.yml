@@ -21,6 +21,8 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - tama-data:/data
+      # Carpeta de trabajo para el servidor de archivos: la de Renzo en el host.
+      - ${TAMA_WORKDIR_HOST:-./trabajo}:/trabajo
     stdin_open: true
     tty: true
     restart: unless-stopped
