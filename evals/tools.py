@@ -230,7 +230,7 @@ def main() -> int:
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
 
-    out = EVALS_DIR / "results-herramientas.json"
+    out = EVALS_DIR / "herramientas-results.json"
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     scenarios = load_scenarios()
     for layer in args.capas:

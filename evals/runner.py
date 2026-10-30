@@ -232,6 +232,8 @@ def render_report() -> str:
     for path in sorted(EVALS_DIR.glob("results-*.json"), key=_mode_order):
         mode = path.stem.removeprefix("results-")
         data = json.loads(path.read_text(encoding="utf-8"))
+        if "resumen" not in data:
+            continue  # otro formato (p. ej. evals de herramientas)
         r = data["resumen"]
         capas = ", ".join(f"{k}: {v}" for k, v in r["capas"].items()) or "—"
         lines += [
