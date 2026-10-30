@@ -205,12 +205,12 @@ def test_claude_provider_streams_text_and_usage():
 
 
 def test_claude_provider_reports_tool_calls():
-    block = SimpleNamespace(type="tool_use", name="get_time", input={})
+    block = SimpleNamespace(type="tool_use", name="get_time", input={}, id="toolu_0")
     provider = ClaudeProvider(
         None, "m", client=FakeAnthropic(FakeStream([], final("tool_use", [block])))
     )
     events = list(provider.stream_chat([{"role": "user", "content": "¿qué hora es?"}]))
-    assert events[0] == ToolCall("get_time", {})
+    assert events[0] == ToolCall("get_time", {}, "toolu_0")
 
 
 def test_claude_refusal_is_an_error():
@@ -246,3 +246,35 @@ def test_claude_effort_is_configurable():
     provider = ClaudeProvider(None, "claude-haiku-5-5", client=client, effort="medium")
     list(provider.stream_chat([{"role": "user", "content": "hola"}]))
     assert client.params["output_config"] == {"effort": "medium"}
+
+
+def test_claude_conversion_of_tool_turns():
+    _, turns = to_claude_messages(
+        [
+            {"role": "system", "content": "Eres Tama."},
+            {"role": "user", "content": "¿qué hora es?"},
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{"id": "t1", "function": {"name": "get_time", "arguments": {}}}],
+            },
+            {"role": "tool", "tool_call_id": "t1", "tool_name": "get_time", "content": "22:53"},
+        ]
+    )
+    assert turns[1] == {
+        "role": "assistant",
+        "content": [{"type": "tool_use", "id": "t1", "name": "get_time", "input": {}}],
+    }
+    assert turns[2] == {
+        "role": "user",
+        "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "22:53"}],
+    }
+
+
+def test_claude_tool_call_keeps_id():
+    block = SimpleNamespace(type="tool_use", name="get_time", input={}, id="toolu_1")
+    provider = ClaudeProvider(
+        None, "m", client=FakeAnthropic(FakeStream([], final("tool_use", [block])))
+    )
+    events = list(provider.stream_chat([{"role": "user", "content": "x"}]))
+    assert events[0] == ToolCall("get_time", {}, "toolu_1")

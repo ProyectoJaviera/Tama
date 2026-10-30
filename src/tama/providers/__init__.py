@@ -21,6 +21,8 @@ class Text:
 class ToolCall:
     name: str
     arguments: dict[str, Any]
+    id: str = ""
+    """Identificador de la llamada (Claude lo exige para devolver el resultado)."""
 
 
 @dataclass(frozen=True)

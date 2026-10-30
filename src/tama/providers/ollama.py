@@ -43,7 +43,7 @@ class _OllamaProvider:
                     args = fn.get("arguments") or {}
                     if isinstance(args, str):
                         args = json.loads(args or "{}")
-                    yield ToolCall(fn.get("name", ""), args)
+                    yield ToolCall(fn.get("name", ""), args, call.get("id") or "")
                 if chunk.get("done"):
                     eval_ns = chunk.get("eval_duration")
                     yield Done(
