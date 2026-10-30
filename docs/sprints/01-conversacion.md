@@ -50,6 +50,12 @@ Sesión iniciada en Ollama (`ollama signin`) para la nube, y ANTHROPIC_API_KEY (
   respondió local (13 s al primer token en el primer turno, por la carga del modelo; luego
   0,5-0,7 s) y al reconectar volvió a la nube (0,3-0,5 s). Aprobada.
 
+## Pendiente para un próximo sprint
+
+- Carga en frío del modelo local: tras el corte de red, la primera respuesta local tardó 13,3 s al
+  primer token porque el modelo no estaba en la RAM. Opciones: precargarlo en segundo plano
+  (`keep_alive`) apenas se detecte que no hay red, o mantenerlo caliente si sobra RAM.
+
 ## Demo para Renzo (unos 10 minutos)
 
 Antes: Ollama encendido (`ollama ps` responde), sesión de Ollama iniciada y `ANTHROPIC_API_KEY` en `.env`.
