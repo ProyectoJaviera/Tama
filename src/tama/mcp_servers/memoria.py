@@ -211,9 +211,10 @@ def fts_query(text: str) -> str:
 
 @server.tool(
     description=(
-        "Guarda personas, proyectos, lugares o gustos nuevos en la memoria de Tama. Cada entidad "
-        "lleva name, entityType (persona, proyecto, lugar, gusto, plan) y observations (frases "
-        "cortas). Úsala cuando Renzo cuente algo duradero; si la entidad ya existe, se completa."
+        "Guarda en la memoria de Tama lo que Renzo cuente de su vida. Llámala en cada turno con un "
+        "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
+        "entidad lleva name, entityType (persona, mascota, proyecto, lugar, gusto, libro, plan) y "
+        "observations (frases cortas). Si la entidad ya existe, se completa."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
