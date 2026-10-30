@@ -118,11 +118,11 @@ def main() -> int:
         print(f"No se corren las evals: {problem}", file=sys.stderr)
         return 1
     try:
-        runner.answer(brain.cascade, [{"role": "user", "content": "hola"}])
+        runner.answer(brain.cascade, [{"role": "user", "content": "hola"}], tools=brain.tools)
         outcomes = []
         for scenario in scenarios:
             start = time.perf_counter()
-            outcome = runner.run_scenario(brain.cascade, scenario)
+            outcome = runner.run_scenario(brain.cascade, scenario, brain.tools)
             outcomes.append(outcome)
             print(
                 f"[{mode}] {scenario.id}: {outcome.capa or 'error'} "
