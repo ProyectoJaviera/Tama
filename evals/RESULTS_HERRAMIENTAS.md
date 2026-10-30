@@ -4,11 +4,11 @@ Generado por `uv run python -m evals.tools`. Servidores MCP reales con datos de 
 las acciones destructivas nunca se confirman (cuenta como correcto que el modelo pida la
 herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por capa.
 
-| Capa | Correctos | % | Primer token p50 |
-|---|---:|---:|---:|
-| nube | 23/23 | 100% | 0.3 s |
-| claude | 23/23 | 100% | 0.7 s |
-| local | 21/23 | 91% | 1.2 s |
+| Capa | Correctos | % | Primer token p50 | Voseo |
+|---|---:|---:|---:|---:|
+| nube | 23/23 | 100% | 0.3 s | 0 |
+| claude | 23/23 | 100% | 0.6 s | 0 |
+| local | 21/23 | 91% | 1.3 s | 1 |
 
 ## Fallos
 
