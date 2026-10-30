@@ -7,7 +7,7 @@ from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
 from tama.config import Settings
 from tama.events import EventStore
 from tama.mcp_hub import McpHub, load_config, server_env
-from tama.memory import session_prompt
+from tama.memory import recall_context, session_prompt
 from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
@@ -83,6 +83,9 @@ def build(
         system_prompt=session_prompt(settings.memory_dir, store),
     )
     connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s, on_offline=warmer.warm)
+    local_provider = OllamaLocalProvider(
+        local, settings.local_model, settings.num_ctx, settings.num_gpu
+    )
     layers = [
         Layer(
             cloud,
@@ -105,15 +108,13 @@ def build(
             ),
         ),
         # Sin tiempo máximo: es la última capa y cargar el modelo en CPU puede tardar.
-        Layer(
-            OllamaLocalProvider(local, settings.local_model, settings.num_ctx, settings.num_gpu),
-            None,
-            breaker(),
-        ),
+        Layer(local_provider, None, breaker()),
     ]
     if only:
         layers = [layer for layer in layers if layer.provider.name in only]
     tools = build_tools(settings, connectivity, breaker) if with_tools else None
+    if tools is not None and settings.local_auto_recall:
+        local_provider.recall = lambda text: recall_context(tools, text)
     return Brain(Cascade(layers, connectivity), store, local, connectivity, warmer, tools)
 
 

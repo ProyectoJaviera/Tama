@@ -12,7 +12,7 @@ Sprint en curso: ver `docs/sprints/` (el archivo de número más alto sin marcar
 3. **El modelo decide con herramientas.** Prohibido detectar intenciones con regex o keywords. Si el modelo usa mal una herramienta, se mejora la herramienta o su descripción.
 4. **Secretos solo en `.env`** (nunca versionado). Config con `pydantic-settings`.
 5. **Confirmación humana** antes de borrar, enviar o ejecutar algo destructivo.
-6. **Contexto corto.** En CPU cada token cuesta. Prompts bajo ~2.000 tokens; no inyectar memoria "por si acaso".
+6. **Contexto corto.** En CPU cada token cuesta. Prompts bajo ~2.000 tokens; no inyectar memoria "por si acaso". Excepción (ADR 0003): la capa local busca en la memoria por las palabras del mensaje y agrega lo hallado, hasta ~200 tokens, solo si hay coincidencias.
 7. **Sin base de datos vectorial.** Memoria = grafo de conocimiento en SQLite + Markdown.
 8. **Simple hasta que duela.** Un proceso, SQLite, archivos. Nada de microservicios sin un problema medido.
 9. **Tama corre en Docker Compose; Ollama, nativo en el host.** Un solo servicio `tama`, imágenes con versión fija (nunca `latest`), datos en volúmenes con nombre. Tama llega a Ollama por `OLLAMA_HOST` (`host.docker.internal`) sin exponer Ollama en la red. Al iniciar, chequeo de salud y mensaje claro si Ollama no responde.

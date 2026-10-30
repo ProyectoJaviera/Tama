@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     connectivity_watch_s: float = 5.0
     # Mantener el modelo local siempre cargado en RAM (útil si sobra memoria).
     local_keep_warm: bool = False
+    # La capa local busca en la memoria con las palabras del mensaje (ADR 0003).
+    local_auto_recall: bool = True
 
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True

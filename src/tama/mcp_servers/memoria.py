@@ -287,9 +287,11 @@ def add_observations(observations: list[dict[str, Any]], source: int | None = No
 
 
 @server.tool(
-    description="Busca en la memoria por palabras. Úsala cuando Renzo pregunte por algo que pudo "
-    "contarte antes (personas, proyectos, gustos, planes): no supongas. Sin resultados, dile que "
-    "no lo tienes anotado.",
+    description=(
+        "Busca lo que Renzo te contó: familia, mascotas, gustos, proyectos, fechas, planes. "
+        "Llámala siempre que pregunte algo sobre él o su vida, antes de responder; tu memoria de "
+        "sesiones anteriores solo está aquí. Si no hay resultados, dile que no tienes ese dato."
+    ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
 def search_nodes(query: str = "") -> str:

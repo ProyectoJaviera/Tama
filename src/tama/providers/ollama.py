@@ -77,6 +77,18 @@ class OllamaLocalProvider(_OllamaProvider):
         super().__init__(
             client, model, options={"num_ctx": num_ctx, "num_gpu": num_gpu}, think=False
         )
+        self.recall: Callable[[str], str] | None = None
+        """Recuerdo automático: da lo que la memoria sabe sobre el último mensaje de Renzo."""
+
+    def stream_chat(
+        self, messages: list[Message], tools: list[Tool] | None = None
+    ) -> Iterator[Event]:
+        if self.recall and messages and messages[-1]["role"] == "user":
+            found = self.recall(messages[-1]["content"])
+            if found and messages[0]["role"] == "system":
+                extended = f"{messages[0]['content']}\n\n{found}"
+                messages = [{**messages[0], "content": extended}, *messages[1:]]
+        return super().stream_chat(messages, tools)
 
 
 class OllamaCloudProvider(_OllamaProvider):
