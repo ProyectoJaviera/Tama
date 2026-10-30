@@ -63,7 +63,7 @@ Evals de memoria (`evals/RESULTS_MEMORIA.md`), con datos ficticios:
 
 ## Demo para Renzo (unos 15 minutos)
 
-Abrir PowerShell **propio** en `D:\Estudio\IA\Proyecto_Tama\Tama`, en la rama del sprint, con
+Abrir PowerShell **propio** en `D:\Estudio\IA\Proyecto_Tama\Tama-s3` (la rama del sprint), con
 Ollama encendido.
 
 1. Opcional: crear `memoria\nucleo.md` con tus datos estables (nombre, ciudad, intereses, cómo
