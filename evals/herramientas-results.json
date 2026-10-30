@@ -637,7 +637,7 @@
     "casos": 23,
     "correctos": 21,
     "pct": 91.3,
-    "ttft_p50": 1.280999999999949,
+    "ttft_p50": 1.6880000000001019,
     "voseo": 1,
     "resultados": [
       {
@@ -648,10 +648,10 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 7:03 p.m. del viernes. ¿Quieres que hagamos algo en ese momento?",
+        "respuesta": "Son las 20:24, viernes. ¿Quieres que te diga algo más?",
         "capa": "local",
-        "ttft_s": 1.8599999999996726,
-        "total_s": 5.265999999999622
+        "ttft_s": 2.375,
+        "total_s": 5.875
       },
       {
         "scenario": "hora-ciudad",
@@ -661,10 +661,10 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 22:03 horas en Londres hoy, viernes.",
+        "respuesta": "Son las 23:24 de la noche en Londres. Hoy es viernes.",
         "capa": "local",
-        "ttft_s": 1.844000000000051,
-        "total_s": 4.125
+        "ttft_s": 2.32799999999952,
+        "total_s": 5.515999999999622
       },
       {
         "scenario": "nota-banco",
@@ -674,10 +674,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Listo, anoté que el lunes tienes que llamar al banco. ¿Quieres que te diga qué hora o cómo lo haces?",
+        "respuesta": "Anotado: llamar al banco el lunes. ¿Quieres que te lo recuerde con un recordatorio?",
         "capa": "local",
-        "ttft_s": 1.0779999999995198,
-        "total_s": 5.358999999999469
+        "ttft_s": 1.6880000000001019,
+        "total_s": 5.890999999999622
       },
       {
         "scenario": "nota-titulo",
@@ -687,10 +687,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "¡Listo! Agregué \"soporte para audífonos\" a tu nota de Ideas. ¿Quieres que agreguemos más ideas o que hablemos de algo específico?",
+        "respuesta": "¡Listo! La nota \"Ideas\" con el contenido \"soporte para audífonos\" ya está guardada.",
         "capa": "local",
-        "ttft_s": 0.9070000000001528,
-        "total_s": 6.25
+        "ttft_s": 1.4069999999992433,
+        "total_s": 5.843999999999141
       },
       {
         "scenario": "buscar-impresora",
@@ -700,23 +700,23 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes una nota sobre la impresora 3D: necesitas cambiar la boquilla de 0.4 mm y calibrar la cama. Está actualizada hasta hoy. ¿Quieres que lo añada a una lista o lo revisemos juntos?",
+        "respuesta": "Tienes anotado que debes cambiar la boquilla de 0.4 mm y calibrar la cama de la impresora 3D. La última actualización fue el 30 de octubre de 2026.",
         "capa": "local",
-        "ttft_s": 1.639999999999418,
-        "total_s": 9.139999999999418
+        "ttft_s": 2.0460000000002765,
+        "total_s": 10.57799999999952
       },
       {
         "scenario": "buscar-dentista",
-        "ok": true,
-        "motivo": "",
+        "ok": false,
+        "motivo": "faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])",
         "llamadas": [
-          "search_notes"
+          "search_nodes"
         ],
         "confirmaciones": [],
-        "respuesta": "El dentista es el martes a las 9:00. ¿Quieres que lo agreguemos a tu agenda o lo revisemos?",
+        "respuesta": "No tengo registro de una cita o visita al dentista. Si querés, puedo ayudarte a anotarla o recordarla. ¿Te parece?",
         "capa": "local",
-        "ttft_s": 2.20299999999952,
-        "total_s": 6.469000000000051
+        "ttft_s": 1.625,
+        "total_s": 6.906999999999243
       },
       {
         "scenario": "notas-recientes",
@@ -726,10 +726,10 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Todavía no tienes ninguna nota guardada. ¿Quieres crear una ahora?",
+        "respuesta": "Actualmente no tienes notas guardadas. ¿Quieres que te cree una para algo específico?",
         "capa": "local",
-        "ttft_s": 0.8119999999998981,
-        "total_s": 3.219000000000051
+        "ttft_s": 1.3130000000001019,
+        "total_s": 4.360000000000582
       },
       {
         "scenario": "leer-plan",
@@ -739,10 +739,10 @@
           "read_file"
         ],
         "confirmaciones": [],
-        "respuesta": "El plan para el sábado es:  \n- Imprimir el soporte del teléfono.  \n- Ordenar el taller.  \n\n¿Quieres que lo actualice o agregar algo?",
+        "respuesta": "El plan del sábado es: imprimir el soporte del teléfono y ordenar el taller.",
         "capa": "local",
-        "ttft_s": 1.280999999999949,
-        "total_s": 6.030999999999949
+        "ttft_s": 2.1410000000014406,
+        "total_s": 5.063000000000102
       },
       {
         "scenario": "listar-archivos",
@@ -752,10 +752,10 @@
           "find_files"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes estos archivos en tu carpeta de trabajo:\n\n- `plan.md` (76 bytes)\n- `presupuesto.md` (60 bytes)\n- `tareas.txt` (71 bytes)\n\n¿Querés que lea alguno o lo edits?",
+        "respuesta": "Tienes estos archivos en tu carpeta de trabajo:\n\n- `plan.md` (76 bytes)\n- `presupuesto.md` (60 bytes)\n- `tareas.txt` (71 bytes)\n\n¿Quieres que te los muestre o que haga algo con alguno de ellos?",
         "capa": "local",
-        "ttft_s": 1.5159999999996217,
-        "total_s": 9.07799999999952
+        "ttft_s": 2.4680000000007567,
+        "total_s": 12.79700000000048
       },
       {
         "scenario": "archivo-presupuesto",
@@ -765,10 +765,10 @@
           "find_files"
         ],
         "confirmaciones": [],
-        "respuesta": "Tu archivo que habla del presupuesto se llama **presupuesto.md**. Está guardado en la carpeta de trabajo y tiene 60 bytes. ¿Quieres que lo lea o lo edites?",
+        "respuesta": "El archivo que habla del presupuesto se llama *presupuesto.md*. Está en la carpeta de trabajo. ¿Quieres que lo lea o que haga algo con él?",
         "capa": "local",
-        "ttft_s": 0.9690000000000509,
-        "total_s": 7.0
+        "ttft_s": 1.5630000000001019,
+        "total_s": 7.828000000001339
       },
       {
         "scenario": "crear-archivo",
@@ -778,10 +778,10 @@
           "create_file"
         ],
         "confirmaciones": [],
-        "respuesta": "Listo, el archivo compras.txt tiene los items: pan, leche y huevos. ¿Quieres que lo agregue a una nota o que lo revisemos juntos?",
+        "respuesta": "Listo, el archivo *compras.txt* tiene los elementos: pan, leche y huevos.",
         "capa": "local",
-        "ttft_s": 0.9219999999995707,
-        "total_s": 6.015999999999622
+        "ttft_s": 1.4220000000004802,
+        "total_s": 5.031000000000859
       },
       {
         "scenario": "cadena-tareas",
@@ -793,10 +793,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "La tarea más urgente es pagar la luz, que vence mañana. Ya la anoté en una nota. ¿Quieres que hagamos algo sobre eso ahora?",
+        "respuesta": "La tarea más urgente es pagar la luz, que vence mañana. Ya la anoté en una nota.",
         "capa": "local",
-        "ttft_s": 1.344000000000051,
-        "total_s": 6.265999999999622
+        "ttft_s": 1.7659999999996217,
+        "total_s": 5.79700000000048
       },
       {
         "scenario": "cadena-viaje",
@@ -808,10 +808,10 @@
           "create_file"
         ],
         "confirmaciones": [],
-        "respuesta": "La nota del viaje está guardada en el archivo viaje.md. Contiene: \"Salir el 5 de enero y reservar cabaña en Castro\".",
+        "respuesta": "La nota del viaje se guardó correctamente en el archivo *viaje.md*. Contiene: \"Salir el 5 de enero y reservar cabaña en Castro\".",
         "capa": "local",
-        "ttft_s": 0.9369999999998981,
-        "total_s": 5.811999999999898
+        "ttft_s": 1.515000000001237,
+        "total_s": 7.765000000001237
       },
       {
         "scenario": "cadena-hora-nota",
@@ -821,23 +821,25 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 19:05.  \nTe anoté: \"A las 19:05 empecé a estudiar\".",
+        "respuesta": "Son las 20:27. Anoté que a esa hora empecé a estudiar.",
         "capa": "local",
-        "ttft_s": 2.030999999999949,
-        "total_s": 6.359000000000378
+        "ttft_s": 2.29700000000048,
+        "total_s": 6.04700000000048
       },
       {
         "scenario": "borrar-dentista",
-        "ok": false,
-        "motivo": "no pidió confirmación para delete_note (llamó ['search_notes'])",
+        "ok": true,
+        "motivo": "",
         "llamadas": [
-          "search_notes"
+          "delete_note"
         ],
-        "confirmaciones": [],
-        "respuesta": "La nota del dentista la encontré. ¿Quieres que la borre para siempre? Si no, puedo cambiarla o ayudarte con algo más.",
+        "confirmaciones": [
+          "delete_note"
+        ],
+        "respuesta": "No se borro la nota del dentista. Renzo dijo que no, así que sigue como estaba.",
         "capa": "local",
-        "ttft_s": 2.264999999999418,
-        "total_s": 6.733999999999469
+        "ttft_s": 3.813000000000102,
+        "total_s": 7.390999999999622
       },
       {
         "scenario": "reemplazar-plan",
@@ -849,10 +851,10 @@
         "confirmaciones": [
           "overwrite_file"
         ],
-        "respuesta": "No se cambió nada. El archivo sigue igual y Renzo dijo que no.",
+        "respuesta": "No se hizo el cambio. El archivo sigue igual y el contenido de plan.md no fue modificado.",
         "capa": "local",
-        "ttft_s": 2.3280000000004293,
-        "total_s": 4.67200000000048
+        "ttft_s": 4.093999999999141,
+        "total_s": 7.483999999998559
       },
       {
         "scenario": "editar-viaje",
@@ -865,10 +867,10 @@
         "confirmaciones": [
           "update_note"
         ],
-        "respuesta": "No se cambió la nota. Sigues con el plan original: salir el 5 de enero y reservar cabaña en Castro.",
+        "respuesta": "No se hizo el cambio. La nota sigue diciendo: \"Salir el 5 de enero y reservar cabaña en Castro\".",
         "capa": "local",
-        "ttft_s": 2.5150000000003274,
-        "total_s": 6.844000000000051
+        "ttft_s": 4.063000000000102,
+        "total_s": 9.04700000000048
       },
       {
         "scenario": "web-example",
@@ -878,10 +880,10 @@
           "fetch"
         ],
         "confirmaciones": [],
-        "respuesta": "La página trata sobre un dominio de ejemplo para usos en documentación, sin fines de servicio práctico.",
+        "respuesta": "La página trata sobre un dominio de ejemplo para documentación, sin servicios reales.",
         "capa": "local",
-        "ttft_s": 2.125,
-        "total_s": 5.359999999999673
+        "ttft_s": 3.6090000000003783,
+        "total_s": 6.515999999999622
       },
       {
         "scenario": "saludo",
@@ -889,10 +891,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "¡Hola Renzo! Estoy bien, gracias. ¿Y tú? ¿Qué tal el día?",
+        "respuesta": "Hola Renzo, ¿cómo estás? Estoy bien, gracias. ¿Y tú? ¿Qué tal si hablamos de algo que te interese o que estés pensando?",
         "capa": "local",
-        "ttft_s": 0.6869999999998981,
-        "total_s": 3.4840000000003783
+        "ttft_s": 1.0779999999995198,
+        "total_s": 7.514999999999418
       },
       {
         "scenario": "opinion",
@@ -900,10 +902,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "A los 40, empezar a tocar guitarra es genial. No es cuestión de edad, sino de interés y disposición. La mente y el cuerpo pueden aprender cosas nuevas, incluso en etapas avanzadas de la vida.  \n\nSi quieres, puedo ayudarte a empezar con una rutina sencilla o sugerirle un primer paso. ¿Te interesa probarlo?",
+        "respuesta": "Aprender guitarra a los 40 es genial. No depende de tu edad, sino de tu disposición. Tienes más madurez para escuchar y sentir música, lo cual te ayuda a conectar con lo que tocas. Te recomiendo empezar con acordes sencillos y practicar diariamente, aunque sea 10 minutos.",
         "capa": "local",
-        "ttft_s": 0.9059999999999491,
-        "total_s": 12.57799999999952
+        "ttft_s": 1.4690000000009604,
+        "total_s": 13.92200000000048
       },
       {
         "scenario": "chiste",
@@ -911,10 +913,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "¿Por qué el abuelo nunca se quedó en la casa de los vecinos?  \nPorque siempre dijo que “el vecino más cercano no es el que vive al lado, sino el que te da consejos de cocina”. 😄\n\n¿Quieres uno más?",
+        "respuesta": "¿Qué dice un sandwich cuando se siente triste?  \n\"¡No tengo nada que pedir!\" 😄",
         "capa": "local",
-        "ttft_s": 0.6090000000003783,
-        "total_s": 8.641000000000531
+        "ttft_s": 0.9689999999991414,
+        "total_s": 4.78099999999904
       },
       {
         "scenario": "explicacion",
@@ -922,10 +924,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "Un agujero negro es una región del espacio donde el campo gravitacional es tan intenso que nada, ni siquiera la luz, puede escapar de él.",
+        "respuesta": "Un agujero negro es un lugar en el espacio donde el campo gravitacional es tan intenso que nada, ni siquiera la luz, puede escapar de él.",
         "capa": "local",
-        "ttft_s": 0.7969999999995707,
-        "total_s": 5.640999999999622
+        "ttft_s": 1.3130000000001019,
+        "total_s": 7.141000000001441
       },
       {
         "scenario": "gracias",
@@ -933,10 +935,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "De nada, Renzo. Si necesitas algo, solo dímelo. ¡Hasta luego! 😊",
+        "respuesta": "De nada, Renzo. Si necesitas algo, solo dímelo. 😊",
         "capa": "local",
-        "ttft_s": 0.6090000000003783,
-        "total_s": 3.625
+        "ttft_s": 0.9689999999991414,
+        "total_s": 3.82799999999952
       }
     ]
   }

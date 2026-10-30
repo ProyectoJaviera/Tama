@@ -8,9 +8,9 @@ herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por
 |---|---:|---:|---:|---:|
 | nube | 23/23 | 100% | 0.4 s | 0 |
 | claude | 23/23 | 100% | 0.6 s | 0 |
-| local | 21/23 | 91% | 1.3 s | 1 |
+| local | 21/23 | 91% | 1.7 s | 1 |
 
 ## Fallos
 
+- `local` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
 - `local` · cadena-hora-nota: faltó create_note {'*': 'estudi'} (llamó ['get_current_time'])
-- `local` · borrar-dentista: no pidió confirmación para delete_note (llamó ['search_notes'])

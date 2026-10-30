@@ -1,6 +1,6 @@
 # Sprint 3: Memoria
 
-Estado: en curso
+Estado: listo para la demo (2026-10-30)
 
 ## Objetivo
 Tama recuerda a Renzo entre sesiones: un perfil corto siempre presente, un grafo de conocimiento con fechas y la consulta de lo conversado recientemente. Sin base de datos vectorial.
@@ -36,8 +36,26 @@ Reflexión en inactividad, diario, objetivos (goals) y unificación de entidades
 - Docker: memoria.db y nucleo.md en volúmenes.
 - Demo de Renzo.
 
-## Verificación (en curso)
+## Verificación (2026-10-30)
 
+Evals de memoria (`evals/RESULTS_MEMORIA.md`), con datos ficticios:
+
+| Capa | Hechos | Negativos | Entidades | Duplicadas | Tokens de prompt (máx) |
+|---|---:|---:|---:|---:|---:|
+| nube | 10/10 | 3/3 | 12 | 1 | 2.038 |
+| claude | 10/10 | 3/3 | 11 | 0 | 4.251 |
+| local | 9/10 | 3/3 | 10 | 0 | 2.578 |
+| local sin red | 9/10 | 3/3 | 10 | 0 | 2.415 |
+
+- Sin invenciones en los casos negativos. Meta de 9/10 cumplida en todas las capas.
+- Tokens de prompt: la nube está en ~2.000. Local supera la meta (~2.400-2.600) por las 17
+  herramientas y el recuerdo automático. El conteo de Claude incluye su costo interno por
+  herramientas. Queda como pendiente recortar descripciones si el contexto molesta en local.
+- La capa local casi no llama a `search_nodes` por sí sola: ADR 0003 agrega una búsqueda automática
+  solo en esa capa (recuerdo sin ella: 2/10; con ella: 9/10).
+- Guardar las llamadas a herramientas en el historial subió el guardado: sin eso, los modelos
+  dejaban de guardar a mitad de la conversación.
+- Sin regresión: herramientas nube 100%, Claude 100%, local 91%; conversación con red 20/20.
 - Docker: un hecho guardado en un contenedor se recordó en otro contenedor nuevo; `memoria.db`
   queda en el volumen `tama-data` y el perfil en `tama-memoria`.
 - Sin datos personales en el repo: las evals usan datos ficticios, y `memoria/`, `data/` y `*.db`
