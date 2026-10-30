@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     num_gpu: int = 0
     timeout: float = 300.0
     data_dir: Path = Path("data")
+    # Perfil (`nucleo.md`) y export del grafo; datos personales, nunca en el repo público.
+    memory_dir: Path = Path("memoria")
 
     # Capa 1: nube de Ollama.
     ollama_api_key: SecretStr | None = Field(
@@ -61,7 +63,8 @@ class Settings(BaseSettings):
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
-    tools_max: int = 10
+    # El benchmark del ADR 0002 mide 100% con 20 herramientas en la nube; subirlo cuesta tokens.
+    tools_max: int = 17
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000

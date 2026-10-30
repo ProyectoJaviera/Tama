@@ -4,11 +4,12 @@ import argparse
 import os
 import sys
 
-from tama import agent, history, prompts
+from tama import agent, history
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.config import Settings, get_settings
+from tama.memory import session_prompt
 from tama.ollama import OllamaClient, OllamaError
 from tama.providers import Error, Message, Text, ToolCall
 
@@ -117,6 +118,39 @@ def reply(
     return None
 
 
+def show_memory(brain: Brain) -> None:
+    if brain.tools is None:
+        print(dim("  sin memoria: los servidores MCP no están activos"))
+        return
+    print(dim(brain.tools.call("search_nodes", {"query": ""}).text))
+
+
+def forget(brain: Brain, entity: str) -> None:
+    """Borra una entidad de la memoria, siempre con confirmación."""
+    if brain.tools is None or not entity:
+        print(dim("  uso: /olvidar <entidad>"))
+        return
+    try:
+        answer = input(f"¿Olvido todo lo que sé sobre {entity}? (s/n) ")
+    except EOFError:
+        answer = "n"
+    if answer.strip().lower() not in {"s", "si", "sí"}:
+        print(dim("  no se borró nada"))
+        return
+    print(dim(brain.tools.call("delete_entities", {"entityNames": [entity]}).text))
+
+
+def export_memory(settings: Settings) -> int:
+    """`tama memoria export`: vuelca el grafo a memoria/grafo.jsonl."""
+    os.environ["TAMA_DATA_DIR"] = str(settings.data_dir)
+    from tama.mcp_servers import memoria
+
+    target = settings.memory_dir / "grafo.jsonl"
+    count = memoria.export_graph(target)
+    print(f"{count} entidades exportadas a {target}")
+    return 0
+
+
 def print_tools(brain: Brain) -> None:
     if brain.tools is None:
         print(dim("  sin herramientas configuradas"))
@@ -129,7 +163,9 @@ def turn(
     brain: Brain, messages: list[Message], text: str, max_tokens: int, max_tools: int = 10
 ) -> bool:
     messages.append({"role": "user", "content": text})
-    brain.store.log("user_msg", text)
+    event_id = brain.store.log("user_msg", text)
+    if brain.tools is not None:
+        brain.tools.current_event = event_id
     answer = reply(brain, messages, max_tokens, max_tools)
     if answer is None:
         messages.pop()
@@ -144,12 +180,13 @@ def chat_loop(
     max_tokens: int,
     watch_s: float = 0.0,
     keep_warm: bool = False,
+    max_tools: int = 10,
 ) -> None:
-    print("Tama. /proveedor muestra las capas, /herramientas las herramientas y /salir termina.")
+    print("Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <entidad> y /salir.")
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(
-            brain.tools, history.trim(messages, max_tokens)
+            brain.tools, history.trim(messages, max_tokens), max_tools
         )
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)
@@ -167,8 +204,14 @@ def chat_loop(
         if text.lower() == "/herramientas":
             print_tools(brain)
             continue
+        if text.lower() == "/memoria":
+            show_memory(brain)
+            continue
+        if text.lower().startswith("/olvidar"):
+            forget(brain, text[len("/olvidar") :].strip())
+            continue
         if text:
-            turn(brain, messages, text, max_tokens)
+            turn(brain, messages, text, max_tokens, max_tools)
 
 
 def main(
@@ -178,8 +221,11 @@ def main(
         sys.stdout.reconfigure(encoding="utf-8")
     args = build_parser().parse_args(argv)
     settings = settings or get_settings()
+    if args.mensaje[:2] == ["memoria", "export"]:
+        return export_memory(settings)
     brain = brain or brain_module.build(settings)
-    messages: list[Message] = [{"role": "system", "content": prompts.identity()}]
+    system = session_prompt(settings.memory_dir, brain.store)
+    messages: list[Message] = [{"role": "system", "content": system}]
     try:
         problem = health_check(brain.local, settings.ollama_host, settings.local_model)
         if args.check:
@@ -197,7 +243,13 @@ def main(
         if args.mensaje:
             return (
                 0
-                if turn(brain, messages, " ".join(args.mensaje), settings.history_max_tokens)
+                if turn(
+                    brain,
+                    messages,
+                    " ".join(args.mensaje),
+                    settings.history_max_tokens,
+                    settings.tools_max,
+                )
                 else 1
             )
         chat_loop(
@@ -206,6 +258,7 @@ def main(
             settings.history_max_tokens,
             settings.connectivity_watch_s,
             settings.local_keep_warm,
+            settings.tools_max,
         )
         return 0
     except KeyboardInterrupt:

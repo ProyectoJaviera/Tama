@@ -3,11 +3,11 @@
 import threading
 from dataclasses import dataclass, field
 
-from tama import prompts
 from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
 from tama.config import Settings
 from tama.events import EventStore
 from tama.mcp_hub import McpHub, load_config, server_env
+from tama.memory import session_prompt
 from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
@@ -80,7 +80,7 @@ def build(
         local,
         settings.local_model,
         {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu},
-        system_prompt=prompts.identity(),
+        system_prompt=session_prompt(settings.memory_dir, store),
     )
     connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s, on_offline=warmer.warm)
     layers = [
@@ -124,7 +124,7 @@ def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpH
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     hub = McpHub(
         load_config(settings.mcp_config),
-        server_env(settings.data_dir, settings.workdir),
+        server_env(settings.data_dir, settings.workdir, settings.memory_dir),
         online=connectivity.online,
         start_timeout_s=settings.tool_start_timeout_s,
         call_timeout_s=settings.tool_timeout_s,
