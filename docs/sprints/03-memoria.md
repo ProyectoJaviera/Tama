@@ -35,3 +35,10 @@ Reflexión en inactividad, diario, objetivos (goals) y unificación de entidades
 - Prompt de la sesión bajo ~2.000 tokens con perfil y recuerdo incluidos.
 - Docker: memoria.db y nucleo.md en volúmenes.
 - Demo de Renzo.
+
+## Verificación (en curso)
+
+- Docker: un hecho guardado en un contenedor se recordó en otro contenedor nuevo; `memoria.db`
+  queda en el volumen `tama-data` y el perfil en `tama-memoria`.
+- Sin datos personales en el repo: las evals usan datos ficticios, y `memoria/`, `data/` y `*.db`
+  están en `.gitignore`.
