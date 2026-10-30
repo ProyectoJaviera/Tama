@@ -7,6 +7,9 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "anthropic>=2.3,<3",
     "httpx>=0.28,<0.29",
+    "mcp>=2.3,<3",
+    "mcp-server-fetch==2026.10.28",
+    "mcp-server-time==2026.10.28",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6,<3",
     "pyyaml>=6.0,<7",
