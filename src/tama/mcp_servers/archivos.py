@@ -5,7 +5,7 @@ Se lanza por stdio: `python -m tama.mcp_servers.archivos`. Ninguna ruta puede sa
 
 import fnmatch
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
@@ -31,7 +31,9 @@ def safe_path(relative: str) -> Path:
     """Resuelve `relative` dentro de la carpeta de trabajo; falla si sale de ella."""
     root = workdir()
     candidate = Path(relative.strip() or ".")
-    if candidate.is_absolute() or candidate.drive or candidate.root:
+    # Rutas absolutas o con unidad (C:\, \\servidor) se rechazan igual en Windows y en Linux.
+    windows, posix = PureWindowsPath(relative.strip()), PurePosixPath(relative.strip())
+    if windows.drive or windows.root or posix.is_absolute() or candidate.is_absolute():
         raise OutsideWorkdir(
             f"Solo se permiten rutas relativas a la carpeta de trabajo: {relative}"
         )
