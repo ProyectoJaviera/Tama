@@ -1,6 +1,6 @@
 # Sprint 2: Herramientas (MCP locales)
 
-Estado: en curso (desde 2026-10-30)
+Estado: cerrado (2026-10-30, demo aprobada por Renzo con cuatro correcciones)
 
 ## Objetivo
 Tama usa herramientas reales mediante servidores MCP locales, instalados una sola vez y con versión fija. Si un servidor falla, Tama sigue conversando. La capa nube se valida con muchas herramientas a la vez y se cambia de modelo si no cumple.
@@ -43,9 +43,11 @@ Memoria y grafo (S3), interfaz web (S5) y voz.
 - Benchmark de herramientas de la capa nube (`bench/TOOLS_RESULTS.md`, ADR 0002):
   `gemma4:31b-cloud` 100% con 5, 10 y 20 herramientas y 93% con 40; se mantiene.
 - Evals de herramientas, 23 escenarios con los servidores reales (`evals/RESULTS_HERRAMIENTAS.md`):
-  nube 100%, Claude 100%, local LOCAL_TOOLS.
+  nube 100%, Claude 100% y local 91% (21/23), con 2 fallos: una cadena hora + nota y un borrado que
+  buscó la nota pero no pidió borrarla. Incluye que, tras rechazar una acción, la respuesta deje
+  claro que no se hizo.
 - Evals de conversación tras los cambios de identidad, ya con herramientas (`evals/RESULTS.md`):
-  con red 19/20 (media 4,9), sin red LOCAL_CONV. El escenario "café o té" varía entre corridas
+  con red 19/20 (media 4,9), sin red 18/20 (media 4,9; 1 fallo y 1 error del juez). El escenario "café o té" varía entre corridas
   (a veces no aclara que es una IA).
 - Sin red y con el servidor de notas apagado: Tama siguió conversando en local, usó la hora y
   los archivos, y dijo que las notas y la web no estaban disponibles.
@@ -58,6 +60,10 @@ Memoria y grafo (S3), interfaz web (S5) y voz.
   archivo de `./trabajo` del host montado en `/trabajo`.
 - Reinstalación sin red: entorno nuevo, sin caché ni índice, solo con `vendor/wheels`
   (72 wheels, Windows y Linux).
+
+- Demo de Renzo (2026-10-30): aprobada con cuatro correcciones, ya aplicadas: mensaje claro al
+  rechazar una acción, símbolos compatibles con la consola de Windows, precarga con el prefijo
+  real y tuteo. El voseo bajó a 3 apariciones en todas las respuestas locales; puede reaparecer.
 
 ## Demo para Renzo (unos 10 minutos)
 
