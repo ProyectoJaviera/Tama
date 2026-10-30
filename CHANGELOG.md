@@ -10,8 +10,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   con chequeo de salud y cortacircuitos por servidor, bucle de herramientas de hasta 5 pasos,
   confirmación (s/n) antes de borrar o reemplazar, `/herramientas` y máximo 10 herramientas
   por turno.
-- Precarga del modelo local (con la identidad ya procesada) al detectar un corte de red; opción
-  `TAMA_LOCAL_KEEP_WARM` para mantenerlo en RAM.
+- Precarga del modelo local al detectar un corte de red, con el mismo prefijo del próximo turno
+  (identidad, herramientas y conversación); opción `TAMA_LOCAL_KEEP_WARM` para mantenerlo en RAM.
 - `scripts/vendor.py`: wheels fijadas en `vendor/` para reinstalar sin red.
 - Benchmark de herramientas de modelos cloud (`bench/tools_bench.py`) y ADR 0002.
 - Evals de herramientas (`python -m evals.tools`), 23 escenarios por capa.

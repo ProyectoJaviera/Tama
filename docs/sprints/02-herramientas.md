@@ -49,8 +49,11 @@ Memoria y grafo (S3), interfaz web (S5) y voz.
   (a veces no aclara que es una IA).
 - Sin red y con el servidor de notas apagado: Tama siguió conversando en local, usó la hora y
   los archivos, y dijo que las notas y la web no estaban disponibles.
-- Precarga: tras un corte de red simulado, la primera respuesta local empezó en 2,2 s (antes,
-  13,3 s); la precarga deja procesada la identidad y tarda unos 9 s en segundo plano.
+- Precarga: en la demo, la primera respuesta local tras el corte tardó 17,8 s porque la precarga
+  no incluía las herramientas ni la conversación. Corregido: ahora envía el mismo prefijo del
+  próximo turno. Medido con conversación y herramientas reales y corte simulado: corte detectado
+  en 1,3 s, primer token local en 0,69 s (criterio: menos de 3 s). La precarga completa tarda
+  unos 34 s en segundo plano: un mensaje enviado antes de que termine debe esperarla.
 - Docker: los 4 servidores corren dentro del contenedor; el servidor de archivos leyó un
   archivo de `./trabajo` del host montado en `/trabajo`.
 - Reinstalación sin red: entorno nuevo, sin caché ni índice, solo con `vendor/wheels`
@@ -69,6 +72,6 @@ Abrir PowerShell **propio** en `D:\Estudio\IA\Proyecto_Tama\Tama`, con Ollama en
    - Copiar un archivo de texto a `data\trabajo` y pedir "Lee el archivo <nombre>".
    - "Borra esa nota" → pide confirmación (s/n). Responder `n`: no se borra.
    - `/herramientas` muestra el estado de cada servidor.
-3. Cortar la red y esperar unos 10 s (la precarga trabaja en segundo plano). Preguntar algo:
+3. Cortar la red y esperar unos 40 s (la precarga trabaja en segundo plano). Preguntar algo:
    responde `local` en pocos segundos. "Lee https://example.com" → dice que no hay internet.
 4. Reconectar la red y `/salir`.
