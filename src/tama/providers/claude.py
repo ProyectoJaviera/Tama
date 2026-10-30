@@ -65,7 +65,7 @@ class ClaudeProvider:
                 return
             for block in final.content:
                 if block.type == "tool_use" and final.stop_reason != "max_tokens":
-                    yield ToolCall(block.name, dict(block.input))
+                    yield ToolCall(block.name, dict(block.input), block.id)
             yield Done(final.usage.input_tokens, final.usage.output_tokens)
         except anthropic.APIError as exc:
             yield Error(f"Claude: {exc}")
@@ -75,13 +75,42 @@ class ClaudeProvider:
 
 
 def to_claude_messages(messages: list[Message]) -> tuple[str, list[dict[str, Any]]]:
-    """Separa los mensajes de sistema (van aparte en la API de Claude) del resto del diálogo."""
+    """Del formato común al de Claude.
+
+    Los mensajes de sistema van aparte; las llamadas a herramientas pasan a bloques `tool_use` y
+    sus resultados (rol "tool") a bloques `tool_result` dentro de un turno del usuario.
+    """
     system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
-    turns = [
-        {"role": m["role"], "content": m["content"]}
-        for m in messages
-        if m["role"] in ("user", "assistant")
-    ]
+    turns: list[dict[str, Any]] = []
+    for m in messages:
+        if m["role"] == "tool":
+            block = {
+                "type": "tool_result",
+                "tool_use_id": m.get("tool_call_id", ""),
+                "content": m["content"],
+            }
+            last = turns[-1] if turns else None
+            if last and last["role"] == "user" and isinstance(last["content"], list):
+                last["content"].append(block)  # todos los resultados en un solo turno
+            else:
+                turns.append({"role": "user", "content": [block]})
+        elif m["role"] == "assistant" and m.get("tool_calls"):
+            blocks: list[dict[str, Any]] = []
+            if m.get("content"):
+                blocks.append({"type": "text", "text": m["content"]})
+            for call in m["tool_calls"]:
+                fn = call["function"]
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": call.get("id", ""),
+                        "name": fn["name"],
+                        "input": fn.get("arguments") or {},
+                    }
+                )
+            turns.append({"role": "assistant", "content": blocks})
+        elif m["role"] in ("user", "assistant"):
+            turns.append({"role": m["role"], "content": m["content"]})
     while turns and turns[0]["role"] != "user":
         turns.pop(0)  # la API exige que el primer turno sea del usuario
     return system, turns

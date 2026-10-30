@@ -118,11 +118,11 @@ def main() -> int:
         print(f"No se corren las evals: {problem}", file=sys.stderr)
         return 1
     try:
-        runner.answer(brain.cascade, [{"role": "user", "content": "hola"}])
+        runner.answer(brain.cascade, [{"role": "user", "content": "hola"}], tools=brain.tools)
         outcomes = []
         for scenario in scenarios:
             start = time.perf_counter()
-            outcome = runner.run_scenario(brain.cascade, scenario)
+            outcome = runner.run_scenario(brain.cascade, scenario, brain.tools)
             outcomes.append(outcome)
             print(
                 f"[{mode}] {scenario.id}: {outcome.capa or 'error'} "
@@ -147,6 +147,11 @@ def main() -> int:
             close()
         judge_name = ", ".join(used) or "ninguno"
 
+    if args.solo and (runner.EVALS_DIR / f"results-{mode}.json").exists():
+        # Con --solo se reemplazan solo esos escenarios en los resultados guardados.
+        _, previous = runner.load_mode(mode)
+        fresh = {o.scenario: o for o in outcomes}
+        outcomes = [fresh.pop(o.scenario, o) for o in previous] + list(fresh.values())
     runner.save_mode(mode, judge_name, outcomes)
     (runner.EVALS_DIR / "RESULTS.md").write_text(runner.render_report(), encoding="utf-8")
     print(runner.render_report())

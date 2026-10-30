@@ -110,3 +110,10 @@ def test_judge_json_is_parsed_even_inside_code_fences(text):
 def test_judge_text_without_json_is_an_error():
     with pytest.raises(ValueError):
         runner.parse_json_object("no sé")
+
+
+def test_report_ignores_other_result_formats(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "EVALS_DIR", tmp_path)
+    (tmp_path / "results-otra-cosa.json").write_text('{"local": {}}', encoding="utf-8")
+    runner.save_mode("online", "j", [runner.Outcome("a", "x", "nube", "m", 0.4, 1.0)])
+    assert "Con red (cascada completa)" in runner.render_report()

@@ -1,0 +1,6 @@
+id: crear-archivo
+mensaje: "Crea un archivo compras.txt con: pan, leche y huevos"
+espera:
+  - herramienta: create_file
+    argumentos:
+      "path": "compras.txt"

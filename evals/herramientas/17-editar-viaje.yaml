@@ -1,0 +1,6 @@
+id: editar-viaje
+mensaje: "Cambia la nota del viaje para que diga: salir el 10 de enero"
+espera:
+  - herramienta: update_note
+destructiva: true
+rechazo: true

@@ -58,7 +58,7 @@ docker compose build
 
 ```powershell
 docker compose run --rm tama "hola"        # un mensaje, respuesta en streaming
-docker compose run --rm tama               # chat; /proveedor muestra las capas, /salir termina
+docker compose run --rm tama               # chat; /proveedor, /herramientas, /salir
 docker compose up -d; docker attach tama   # Tama siempre encendido (se reinicia solo)
 docker compose run --rm tama --check       # chequeo de salud
 ```
@@ -78,14 +78,37 @@ Tama prueba tres capas en orden y usa la primera que responda:
 
 Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
 completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
-fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar.
+fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar. Durante el chat revisa la red en
+segundo plano y, al detectar un corte, precarga el modelo local para que la primera respuesta
+sin red no espere la carga.
 Sin claves y sin sesión de Ollama, todo funciona igual con la capa local.
 
 Ollama debe estar encendido en el host (la app de Ollama se inicia con Windows; si no,
 `ollama serve`). No hace falta exponer Ollama en la red: el contenedor lo alcanza aunque Ollama
 escuche solo en `127.0.0.1`.
 
+### Herramientas (servidores MCP locales)
+
+Tama usa herramientas reales mediante servidores MCP que corren en el mismo PC (o dentro del
+contenedor), definidos en `config/mcp.toml`:
+
+| Servidor | Herramientas | Notas |
+|---|---|---|
+| tiempo | `get_current_time` | Oficial `mcp-server-time`, zona America/Santiago |
+| notas | `create_note`, `search_notes`, `update_note`, `delete_note` | SQLite con búsqueda de texto (`data/notas.db`) |
+| archivos | `find_files`, `read_file`, `create_file`, `overwrite_file` | Solo dentro de la carpeta de trabajo (`TAMA_WORKDIR`) |
+| web | `fetch` | Oficial `mcp-server-fetch`; solo con internet |
+
+- Borrar o reemplazar (`update_note`, `delete_note`, `overwrite_file`) **siempre pide
+  confirmación (s/n)** antes de ejecutarse.
+- Si un servidor falla, sus herramientas desaparecen y Tama sigue conversando con las demás;
+  tres fallos seguidos lo dejan fuera 5 minutos. `/herramientas` muestra el estado.
+- En Docker, la carpeta de trabajo es `./trabajo` del host (cambiar con `TAMA_WORKDIR_HOST`).
+
 ## Instalación sin internet (en otra máquina)
+
+Las dependencias de Python (incluidos los servidores MCP) también se pueden reinstalar sin red:
+`uv run python scripts/vendor.py --docker` deja las wheels en `vendor/wheels` (ver el script).
 
 En una máquina con internet:
 
@@ -129,6 +152,11 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |
 | `TAMA_*_FIRST_TOKEN_S` | `8` | Tiempo máximo hasta el primer token (nube y Claude) |
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
+| `TAMA_CONNECTIVITY_WATCH_S` | `5` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
+| `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
+| `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
+| `TAMA_TOOLS_MAX` | `10` | Máximo de herramientas visibles por turno |
+| `TAMA_MCP_ENABLED` | `true` | Activa los servidores MCP |
 
 La lista completa, con comentarios, está en `.env.example`.
 

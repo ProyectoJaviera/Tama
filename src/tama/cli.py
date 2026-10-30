@@ -4,8 +4,8 @@ import argparse
 import os
 import sys
 
+from tama import agent, history, prompts
 from tama import brain as brain_module
-from tama import history, prompts
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.config import Settings, get_settings
@@ -50,41 +50,66 @@ def print_status(brain: Brain) -> None:
         print(dim(f"  {layer.provider.name:<7} {layer.provider.model:<32} {state}"))
 
 
-def reply(brain: Brain, messages: list[Message], max_tokens: int) -> str | None:
-    """Responde un turno en streaming, lo registra en events.db y devuelve el texto (o None)."""
-    parts: list[str] = []
-    for event in brain.cascade.turn(history.trim(messages, max_tokens)):
+def confirm(call: ToolCall, info) -> bool:
+    """Pide a Renzo un "s" explícito antes de una acción destructiva."""
+    args = ", ".join(f"{k}={v!r}" for k, v in call.arguments.items())
+    try:
+        answer = input(f"¿Confirmas {info.server}.{call.name}({args})? (s/n) ")
+    except EOFError:
+        return False
+    return answer.strip().lower() in {"s", "si", "sí"}
+
+
+def short(value: object, limit: int = 60) -> str:
+    text = str(value).replace("\n", " ")
+    return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def reply(
+    brain: Brain, messages: list[Message], max_tokens: int, max_tools: int = 10
+) -> str | None:
+    """Responde un turno en streaming (con herramientas), lo registra y devuelve el texto final."""
+    answered: Answered | None = None
+    for event in agent.run_turn(
+        brain.cascade, brain.tools, history.trim(messages, max_tokens), confirm, max_tools
+    ):
         if isinstance(event, Text):
             print(event.text, end="", flush=True)
-            parts.append(event.text)
-        elif isinstance(event, ToolCall):
-            pass  # las herramientas llegan en el Sprint 2
         elif isinstance(event, Switch):
             if event.partial:
                 print()
-            parts.clear()  # la siguiente capa repite el turno completo
             print(dim(f"· {event.frm} no respondió ({event.reason}); seguí en {event.to}"))
             brain.store.log(
                 "provider_switch", f"{event.frm} → {event.to}: {event.reason}", event.to
             )
+        elif isinstance(event, agent.ToolUse):
+            args = ", ".join(f"{k}={short(v, 30)}" for k, v in event.arguments.items())
+            print(dim(f"· {event.server or '?'}.{event.name}({args})"))
+        elif isinstance(event, agent.ToolResult):
+            if event.skipped:
+                print(dim("  -> no se ejecutó (sin confirmación)"))
+            elif not event.ok:
+                print(dim(f"  -> error: {short(event.text)}"))
         elif isinstance(event, Answered):
-            text = "".join(parts)
+            answered = event
+        elif isinstance(event, agent.FinalAnswer):
             print()
-            ttft = f"{event.ttft_s:.1f} s" if event.ttft_s is not None else "—"
-            where = f"· {event.provider} ({event.model})"
-            speed = f" · {event.tokens_per_s:.0f} tok/s" if event.tokens_per_s else ""
-            print(dim(f"{where} · primer token {ttft} · total {event.total_s:.1f} s{speed}"))
-            brain.store.log(
-                "assistant_msg",
-                text,
-                event.provider,
-                event.model,
-                event.input_tokens,
-                event.output_tokens,
-                round(event.ttft_s * 1000) if event.ttft_s is not None else None,
-                round(event.total_s * 1000),
-            )
-            return text
+            if answered is not None:
+                ttft = f"{answered.ttft_s:.1f} s" if answered.ttft_s is not None else "-"
+                where = f"· {answered.provider} ({answered.model})"
+                speed = f" · {answered.tokens_per_s:.0f} tok/s" if answered.tokens_per_s else ""
+                print(dim(f"{where} · primer token {ttft} · total {answered.total_s:.1f} s{speed}"))
+                brain.store.log(
+                    "assistant_msg",
+                    event.text,
+                    answered.provider,
+                    answered.model,
+                    answered.input_tokens,
+                    answered.output_tokens,
+                    round(answered.ttft_s * 1000) if answered.ttft_s is not None else None,
+                    round(answered.total_s * 1000),
+                )
+            return event.text
         elif isinstance(event, Error):
             print(f"\nNo pude responder: {event.message}", file=sys.stderr)
             brain.store.log("error", event.message)
@@ -92,10 +117,20 @@ def reply(brain: Brain, messages: list[Message], max_tokens: int) -> str | None:
     return None
 
 
-def turn(brain: Brain, messages: list[Message], text: str, max_tokens: int) -> bool:
+def print_tools(brain: Brain) -> None:
+    if brain.tools is None:
+        print(dim("  sin herramientas configuradas"))
+        return
+    for name, state, tools in brain.tools.status():
+        print(dim(f"  {name:<9} {state:<14} {', '.join(tools)}"))
+
+
+def turn(
+    brain: Brain, messages: list[Message], text: str, max_tokens: int, max_tools: int = 10
+) -> bool:
     messages.append({"role": "user", "content": text})
     brain.store.log("user_msg", text)
-    answer = reply(brain, messages, max_tokens)
+    answer = reply(brain, messages, max_tokens, max_tools)
     if answer is None:
         messages.pop()
         return False
@@ -103,8 +138,21 @@ def turn(brain: Brain, messages: list[Message], text: str, max_tokens: int) -> b
     return True
 
 
-def chat_loop(brain: Brain, messages: list[Message], max_tokens: int) -> None:
-    print("Tama. Escribe /proveedor para ver las capas o /salir para terminar.")
+def chat_loop(
+    brain: Brain,
+    messages: list[Message],
+    max_tokens: int,
+    watch_s: float = 0.0,
+    keep_warm: bool = False,
+) -> None:
+    print("Tama. /proveedor muestra las capas, /herramientas las herramientas y /salir termina.")
+    if brain.warmer is not None:
+        # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
+        brain.warmer.context = lambda: agent.prepare(
+            brain.tools, history.trim(messages, max_tokens)
+        )
+    if watch_s > 0:
+        brain.watch_network(watch_s, keep_warm)
     while True:
         try:
             text = input("> ").strip()
@@ -115,6 +163,9 @@ def chat_loop(brain: Brain, messages: list[Message], max_tokens: int) -> None:
             return
         if text.lower() == "/proveedor":
             print_status(brain)
+            continue
+        if text.lower() == "/herramientas":
+            print_tools(brain)
             continue
         if text:
             turn(brain, messages, text, max_tokens)
@@ -133,6 +184,7 @@ def main(
         problem = health_check(brain.local, settings.ollama_host, settings.local_model)
         if args.check:
             print_status(brain)
+            print_tools(brain)
             if problem:
                 print(problem, file=sys.stderr)
                 return 1
@@ -148,7 +200,13 @@ def main(
                 if turn(brain, messages, " ".join(args.mensaje), settings.history_max_tokens)
                 else 1
             )
-        chat_loop(brain, messages, settings.history_max_tokens)
+        chat_loop(
+            brain,
+            messages,
+            settings.history_max_tokens,
+            settings.connectivity_watch_s,
+            settings.local_keep_warm,
+        )
         return 0
     except KeyboardInterrupt:
         print()

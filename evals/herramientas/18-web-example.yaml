@@ -1,0 +1,7 @@
+id: web-example
+mensaje: "Lee https://example.com y dime de qué trata en una frase"
+espera:
+  - herramienta: fetch
+    argumentos:
+      "url": "example.com"
+requiere_red: true

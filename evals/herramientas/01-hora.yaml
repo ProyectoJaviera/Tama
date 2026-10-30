@@ -1,0 +1,4 @@
+id: hora
+mensaje: "¿Qué hora es?"
+espera:
+  - herramienta: get_current_time

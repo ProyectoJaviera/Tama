@@ -1,0 +1,6 @@
+id: nota-banco
+mensaje: "Anota que el lunes tengo que llamar al banco"
+espera:
+  - herramienta: create_note
+    argumentos:
+      "*": "banco"

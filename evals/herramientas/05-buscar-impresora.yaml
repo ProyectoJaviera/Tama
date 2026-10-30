@@ -1,0 +1,6 @@
+id: buscar-impresora
+mensaje: "¿Qué tenía anotado sobre la impresora?"
+espera:
+  - herramienta: search_notes
+    argumentos:
+      "query": "impresora"

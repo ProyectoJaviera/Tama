@@ -1,0 +1,4 @@
+id: listar-archivos
+mensaje: "¿Qué archivos tengo en mi carpeta de trabajo?"
+espera:
+  - herramienta: find_files

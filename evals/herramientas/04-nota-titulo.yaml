@@ -1,0 +1,6 @@
+id: nota-titulo
+mensaje: "Crea una nota llamada 'Ideas' que diga: soporte para audífonos"
+espera:
+  - herramienta: create_note
+    argumentos:
+      "title": "ideas"

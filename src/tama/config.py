@@ -52,6 +52,19 @@ class Settings(BaseSettings):
     breaker_cooldown_s: float = 300.0
     connectivity_probe: str = "1.1.1.1:443"
     connectivity_ttl_s: float = 30.0
+    # En el chat, cada cuántos segundos se revisa la red en segundo plano (0 = no se revisa).
+    connectivity_watch_s: float = 5.0
+    # Mantener el modelo local siempre cargado en RAM (útil si sobra memoria).
+    local_keep_warm: bool = False
+
+    # Herramientas (servidores MCP locales).
+    mcp_enabled: bool = True
+    mcp_config: Path = Path("config/mcp.toml")
+    workdir: Path = Path("data/trabajo")
+    tools_max: int = 10
+    tool_start_timeout_s: float = 15.0
+    tool_timeout_s: float = 30.0
+    tool_result_max_chars: int = 4000
 
     # Historial de la sesión que se envía al modelo (tokens estimados, sin contar la identidad).
     history_max_tokens: int = 2000

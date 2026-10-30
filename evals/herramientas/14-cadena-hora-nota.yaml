@@ -1,0 +1,7 @@
+id: cadena-hora-nota
+mensaje: "Dime qué hora es y anota que a esa hora empecé a estudiar"
+espera:
+  - herramienta: get_current_time
+  - herramienta: create_note
+    argumentos:
+      "*": "estudi"

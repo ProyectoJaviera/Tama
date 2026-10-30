@@ -1,0 +1,9 @@
+id: cadena-tareas
+mensaje: "Lee tareas.txt y anota en una nota lo más urgente"
+espera:
+  - herramienta: read_file
+    argumentos:
+      "path": "tareas.txt"
+  - herramienta: create_note
+    argumentos:
+      "*": "luz"

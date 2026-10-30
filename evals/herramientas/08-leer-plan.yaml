@@ -1,0 +1,7 @@
+id: leer-plan
+mensaje: "Lee el archivo plan.md"
+espera:
+  - herramienta: read_file
+    argumentos:
+      "path": "plan.md"
+respuesta: "soporte"

@@ -1,0 +1,6 @@
+id: archivo-presupuesto
+mensaje: "¿Cuál de mis archivos habla del presupuesto?"
+espera:
+  - herramienta: find_files
+    argumentos:
+      "*": "presupuesto"

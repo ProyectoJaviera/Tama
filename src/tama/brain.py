@@ -1,14 +1,18 @@
 """Arma el cerebro en cascada a partir de la configuración."""
 
-from dataclasses import dataclass
+import threading
+from dataclasses import dataclass, field
 
+from tama import prompts
 from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
 from tama.config import Settings
 from tama.events import EventStore
-from tama.net import Connectivity, tcp_probe
+from tama.mcp_hub import McpHub, load_config, server_env
+from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
 from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
+from tama.warmup import LocalWarmer
 
 
 @dataclass
@@ -16,13 +20,37 @@ class Brain:
     cascade: Cascade
     store: EventStore
     local: OllamaClient
+    connectivity: Connectivity | None = None
+    warmer: LocalWarmer | None = None
+    tools: McpHub | None = None
+    _stop: threading.Event = field(default_factory=threading.Event)
+
+    def watch_network(self, interval: float, keep_warm: bool = False) -> None:
+        """Vigila la conexión en segundo plano: al detectar un corte, precarga el modelo local.
+
+        Con `keep_warm`, además mantiene el modelo local siempre en RAM (si sobra memoria).
+        """
+        if self.connectivity is None:
+            return
+        tick = self.warmer.warm if keep_warm and self.warmer else None
+        if tick:
+            tick()
+        watch(self.connectivity, interval, self._stop, on_tick=tick)
 
     def close(self) -> None:
+        self._stop.set()
+        if self.tools is not None:
+            self.tools.close()
         self.local.close()
         self.store.close()
 
 
-def build(settings: Settings, force_offline: bool = False, only: list[str] | None = None) -> Brain:
+def build(
+    settings: Settings,
+    force_offline: bool = False,
+    only: list[str] | None = None,
+    with_tools: bool = True,
+) -> Brain:
     """Arma la cascada.
 
     `force_offline` simula no tener internet y `only` deja solo las capas nombradas (evals).
@@ -46,7 +74,15 @@ def build(settings: Settings, force_offline: bool = False, only: list[str] | Non
 
     host, _, port = settings.connectivity_probe.rpartition(":")
     probe = (lambda: False) if force_offline else (lambda: tcp_probe(host, int(port)))
-    connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s)
+    # Al detectar un corte se precarga el modelo local con las mismas opciones del chat, para que
+    # la primera respuesta sin internet no espere la carga del modelo en la RAM.
+    warmer = LocalWarmer(
+        local,
+        settings.local_model,
+        {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu},
+        system_prompt=prompts.identity(),
+    )
+    connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s, on_offline=warmer.warm)
     layers = [
         Layer(
             cloud,
@@ -77,4 +113,24 @@ def build(settings: Settings, force_offline: bool = False, only: list[str] | Non
     ]
     if only:
         layers = [layer for layer in layers if layer.provider.name in only]
-    return Brain(Cascade(layers, connectivity), store, local)
+    tools = build_tools(settings, connectivity, breaker) if with_tools else None
+    return Brain(Cascade(layers, connectivity), store, local, connectivity, warmer, tools)
+
+
+def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpHub | None:
+    """Lanza los servidores MCP de `config/mcp.toml` y espera su chequeo de salud."""
+    if not settings.mcp_enabled or not settings.mcp_config.exists():
+        return None
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    hub = McpHub(
+        load_config(settings.mcp_config),
+        server_env(settings.data_dir, settings.workdir),
+        online=connectivity.online,
+        start_timeout_s=settings.tool_start_timeout_s,
+        call_timeout_s=settings.tool_timeout_s,
+        breaker_factory=breaker,
+        max_result_chars=settings.tool_result_max_chars,
+        errlog=open(settings.data_dir / "mcp.log", "a", encoding="utf-8"),  # noqa: SIM115
+    )
+    hub.start()
+    return hub

@@ -34,3 +34,9 @@ models/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Wheels para reinstalar sin red (las genera scripts/vendor.py)
+vendor/wheels/
+
+# Carpeta de trabajo montada en Docker
+trabajo/

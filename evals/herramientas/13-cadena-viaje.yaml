@@ -1,0 +1,9 @@
+id: cadena-viaje
+mensaje: "Busca mi nota del viaje y guarda su contenido en el archivo viaje.md"
+espera:
+  - herramienta: search_notes
+    argumentos:
+      "query": "viaje"
+  - herramienta: create_file
+    argumentos:
+      "path": "viaje.md"

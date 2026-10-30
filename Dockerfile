@@ -23,14 +23,17 @@ RUN uv sync --locked --no-dev --no-group bench --no-install-project
 
 COPY src ./src
 RUN uv sync --locked --no-dev --no-group bench
+# Configuración de los servidores MCP: corren dentro del contenedor, con el mismo Python.
+COPY config ./config
 
 RUN useradd --create-home --uid 1000 tama \
-    && mkdir -p /data \
-    && chown tama:tama /data
+    && mkdir -p /data /trabajo \
+    && chown tama:tama /data /trabajo
 USER tama
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    TAMA_DATA_DIR=/data
-VOLUME ["/data"]
+    TAMA_DATA_DIR=/data \
+    TAMA_WORKDIR=/trabajo
+VOLUME ["/data", "/trabajo"]
 
 ENTRYPOINT ["tama"]

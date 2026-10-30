@@ -3,6 +3,7 @@
 import json
 import math
 import statistics
+import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import date
@@ -11,9 +12,9 @@ from typing import Any
 
 import yaml
 
-from tama import prompts
+from tama import agent, prompts
 from tama.cascade import Answered, Cascade, Switch
-from tama.providers import Error, Message, Text
+from tama.providers import Error, Message
 
 EVALS_DIR = Path(__file__).parent
 SCENARIOS_DIR = EVALS_DIR / "escenarios"
@@ -75,21 +76,30 @@ def load_scenarios(directory: Path = SCENARIOS_DIR) -> list[Scenario]:
     return scenarios
 
 
-def answer(cascade: Cascade, messages: list[Message], outcome: Outcome | None = None) -> str | None:
-    """Corre un turno en la cascada; devuelve el texto final (o None si ninguna capa respondió)."""
-    parts: list[str] = []
-    for event in cascade.turn(messages):
-        if isinstance(event, Text):
-            parts.append(event.text)
-        elif isinstance(event, Switch):
-            parts.clear()
-            if outcome:
-                outcome.cambios.append(f"{event.frm} → {event.to}: {event.reason}")
-        elif isinstance(event, Answered):
-            if outcome:
-                outcome.capa, outcome.modelo = event.provider, event.model
-                outcome.ttft_s, outcome.total_s = event.ttft_s, event.total_s
-            return "".join(parts)
+def answer(
+    cascade: Cascade,
+    messages: list[Message],
+    outcome: Outcome | None = None,
+    tools: Any | None = None,
+) -> str | None:
+    """Corre un turno como la CLI (con herramientas si se dan); devuelve el texto final o None.
+
+    En las evals nunca se confirma una acción destructiva: si el modelo la pide, no se ejecuta.
+    """
+    start = time.perf_counter()
+    first: Answered | None = None
+    for event in agent.run_turn(cascade, tools, messages, lambda call, info: False):
+        if isinstance(event, Switch) and outcome:
+            outcome.cambios.append(f"{event.frm} → {event.to}: {event.reason}")
+        elif isinstance(event, agent.ToolUse) and outcome:
+            outcome.cambios.append(f"herramienta {event.name}")
+        elif isinstance(event, Answered) and first is None:
+            first = event
+        elif isinstance(event, agent.FinalAnswer):
+            if outcome and first is not None:
+                outcome.capa, outcome.modelo = first.provider, first.model
+                outcome.ttft_s, outcome.total_s = first.ttft_s, time.perf_counter() - start
+            return event.text
         elif isinstance(event, Error):
             if outcome:
                 outcome.error = event.message
@@ -97,18 +107,18 @@ def answer(cascade: Cascade, messages: list[Message], outcome: Outcome | None = 
     return None
 
 
-def run_scenario(cascade: Cascade, scenario: Scenario) -> Outcome:
+def run_scenario(cascade: Cascade, scenario: Scenario, tools: Any | None = None) -> Outcome:
     outcome = Outcome(scenario.id)
     messages: list[Message] = [{"role": "system", "content": prompts.identity()}]
     for previous in scenario.previos:
         messages.append({"role": "user", "content": previous})
-        reply = answer(cascade, messages)
+        reply = answer(cascade, messages, tools=tools)
         if reply is None:
             outcome.error = "falló un turno previo"
             return outcome
         messages.append({"role": "assistant", "content": reply})
     messages.append({"role": "user", "content": scenario.mensaje})
-    outcome.respuesta = answer(cascade, messages, outcome) or ""
+    outcome.respuesta = answer(cascade, messages, outcome, tools) or ""
     return outcome
 
 
@@ -232,6 +242,8 @@ def render_report() -> str:
     for path in sorted(EVALS_DIR.glob("results-*.json"), key=_mode_order):
         mode = path.stem.removeprefix("results-")
         data = json.loads(path.read_text(encoding="utf-8"))
+        if "resumen" not in data:
+            continue  # otro formato (p. ej. evals de herramientas)
         r = data["resumen"]
         capas = ", ".join(f"{k}: {v}" for k, v in r["capas"].items()) or "—"
         lines += [
