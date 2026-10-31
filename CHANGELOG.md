@@ -6,8 +6,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
-- Sprint 4: objetivos (`create_goal`, `update_goal`, `list_goals`, `add_goal_progress`,
-  `discard_goal` con confirmación y `/objetivos`), diario en `memoria/diario/` (`/diario`) y
+- Sprint 4: objetivos (`create_goal`, `update_goal`, `list_goals`, `add_goal_progress`, una sola
+  herramienta a la vista, `manage_goals`, `discard_goal` con confirmación y `/objetivos`), diario en `memoria/diario/` (`/diario`) y
   reflexión en inactividad con el modelo local: fusiona duplicados, retira datos reemplazados sin
   borrarlos y deja hasta 2 sugerencias. Se apaga con `TAMA_REFLECTION=false`. Evals en
   `python -m evals.reflexion`.

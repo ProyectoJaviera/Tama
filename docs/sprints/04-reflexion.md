@@ -20,6 +20,16 @@ La memoria de Tama se mantiene ordenada sola y empieza a mirar hacia adelante: r
 - El modelo ve una sola herramienta de objetivos, `manage_goals`, que usa las cuatro de la spec por dentro: en las evals, el modelo local nunca llegó a ellas a través de `abrir_herramientas`.
 - `add_observations` sale de la vista para hacerle espacio: `create_entities` ya completa las entidades existentes.
 
+## Pasos de la demo
+1. Desde `Tama-s4`, con Ollama abierto: `uv run tama`. Para no esperar 20 minutos, deja `TAMA_REFLECTION_IDLE_MIN=1` en `.env`.
+2. Cuéntale una meta con fecha, luego un avance, pregúntale cómo vas y pídele pausarla. Revisa con `/objetivos`.
+3. Pídele descartar un objetivo: debe pedir confirmación.
+4. Cuéntale dos veces lo mismo de una persona con nombres parecidos y un dato que reemplace a otro (por ejemplo, una mudanza). Espera el minuto sin escribir y revisa con `/memoria`.
+5. Escribe `/diario` y revisa que no invente nada.
+6. Cierra y vuelve a abrir: si hay una sugerencia pendiente, Tama la menciona una sola vez.
+7. Corta internet y repite los pasos 2 y 5.
+8. Revisa `tama memoria export`: incluye los objetivos.
+
 ## Fuera de alcance
 Interfaz web (S5), notificaciones push (ntfy, fase de ubicuidad) y voz.
 
