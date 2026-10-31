@@ -46,5 +46,199 @@
   },
   "cancelacion": {
     "segundos_hasta_soltar": 0.1
+  },
+  "objetivos nube": {
+    "capa": "nube",
+    "sin_red": false,
+    "checks": {
+      "crear": true,
+      "avance": true,
+      "consultar": true,
+      "actualizar": true
+    },
+    "turnos": [
+      {
+        "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
+        "respuesta": "Hola Renzo. Ya lo anoté en tus metas. Es un desafío potente, ¡te va a venir increíble para la condición física!",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 1561
+      },
+      {
+        "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
+        "respuesta": "Vas súper bien, Renzo. Ya estás sumando kilómetros importantes para llegar a la meta de junio. ¡Sigue así!",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 1686
+      },
+      {
+        "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
+        "respuesta": "Tienes un objetivo activo: correr una media maratón para junio. Vas por buen camino, ya que registré que esta semana corriste 12 kilómetros.",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 1792
+      },
+      {
+        "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
+        "respuesta": "Ya quedó pausado el objetivo. Siento mucho lo de tu rodilla, Renzo; ahora lo más importante es que te recuperes bien antes de volver a correr.",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 1922
+      }
+    ]
+  },
+  "objetivos claude": {
+    "capa": "claude",
+    "sin_red": false,
+    "checks": {
+      "crear": true,
+      "avance": true,
+      "consultar": true,
+      "actualizar": true
+    },
+    "turnos": [
+      {
+        "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
+        "respuesta": "¡Qué buen objetivo, Renzo! Ya lo anoté: correr una media maratón antes de junio. Si quieres, podemos armar un plan de entrenamiento por semanas o definir un detalle concreto, como la distancia actual que corres hoy.",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 3244
+      },
+      {
+        "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
+        "respuesta": "¡Muy bien, Renzo! 12 km esta semana es una base sólida para una media maratón. Ya registré el avance. Para seguir subiendo con seguridad, suele ayudar aumentar la distancia de a poco, cerca de un 10% por semana, y dejar una semana más suave cada tres o cuatro. ¿Cuál es tu ritmo habitual, o cuántos días a la semana corres?",
+        "herramientas": [
+          "manage_goals",
+          "create_entities"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 3503
+      },
+      {
+        "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
+        "respuesta": "Tienes un objetivo activo: **correr una media maratón antes de junio**. Vas bien encaminado: la última anotación es de 12 km esta semana, que es una buena base para esa distancia.\n\nLo que aún no tengo registrado es cuántos días a la semana corres ni tu ritmo, así que no puedo medir con precisión cuánto te falta. Si me cuentas esos datos, te ayudo a ver si vas al ritmo necesario.",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 3986
+      },
+      {
+        "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
+        "respuesta": "Lo siento, Renzo. Ya pausé el objetivo de la media maratón; lo retomamos cuando te recuperes.\n\nMientras tanto, con una lesión de rodilla lo mejor es consultar con un médico o kinesiólogo antes de volver a correr, para saber qué tiene y cuánto reposo necesita. Cuídate, y si quieres, podemos buscar ejercicios de bajo impacto para mantenerte activo.",
+        "herramientas": [
+          "manage_goals",
+          "create_entities"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4271
+      }
+    ]
+  },
+  "objetivos local": {
+    "capa": "local",
+    "sin_red": false,
+    "checks": {
+      "crear": true,
+      "avance": false,
+      "consultar": true,
+      "actualizar": true
+    },
+    "turnos": [
+      {
+        "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
+        "respuesta": "¡Genial! ¿Cuánto tiempo te lleva correr un km ahora? Así puedo ayudarte a planear el entrenamiento.",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "local",
+        "tokens_prompt": 1857
+      },
+      {
+        "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
+        "respuesta": "¡Muy bien! 12 km es un buen inicio. ¿Quieres que te ayude a planear un entrenamiento semanal para llegar a los 21 km en junio?",
+        "herramientas": [
+          "create_entities"
+        ],
+        "capa": "local",
+        "tokens_prompt": 2018
+      },
+      {
+        "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
+        "respuesta": "Tienes un solo objetivo activo: correr una media maratón antes de junio. Estás bien en el camino, con 12 km esta semana. ¡Sigue así! ¿Quieres que te ayude a planear el entrenamiento semanal?",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "local",
+        "tokens_prompt": 2159
+      },
+      {
+        "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
+        "respuesta": "Perfecto, ahora está pausado. ¡Cuida tu rodilla! Cuando quieras, podemos volver a planearlo. ¿Quieres que te ayude a pensar en otro objetivo mientras estás recuperando?",
+        "herramientas": [
+          "manage_goals"
+        ],
+        "capa": "local",
+        "tokens_prompt": 2328
+      }
+    ]
+  },
+  "objetivos local (sin red)": {
+    "capa": "local",
+    "sin_red": true,
+    "checks": {
+      "crear": false,
+      "avance": false,
+      "consultar": false,
+      "actualizar": false
+    },
+    "turnos": [
+      {
+        "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
+        "respuesta": "¡Perfecto! Ya está registrado. ¿Qué día te parece empezar? Puedo ayudarte a planear la rutina.",
+        "herramientas": [
+          "create_entities"
+        ],
+        "capa": "local",
+        "tokens_prompt": 1592
+      },
+      {
+        "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
+        "respuesta": "¡Genial que ya hayas corrido 12 km! Eso es un buen punto de partida. ¿Quieres que te ayude a planear la próxima semana con una meta de kilómetros?",
+        "herramientas": [
+          "add_observations"
+        ],
+        "capa": "local",
+        "tokens_prompt": 1775
+      },
+      {
+        "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
+        "respuesta": "Tienes un solo objetivo: correr una media maratón antes de junio.  \nHasta ahora has corrido 12 km, lo cual es un buen inicio.  \n¿Quieres que te ayude a planear la próxima semana con una meta más específica?",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "local",
+        "tokens_prompt": 1868
+      },
+      {
+        "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
+        "respuesta": "Vaya, entiendo que necesitas tiempo para recuperarte. La lesión en la rodilla es importante, mejor que no vuelvas a correr hasta que lo consultes con un médico. ¿Quieres que te ayude a pensar en otra actividad para mantener el ritmo?",
+        "herramientas": [
+          "add_observations"
+        ],
+        "capa": "local",
+        "tokens_prompt": 2131
+      }
+    ]
   }
 }

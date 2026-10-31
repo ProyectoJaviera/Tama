@@ -51,7 +51,8 @@ def opener_spec(tools: list[Any], visible: list[Any]) -> dict[str, Any]:
         "function": {
             "name": OPENER,
             "description": (
-                f"Abre un grupo de herramientas que no tienes a la vista. Grupos: {listing}."
+                "Abre un grupo de herramientas que no tienes a la vista. Llámala antes de "
+                f"responder si necesitas una. Grupos: {listing}."
             ),
             "parameters": {
                 "type": "object",

@@ -46,6 +46,8 @@ class Brain:
         watch(self.connectivity, interval, self._stop, on_tick=tick)
 
     def close(self) -> None:
+        if self.reflector is not None:
+            self.reflector.close()
         self._stop.set()
         if self.tools is not None:
             self.tools.close()

@@ -257,7 +257,8 @@ def fts_query(text: str) -> str:
     description=(
         "Guarda lo que Renzo cuente de su vida. Llámala en cada turno con un dato nuevo, antes de "
         "responder: lo que no se guarda se olvida. Cada entidad lleva name, entityType (persona, "
-        "mascota, proyecto, lugar, gusto, libro, plan) y observations (frases cortas)."
+        "mascota, proyecto, lugar, gusto, libro, plan) y observations (frases cortas). Si la "
+        "entidad ya existe, se completa. Las metas de Renzo van en manage_goals."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -619,6 +620,38 @@ def add_goal_progress(objetivo: str, avance: str, source: int | None = None) -> 
         )
         db.execute("UPDATE goals SET updated_at = ? WHERE id = ?", (stamp, goal["id"]))
     return f"Avance anotado en: {goal['title']}."
+
+
+@server.tool(
+    description=(
+        "Objetivos de Renzo: metas que quiere lograr y a las que das seguimiento. Úsala siempre "
+        "que hable de una meta o cuente un paso hacia ella, antes de responder. accion: crear "
+        "(titulo, y detalle y fecha si los dijo), avance (objetivo y avance), ver (estado, "
+        "opcional) o cambiar (objetivo y lo que cambia: titulo, detalle, fecha o estado activo, "
+        "pausado o logrado)."
+    )
+)
+def manage_goals(
+    accion: str,
+    objetivo: str = "",
+    titulo: str = "",
+    detalle: str = "",
+    fecha: str = "",
+    estado: str = "",
+    avance: str = "",
+    source: int | None = None,
+) -> str:
+    """Una sola herramienta a la vista: el modelo local no llega a las otras por su grupo."""
+    action = accion.strip().lower()
+    if action == "crear":
+        return create_goal(titulo or objetivo, detalle, fecha)
+    if action == "avance":
+        return add_goal_progress(objetivo or titulo, avance or detalle, source)
+    if action == "ver":
+        return list_goals(estado or "activo")
+    if action == "cambiar":
+        return update_goal(objetivo or titulo, titulo if objetivo else "", detalle, fecha, estado)
+    return "Acción no válida: usa crear, avance, ver o cambiar."
 
 
 @server.tool(

@@ -53,10 +53,18 @@ def test_discard_and_delete_are_destructive():
     assert tools["delete_goal"].annotations.destructive_hint
 
 
-def test_model_only_sees_goal_tools_through_their_group():
+def test_manage_goals_covers_the_whole_flow():
+    assert "creado" in memoria.manage_goals("crear", titulo="Correr 10K")
+    assert "anotado" in memoria.manage_goals("avance", objetivo="correr", avance="Corrí 5 km")
+    assert "Corrí 5 km" in memoria.manage_goals("ver")
+    assert "pausado" in memoria.manage_goals("cambiar", objetivo="correr", estado="pausado")
+    assert "no válida" in memoria.manage_goals("volar")
+
+
+def test_model_sees_one_goal_tool():
     config = next(c for c in load_config(CONFIG) if c.name == "memoria")
     assert "delete_goal" not in config.tools
-    assert config.groups["list_goals"] == "objetivos"
+    assert "manage_goals" in config.base
 
 
 def test_export_includes_goals(tmp_path):

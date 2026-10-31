@@ -16,6 +16,10 @@ La memoria de Tama se mantiene ordenada sola y empieza a mirar hacia adelante: r
    - Todo queda registrado en events.db, con el tipo reflection. Se puede apagar (TAMA_REFLECTION=false) y se cancela apenas Renzo vuelve a escribir.
 4. Export del grafo y los objetivos incluidos en tama memoria export.
 
+## Notas de implementación
+- El modelo ve una sola herramienta de objetivos, `manage_goals`, que usa las cuatro de la spec por dentro: en las evals, el modelo local nunca llegó a ellas a través de `abrir_herramientas`.
+- `add_observations` sale de la vista para hacerle espacio: `create_entities` ya completa las entidades existentes.
+
 ## Fuera de alcance
 Interfaz web (S5), notificaciones push (ntfy, fase de ubicuidad) y voz.
 

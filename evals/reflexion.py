@@ -214,7 +214,7 @@ def run_goals(layer: str, offline: bool) -> dict[str, Any]:
     checks = {
         "crear": any("marat" in t.lower() for t, _ in goals),
         "avance": any("12" in p[0] for p in progress),
-        "consultar": "marat" in answer and "list_goals" in turns[2]["herramientas"],
+        "consultar": "marat" in answer and "manage_goals" in turns[2]["herramientas"],
         "actualizar": any(status == "pausado" for _, status in goals),
     }
     return {"capa": layer, "sin_red": offline, "checks": checks, "turnos": turns}

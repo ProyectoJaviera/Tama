@@ -18,17 +18,10 @@ comando = ["python", "-m", "tama.mcp_servers.memoria"]
 herramientas = [
     "search_nodes", "create_entities", "add_observations", "create_relations",
     "delete_observations", "recent_events", "proponer_cambio_perfil",
-    "create_goal", "update_goal", "list_goals", "add_goal_progress", "discard_goal",
+    "manage_goals", "discard_goal",
 ]
-siempre = ["search_nodes", "create_entities", "add_observations"]
-base = ["recent_events"]
-
-[servidores.memoria.grupos]
-create_goal = "objetivos"
-update_goal = "objetivos"
-list_goals = "objetivos"
-add_goal_progress = "objetivos"
-discard_goal = "objetivos"
+siempre = ["search_nodes", "create_entities"]
+base = ["manage_goals", "recent_events"]
 
 [servidores.notas]
 comando = ["python", "-m", "tama.mcp_servers.notas"]

@@ -12,6 +12,15 @@ Generado por `python -m evals.reflexion` con datos ficticios.
 
 Soltar el modelo al escribir Renzo: 0.1 s.
 
+## Objetivos
+
+| Capa | Crear | Avance | Consultar | Actualizar |
+|---|---|---|---|---|
+| nube | ok | ok | ok | ok |
+| claude | ok | ok | ok | ok |
+| local | ok | FALLA | ok | ok |
+| local (sin red) | FALLA | FALLA | FALLA | FALLA |
+
 ## Diario
 
 Puntajes del juez (fidelidad, cobertura, estilo): [5, 5, 5]. El diario refleja fielmente la conversación, incluye todos los puntos clave y mantiene la brevedad requerida.
