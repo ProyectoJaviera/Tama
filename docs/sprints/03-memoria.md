@@ -1,6 +1,6 @@
 # Sprint 3: Memoria
 
-Estado: listo para la demo (2026-10-30)
+Estado: cerrado (demo aprobada por Renzo, 2026-10-31)
 
 ## Objetivo
 Tama recuerda a Renzo entre sesiones: un perfil corto siempre presente, un grafo de conocimiento con fechas y la consulta de lo conversado recientemente. Sin base de datos vectorial.
@@ -78,3 +78,16 @@ Ollama encendido.
 6. Corregir un dato ("ya no vivo ahí, me cambié a...") y volver a preguntar.
 7. Cortar la red, esperar unos 40 s y preguntar de nuevo: recuerda con el modelo local.
 8. `/olvidar <algo>` pide confirmación. `uv run tama memoria export` crea `memoria\grafo.jsonl`.
+
+## Cierre
+Evals sin la capa de Claude, por decisión de Renzo para cuidar el cupo de la API.
+
+- Memoria: nube 9/10, local 9/10, local sin red 9/10, sin invenciones.
+- Historial médico: completo y en orden en nube, local y local sin red.
+- Herramientas: nube 23/23, local 21/23.
+- Conversación: nube y local 19/20, sin red 17/20.
+
+Pendiente para los próximos sprints:
+
+- Corregir datos con el modelo local no es confiable: responde lo nuevo, pero puede dejar vigentes datos antiguos. Se revisará al buscar un modelo local mejor.
+- El prompt local está entre 2.568 y 3.040 tokens. Se ataca con el selector de herramientas del Sprint 4.
