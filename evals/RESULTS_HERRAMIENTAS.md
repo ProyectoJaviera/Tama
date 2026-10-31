@@ -8,7 +8,7 @@ herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por
 |---|---:|---:|---:|---:|
 | nube | 23/23 | 100% | 0.4 s | 0 |
 | claude | 23/23 | 100% | 0.6 s | 0 |
-| local | 21/23 | 91% | 2.0 s | 0 |
+| local | 21/23 | 91% | 1.9 s | 1 |
 
 ## Fallos
 
