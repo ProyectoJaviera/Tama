@@ -518,12 +518,13 @@ def fts_query(text: str) -> str:
         "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
         "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
         "evento, salud, objeto, gusto), observations (frases cortas que se entiendan solas: "
-        "'el cumpleaños de su mamá es...'; si ocurrió otro día, incluye la fecha). Algo puntual "
-        "con alguien (un almuerzo) va en esa persona, sin entidad nueva."
+        "'el cumpleaños de su mamá es...'). Copia las fechas como las dijo ('hace tres días'): se "
+        "calculan solas, no pidas la hora. Algo puntual con alguien (un almuerzo) va en esa "
+        "persona, sin entidad nueva."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
-    created, updated, older = [], [], []
+    created, updated, older, saved = [], [], [], []
     with connect() as db:
         for entity in entities:
             name = str(entity.get("name", "")).strip()
@@ -537,10 +538,12 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
                 # Algo puntual con alguien va en sus personas, no en una entidad nueva.
                 targets = people | ({owner["id"]} if owner else set())
                 add_obs(db, targets, added, source)
+                saved += saved_ids(db, added)
                 updated.append(name)
                 continue
             entity_id, new = upsert_entity(db, name, type_)
             add_obs(db, entity_id, added, source)
+            saved += saved_ids(db, added)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
                 db.execute(
@@ -554,6 +557,8 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
         parts.append("Creadas: " + ", ".join(created))
     if updated:
         parts.append("Ya existían y se completaron: " + ", ".join(updated))
+    if saved:
+        parts.append("Guardado como " + ", ".join(dict.fromkeys(saved)))
     if older:
         listed = "; ".join(dict.fromkeys(older))
         parts.append(
@@ -723,9 +728,10 @@ def update_observation(
         missing = sorted(set(numbers) - {r["id"] for r in found})
         if missing:
             listed = ", ".join(f"o{n}" for n in missing)
+            similar = "; ".join(related_facts(db, nueva, [])) or "ninguno"
             raise ValueError(
-                f"Nada cambió: {listed} no existe o ya no está vigente. Busca con search_nodes "
-                "y reintenta con los ids que aparezcan."
+                f"Nada cambió: {listed} no existe o ya no está vigente. Datos parecidos: {similar}. "
+                "Reintenta con sus ids."
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
@@ -749,6 +755,12 @@ def update_observation(
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
     return text
+
+
+def saved_ids(db: sqlite3.Connection, texts: list[str]) -> list[str]:
+    """Ids de hechos recién guardados: permiten corregirlos sin buscarlos."""
+    found = [same_fact(db, resolve_dates(text.strip())[0]) for text in texts]
+    return [f"o{number}" for number in found if number]
 
 
 def same_topic(db: sqlite3.Connection, entity_id: int, added: list[str]) -> list[str]:

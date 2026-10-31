@@ -218,6 +218,16 @@ def test_no_match_shows_recent_facts_of_renzo():
     assert "Odia el cilantro" in memoria.search_nodes("hierba")
 
 
+def test_saving_returns_the_id_of_the_fact():
+    assert "Guardado como o1" in memoria.create_entities([entity("Ana", "persona", "Toma té")])
+
+
+def test_wrong_id_error_offers_similar_facts():
+    memoria.create_entities([entity("Halloween", "plan", "Irá disfrazado de Shrek")])
+    with pytest.raises(ValueError, match=r"\[o1\] Irá disfrazado de Shrek"):
+        memoria.update_observation(["o99"], "Irá disfrazado de pirata")
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])
