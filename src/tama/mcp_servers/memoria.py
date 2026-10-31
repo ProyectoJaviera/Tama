@@ -98,6 +98,8 @@ HEALTH_TOPICS = ("salud", "medic", "enferm", "doctor", "clinic")
 HEALTH_WORDS = (
     "duele",
     "dolor",
+    "operad",
+    "cirug",
     "medic",
     "doctor",
     "sintoma",

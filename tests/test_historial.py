@@ -134,6 +134,11 @@ def test_health_topic_keeps_only_health_facts():
         assert "rodilla" in text and "Almuerza" not in text
 
 
+def test_operated_counts_as_health():
+    memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    assert "rodilla" in memoria.linea_de_tiempo("salud")
+
+
 def test_topic_without_matches_returns_nothing():
     memoria.create_entities([entity("Renzo", "persona", "Almuerza con Ana")])
     assert "No hay nada" in memoria.linea_de_tiempo("astronomía")
