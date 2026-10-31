@@ -249,7 +249,8 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--capas", nargs="+", default=["nube", "claude", "local"])
+    # Claude queda fuera por defecto: cuida el cupo mensual de la API.
+    parser.add_argument("--capas", nargs="+", default=["nube", "local"])
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
 
