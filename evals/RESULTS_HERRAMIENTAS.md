@@ -6,11 +6,13 @@ herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por
 
 | Capa | Correctos | % | Primer token p50 | Voseo |
 |---|---:|---:|---:|---:|
-| nube | 23/23 | 100% | 0.4 s | 0 |
+| nube | 22/23 | 96% | 0.4 s | 0 |
 | claude | 23/23 | 100% | 0.6 s | 0 |
-| local | 21/23 | 91% | 1.7 s | 1 |
+| local | 20/23 | 87% | 1.6 s | 0 |
 
 ## Fallos
 
+- `nube` · web-example: faltó fetch {'url': 'example.com'} (llamó ['get_current_time', 'read_file'])
 - `local` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
 - `local` · cadena-hora-nota: faltó create_note {'*': 'estudi'} (llamó ['get_current_time'])
+- `local` · web-example: faltó fetch {'url': 'example.com'} (llamó nada)
