@@ -1,5 +1,6 @@
 import json
 import re
+import sqlite3
 
 import pytest
 
@@ -19,6 +20,11 @@ def memory_env(tmp_path, monkeypatch):
 
 def entity(name, type_, *obs):
     return {"name": name, "entityType": type_, "observations": list(obs)}
+
+
+def count(table):
+    with memoria.connect() as db:
+        return db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
 
 def rows():
@@ -96,7 +102,7 @@ def test_correction_points_to_related_facts_in_other_entities():
     memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
     memoria.create_entities([entity("esposa de Renzo", "persona", "Se disfrazará de Fiona")])
     text = memoria.update_observation(ids_of("Halloween"), "Se disfrazarán de piratas")
-    assert "esposa de Renzo: Se disfrazará de Fiona" in text
+    assert "Se disfrazará de Fiona" in text
 
 
 def test_owner_is_a_person_with_alias_and_is_not_duplicated():
@@ -125,6 +131,67 @@ def test_generic_type_is_upgraded():
     memoria.add_observations([{"entityName": "Faro", "contents": ["Una app"]}])
     memoria.create_entities([entity("Faro", "proyecto", "Con mapas")])
     assert "Faro (proyecto)" in memoria.search_nodes("Faro")
+
+
+def links(content):
+    with memoria.connect() as db:
+        return db.execute(
+            "SELECT COUNT(*) FROM observation_entities l JOIN observations o"
+            " ON o.id = l.observation_id WHERE o.content = ?",
+            (content,),
+        ).fetchone()[0]
+
+
+def test_one_fact_links_several_entities_with_one_id():
+    memoria.add_observations(
+        [{"entityNames": ["Renzo", "Ana", "Halloween"], "contents": ["Irán de piratas"]}]
+    )
+    assert count("observations") == 1 and links("Irán de piratas") == 3
+    assert ids_of("Ana") == ids_of("Halloween")
+
+
+def test_repeated_fact_only_adds_links():
+    memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
+    memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])
+    assert count("observations") == 1 and links("Irán de piratas") == 2
+
+
+def test_correction_links_the_union_and_records_the_replacement():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    memoria.create_entities([entity("Ana", "persona", "Fiona")])
+    memoria.update_observation(ids_of("Halloween") + ids_of("Ana"), "Piratas", ["Renzo"])
+    assert links("Piratas") == 3
+    with memoria.connect() as db:
+        new = db.execute("SELECT id FROM observations WHERE valid = 1").fetchone()[0]
+        replaced = db.execute("SELECT superseded_by FROM observations WHERE valid = 0").fetchall()
+    assert [r[0] for r in replaced] == [new, new]
+
+
+def test_deleting_one_entity_keeps_facts_shared_with_others():
+    memoria.add_observations([{"entityNames": ["Ana", "Halloween"], "contents": ["Piratas"]}])
+    memoria.delete_entities(["Ana"])
+    assert rows() == [("Piratas", 1)]
+    memoria.delete_entities(["Halloween"])
+    assert rows() == []
+
+
+def test_old_database_is_migrated(tmp_path):
+    path = tmp_path / "data" / "memoria.db"
+    db = sqlite3.connect(path)
+    db.executescript(memoria.SCHEMA)
+    db.execute(
+        "INSERT INTO entities (id, name, norm, type, created_at)"
+        " VALUES (1, 'Ana', 'ana', 'persona', 'x')"
+    )
+    db.execute(
+        "INSERT INTO observations (entity_id, content, created_at, valid) VALUES (1, 'Toma té', "
+        "'2026-10-30T10:00:00+00:00', 1)"
+    )
+    db.commit()
+    db.close()
+    memoria.connect().close()
+    assert rows() == [("Toma té", 1)]
+    assert links("Toma té") == 1
 
 
 def seed_events(tmp_path):

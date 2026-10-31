@@ -245,6 +245,10 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
     brain.close()
     db = sqlite3.connect(settings.data_dir / "memoria.db")
     rows = db.execute("SELECT content, valid FROM observations").fetchall()
+    links = db.execute(
+        "SELECT COUNT(*) FROM observation_entities l JOIN observations o"
+        " ON o.id = l.observation_id WHERE o.valid = 1 AND o.content LIKE '%pirata%'"
+    ).fetchone()[0]
     db.close()
     answer = normalize(turn["respuesta"])
 
@@ -257,6 +261,8 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
         "sin_confirmacion": "delete_observations" not in used,
         "conserva_antiguo": any(mentions_old(r[0]) and not r[1] for r in rows),
         "antiguo_no_vigente": not any(mentions_old(r[0]) and r[1] for r in rows),
+        "hechos_vigentes": sum("pirata" in normalize(r[0]) and bool(r[1]) for r in rows),
+        "entidades_enlazadas": links,
         "recuerda_nuevo": "pirata" in answer and not any(w in answer for w in OUTDATED),
         "respuesta": turn["respuesta"],
         "herramientas": used + turn["herramientas"],
@@ -289,10 +295,15 @@ def render(data: dict[str, Any]) -> str:
     data = {k: v for k, v in data.items() if not k.startswith("corrección")}
     if corrections:
         lines += ["", "## Corrección de un dato", ""]
-        lines += ["| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo |"]
-        lines += ["|---|---|---|---|"]
+        lines += ["| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho |"]
+        lines += ["|---|---|---|---|---|"]
         for key, run in corrections.items():
-            marks = [run["sin_confirmacion"], run["antiguo_no_vigente"], run["recuerda_nuevo"]]
+            marks = [
+                run["sin_confirmacion"],
+                run["antiguo_no_vigente"],
+                run["recuerda_nuevo"],
+                run["hechos_vigentes"] == 1,
+            ]
             cells = " | ".join("ok" if m else "FALLA" for m in marks)
             lines.append(f"| {key.removeprefix('corrección ')} | {cells} |")
     lines += ["", "## Fallos", ""]

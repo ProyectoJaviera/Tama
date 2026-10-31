@@ -48,6 +48,28 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
     entity_id UNINDEXED, text, tokenize='unicode61 remove_diacritics 2'
 );
 """
+# Un hecho se guarda una vez y se enlaza a todas las entidades que menciona.
+LINKED_FACTS = """
+CREATE TABLE observation_entities (
+    observation_id INTEGER NOT NULL REFERENCES observations(id) ON DELETE CASCADE,
+    entity_id INTEGER NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+    PRIMARY KEY (observation_id, entity_id)
+);
+INSERT INTO observation_entities SELECT id, entity_id FROM observations;
+CREATE TABLE facts (
+    id INTEGER PRIMARY KEY,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    source INTEGER,
+    valid INTEGER NOT NULL DEFAULT 1,
+    superseded_by INTEGER REFERENCES facts(id)
+);
+INSERT INTO facts (id, content, created_at, source, valid)
+    SELECT id, content, created_at, source, valid FROM observations;
+DROP TABLE observations;
+ALTER TABLE facts RENAME TO observations;
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS]
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
@@ -97,8 +119,12 @@ def connect() -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
+    db.execute("PRAGMA busy_timeout = 5000")
+    version = db.execute("PRAGMA user_version").fetchone()[0]
+    for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
+        # Con las claves foráneas apagadas: rehacer una tabla no debe borrar en cascada.
+        db.executescript(f"BEGIN; {script} PRAGMA user_version = {number}; COMMIT;")
     db.execute("PRAGMA foreign_keys = ON")
-    db.executescript(SCHEMA)
     return db
 
 
@@ -135,7 +161,7 @@ def same_person(db: sqlite3.Connection, name: str, type_: str) -> sqlite3.Row | 
 
 
 def reindex(db: sqlite3.Connection, entity_id: int) -> None:
-    """Rehace la fila de búsqueda de una entidad con su nombre, alias y observaciones vigentes."""
+    """Rehace la fila de búsqueda de una entidad con su nombre, alias y hechos vigentes."""
     row = db.execute("SELECT name, type FROM entities WHERE id = ?", (entity_id,)).fetchone()
     db.execute("DELETE FROM search WHERE entity_id = ?", (entity_id,))
     if row is None:
@@ -147,10 +173,37 @@ def reindex(db: sqlite3.Connection, entity_id: int) -> None:
     parts += [
         r[0]
         for r in db.execute(
-            "SELECT content FROM observations WHERE entity_id = ? AND valid = 1", (entity_id,)
+            "SELECT o.content FROM observations o"
+            " JOIN observation_entities l ON l.observation_id = o.id"
+            " WHERE l.entity_id = ? AND o.valid = 1",
+            (entity_id,),
         )
     ]
     db.execute("INSERT INTO search (entity_id, text) VALUES (?, ?)", (entity_id, "\n".join(parts)))
+
+
+def linked_entities(db: sqlite3.Connection, ids: list[int]) -> set[int]:
+    marks = ",".join("?" * len(ids))
+    rows = db.execute(
+        f"SELECT entity_id FROM observation_entities WHERE observation_id IN ({marks})", ids
+    )
+    return {r[0] for r in rows}
+
+
+def link(db: sqlite3.Connection, observation_id: int, entity_ids: set[int]) -> None:
+    for entity_id in entity_ids:
+        db.execute(
+            "INSERT OR IGNORE INTO observation_entities (observation_id, entity_id) VALUES (?, ?)",
+            (observation_id, entity_id),
+        )
+        reindex(db, entity_id)
+
+
+def drop_orphans(db: sqlite3.Connection) -> None:
+    """Un hecho sin entidades ya no se puede encontrar: se borra con la última de ellas."""
+    db.execute(
+        "DELETE FROM observations WHERE id NOT IN (SELECT observation_id FROM observation_entities)"
+    )
 
 
 def upsert_entity(db: sqlite3.Connection, name: str, type_: str) -> tuple[int, bool]:
@@ -174,28 +227,36 @@ def upsert_entity(db: sqlite3.Connection, name: str, type_: str) -> tuple[int, b
     return cursor.lastrowid, True
 
 
-def add_obs(db: sqlite3.Connection, entity_id: int, contents: list[str], source: int | None) -> int:
+def add_obs(
+    db: sqlite3.Connection, entity_ids: int | set[int], contents: list[str], source: int | None
+) -> int:
+    """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten."""
+    entities = {entity_ids} if isinstance(entity_ids, int) else entity_ids
     added = 0
     for content in contents:
         text = content.strip()
+        if not text:
+            continue
         repeated = db.execute(
-            "SELECT 1 FROM observations WHERE entity_id = ? AND content = ? AND valid = 1",
-            (entity_id, text),
+            "SELECT id FROM observations WHERE content = ? AND valid = 1", (text,)
         ).fetchone()
-        if text and not repeated:
-            db.execute(
-                "INSERT INTO observations (entity_id, content, created_at, source)"
-                " VALUES (?, ?, ?, ?)",
-                (entity_id, text, now(), source),
-            )
+        if repeated:
+            observation_id = repeated["id"]
+        else:
+            observation_id = db.execute(
+                "INSERT INTO observations (content, created_at, source) VALUES (?, ?, ?)",
+                (text, now(), source),
+            ).lastrowid
             added += 1
+        link(db, observation_id, entities)
     return added
 
 
 def recent_observations(db: sqlite3.Connection, entity_id: int) -> list[str]:
     rows = db.execute(
-        "SELECT id, content, created_at FROM observations WHERE entity_id = ? AND valid = 1"
-        " ORDER BY created_at DESC, id DESC LIMIT ?",
+        "SELECT o.id, o.content, o.created_at FROM observations o"
+        " JOIN observation_entities l ON l.observation_id = o.id"
+        " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.created_at DESC, o.id DESC LIMIT ?",
         (entity_id, MAX_OBSERVATIONS),
     ).fetchall()
     return [f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])})" for r in rows]
@@ -315,21 +376,20 @@ def create_relations(relations: list[dict[str, str]]) -> str:
 
 @server.tool(
     description=(
-        "Agrega datos nuevos a entidades. Cada elemento lleva entityName y "
-        "contents (frases cortas). Si la entidad no existe, se crea. Si un dato reemplaza a otro, "
-        "usa update_observation."
+        "Agrega datos nuevos. Cada elemento lleva entityName (o entityNames si el hecho menciona "
+        "a varias) y contents (frases cortas). Si la entidad no existe, se crea. Si un dato "
+        "reemplaza a otro, usa update_observation."
     )
 )
 def add_observations(observations: list[dict[str, Any]], source: int | None = None) -> str:
     added = 0
     with connect() as db:
         for item in observations:
-            name = str(item.get("entityName", "")).strip()
-            if not name:
-                continue
-            entity_id, _ = upsert_entity(db, name, "objeto")
-            added += add_obs(db, entity_id, list(item.get("contents") or []), source)
-            reindex(db, entity_id)
+            names = [str(n).strip() for n in item.get("entityNames") or []]
+            names += [str(item.get("entityName", "")).strip()]
+            entities = {upsert_entity(db, n, "objeto")[0] for n in names if n}
+            if entities:
+                added += add_obs(db, entities, list(item.get("contents") or []), source)
     return f"{added} datos guardados."
 
 
@@ -385,6 +445,7 @@ def delete_entities(entityNames: list[str]) -> str:
                 db.execute("DELETE FROM entities WHERE id = ?", (row["id"],))
                 reindex(db, row["id"])
                 deleted.append(row["name"])
+        drop_orphans(db)
     return f"Olvidé: {', '.join(deleted)}." if deleted else "No había nada con ese nombre."
 
 
@@ -405,12 +466,19 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
                 continue
             for content in item.get("observations") or []:
                 like = f"%{without_date(content)}%"
-                changed += db.execute(
-                    "UPDATE observations SET valid = 0"
-                    " WHERE entity_id = ? AND valid = 1 AND content LIKE ?",
+                rows = db.execute(
+                    "SELECT o.id FROM observations o"
+                    " JOIN observation_entities l ON l.observation_id = o.id"
+                    " WHERE l.entity_id = ? AND o.valid = 1 AND o.content LIKE ?",
                     (row["id"], like),
-                ).rowcount
-            reindex(db, row["id"])
+                ).fetchall()
+                ids = [r["id"] for r in rows]
+                for observation_id in ids:
+                    db.execute("UPDATE observations SET valid = 0 WHERE id = ?", (observation_id,))
+                changed += len(ids)
+                if ids:
+                    for entity_id in linked_entities(db, ids):
+                        reindex(db, entity_id)
     if not changed:
         return "No encontré esos datos: nada cambió. Búscalos con search_nodes y copia su texto."
     return f"{changed} datos marcados como no vigentes."
@@ -419,12 +487,13 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 @server.tool(
     description=(
         "Corrige datos cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad). Antes "
-        "busca el tema con search_nodes. Lleva ids (los [o42] de TODOS los datos antiguos, en "
-        "todas las entidades) y nueva (el dato vigente). Los antiguos dejan de usarse."
+        "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
+        "antiguos, en todas las entidades) y nueva (un solo hecho vigente, que queda enlazado a "
+        "las mismas entidades). `entidades` agrega otras que mencione."
     )
 )
 def update_observation(
-    ids: list[str], nueva: str, entityName: str = "", source: int | None = None
+    ids: list[str], nueva: str, entidades: list[str] | None = None, source: int | None = None
 ) -> str:
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
@@ -432,7 +501,7 @@ def update_observation(
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
-            f"SELECT id, entity_id FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
+            f"SELECT id FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
         ).fetchall()
         missing = sorted(set(numbers) - {r["id"] for r in found})
         if missing:
@@ -441,11 +510,17 @@ def update_observation(
                 f"Nada cambió: {listed} no existe o ya no está vigente. Busca con search_nodes "
                 "y reintenta con los ids que aparezcan."
             )
+        linked = linked_entities(db, numbers)
+        linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({marks})", numbers)
-        entities = {r["entity_id"] for r in found}
-        target = upsert_entity(db, entityName, "objeto")[0] if entityName else found[0]["entity_id"]
-        add_obs(db, target, [nueva], source)
-        for entity_id in entities | {target}:
+        add_obs(db, linked, [nueva], source)
+        new_id = db.execute(
+            "SELECT id FROM observations WHERE content = ? AND valid = 1", (nueva.strip(),)
+        ).fetchone()["id"]
+        db.execute(
+            f"UPDATE observations SET superseded_by = ? WHERE id IN ({marks})", [new_id, *numbers]
+        )
+        for entity_id in linked:
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
     text = f"Corregido: {len(numbers)} datos antiguos dejaron de estar vigentes."
@@ -462,12 +537,11 @@ def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list
     joined = " ".join([text, *[r["content"] for r in old]])
     words = {normalize(w)[:6] for w in re.findall(r"\w+", joined, flags=re.UNICODE) if len(w) > 4}
     rows = db.execute(
-        "SELECT o.id, e.name, o.content FROM observations o JOIN entities e ON e.id = o.entity_id"
-        " WHERE o.valid = 1 AND o.content != ? ORDER BY o.id DESC",
+        "SELECT id, content FROM observations WHERE valid = 1 AND content != ? ORDER BY id DESC",
         (text.strip(),),
     ).fetchall()
     found = [r for r in rows if any(w in normalize(r["content"]) for w in words)]
-    return [f"[o{r['id']}] {r['name']}: {r['content']}" for r in found[:MAX_RELATED]]
+    return [f"[o{r['id']}] {r['content']}" for r in found[:MAX_RELATED]]
 
 
 @server.tool(description="Crea la entidad de Renzo si falta. La usa Tama al iniciar.")
@@ -598,13 +672,17 @@ def find_memory(query: str) -> str:
                 text = f"Todo sobre {row['name']} ({row['type']})"
                 items.append({"entidad": row["name"], "texto": text})
             observations = db.execute(
-                "SELECT id, content FROM observations WHERE entity_id = ? AND valid = 1",
+                "SELECT o.id, o.content FROM observations o"
+                " JOIN observation_entities l ON l.observation_id = o.id"
+                " WHERE l.entity_id = ? AND o.valid = 1",
                 (row["id"],),
             ).fetchall()
             for observation in observations:
                 if any(w in normalize(observation["content"]) for w in words):
                     text = f"{row['name']}: {observation['content']}"
-                    items.append({"dato": observation["id"], "texto": text})
+                    item = {"dato": observation["id"], "texto": text}
+                    if observation["id"] not in {i.get("dato") for i in items}:
+                        items.append(item)
         names = [r["name"] for r in db.execute("SELECT name FROM entities ORDER BY name")]
     events = events_db()
     messages = len(matching_messages(events, query)) if events else 0
@@ -629,12 +707,11 @@ def forget_memory(entidades: list[str], datos: list[int], consulta: str = "") ->
                 db.execute("DELETE FROM entities WHERE id = ?", (row["id"],))
                 reindex(db, row["id"])
         for observation in datos:
-            row = db.execute(
-                "SELECT entity_id FROM observations WHERE id = ?", (observation,)
-            ).fetchone()
-            if row:
-                db.execute("DELETE FROM observations WHERE id = ?", (observation,))
-                reindex(db, row["entity_id"])
+            linked = linked_entities(db, [observation])
+            db.execute("DELETE FROM observations WHERE id = ?", (observation,))
+            for entity_id in linked:
+                reindex(db, entity_id)
+        drop_orphans(db)
     redacted = 0
     events = events_db()
     if events and consulta:
@@ -658,8 +735,9 @@ def export_graph(target: Path) -> int:
         rows = db.execute("SELECT * FROM entities ORDER BY norm").fetchall()
         for row in rows:
             observations = db.execute(
-                "SELECT content, created_at, source, valid FROM observations"
-                " WHERE entity_id = ? ORDER BY created_at, id",
+                "SELECT o.id, o.content, o.created_at, o.source, o.valid, o.superseded_by"
+                " FROM observations o JOIN observation_entities l ON l.observation_id = o.id"
+                " WHERE l.entity_id = ? ORDER BY o.created_at, o.id",
                 (row["id"],),
             ).fetchall()
             aliases = db.execute(
