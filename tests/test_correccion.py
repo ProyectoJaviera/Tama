@@ -189,6 +189,29 @@ def test_search_finds_a_fact_buried_in_a_busy_entity():
     assert "diciembre" in memoria.search_nodes("cumpleaños mamá Renzo")
 
 
+def test_almost_identical_fact_is_not_duplicated():
+    memoria.create_entities([entity("Halloween", "plan", "Irán de piratas a Halloween")])
+    memoria.create_entities([entity("Ana", "persona", "Irán de piratas a halloween.")])
+    assert count("observations") == 1 and links("Irán de piratas a Halloween") == 2
+
+
+def test_different_fact_is_not_taken_for_a_duplicate():
+    memoria.create_entities([entity("Halloween", "plan", "Irán de piratas a Halloween")])
+    memoria.create_entities([entity("Halloween", "plan", "Irán de vaqueros a Halloween")])
+    assert count("observations") == 2
+
+
+def test_existing_relative_gets_its_short_alias():
+    with memoria.connect() as db:
+        db.execute(
+            "INSERT INTO entities (name, norm, type, created_at)"
+            " VALUES ('esposa de Renzo', 'esposa de renzo', 'persona', 'x')"
+        )
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Almuerzo", "plan", "Almuerzo con su esposa")])
+    assert links("Almuerzo con su esposa") == 2
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])

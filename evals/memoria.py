@@ -213,7 +213,7 @@ CORRECTION = [
     "Para Halloween me voy a disfrazar de Shrek.",
     "Mi esposa se va a disfrazar de Fiona para Halloween.",
     "Cambio de planes: con mi esposa iremos de la Bella y la Bestia.",
-    "Al final no, mi esposa y yo iremos de piratas.",
+    "Ya lo decidimos: con mi esposa iremos de piratas a Halloween.",
 ]
 CORRECTION_QUESTION = "¿De qué nos vamos a disfrazar en Halloween?"
 OUTDATED = ("shrek", "fiona", "bella", "bestia")

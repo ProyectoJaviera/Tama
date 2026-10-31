@@ -11,7 +11,7 @@ import re
 import sqlite3
 import unicodedata
 from datetime import UTC, datetime, timedelta
-from difflib import get_close_matches
+from difflib import SequenceMatcher, get_close_matches
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +76,7 @@ MAX_LISTED = 15
 MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
+SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
@@ -234,14 +235,27 @@ def upsert_entity(db: sqlite3.Connection, name: str, type_: str) -> tuple[int, b
         "INSERT INTO entities (name, norm, type, created_at) VALUES (?, ?, ?, ?)",
         (name.strip(), normalize(name), type_, now()),
     )
-    # "esposa de Renzo" también se reconoce como "esposa" al enlazar hechos.
-    relative, _, owner = normalize(name).rpartition(" de ")
+    add_relative_alias(db, cursor.lastrowid, normalize(name))
+    return cursor.lastrowid, True
+
+
+def add_relative_alias(db: sqlite3.Connection, entity_id: int, norm: str) -> None:
+    """ "esposa de Renzo" también se reconoce como "esposa" al enlazar hechos."""
+    relative, _, owner = norm.rpartition(" de ")
     if relative and owner == OWNER:
         db.execute(
-            "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)",
-            (relative, cursor.lastrowid),
+            "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)", (relative, entity_id)
         )
-    return cursor.lastrowid, True
+
+
+def same_fact(db: sqlite3.Connection, text: str) -> int | None:
+    """Hecho vigente que dice lo mismo, salvo mayúsculas, tildes o puntuación."""
+    wanted = " ".join(re.findall(r"\w+", normalize(text)))
+    for row in db.execute("SELECT id, content FROM observations WHERE valid = 1"):
+        current = " ".join(re.findall(r"\w+", normalize(row["content"])))
+        if SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT:
+            return row["id"]
+    return None
 
 
 def add_obs(
@@ -254,11 +268,9 @@ def add_obs(
         text = content.strip()
         if not text:
             continue
-        repeated = db.execute(
-            "SELECT id FROM observations WHERE content = ? AND valid = 1", (text,)
-        ).fetchone()
+        repeated = same_fact(db, text)
         if repeated:
-            observation_id = repeated["id"]
+            observation_id = repeated
         else:
             observation_id = db.execute(
                 "INSERT INTO observations (content, created_at, source) VALUES (?, ?, ?)",
@@ -602,6 +614,10 @@ def ensure_owner(nombre: str) -> str:
         db.execute("UPDATE entities SET type = 'persona' WHERE id = ?", (entity_id,))
         db.execute("INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES ('yo', ?)", (entity_id,))
         reindex(db, entity_id)
+        # Entidades guardadas antes de que existiera este alias.
+        for row in db.execute("SELECT id, norm FROM entities").fetchall():
+            add_relative_alias(db, row["id"], row["norm"])
+            reindex(db, row["id"])
     return "Listo."
 
 
