@@ -163,6 +163,7 @@ Variables en `.env` (ver `.env.example`):
 | `OLLAMA_API_KEY` | vacío | Opcional: nube de Ollama directo a ollama.com (sin ella, vía `ollama signin`) |
 | `TAMA_CLOUD_MODEL` | `gemma4:31b-cloud` | Modelo de la nube de Ollama |
 | `ANTHROPIC_API_KEY` | vacío | Activa la capa de Claude |
+| `TAMA_CLAUDE_ENABLED` | `true` | Usar la capa de Claude; las evals la apagan salvo con `--con-claude` |
 | `TAMA_CLAUDE_MODEL` | `claude-haiku-5-5` | Modelo de Claude |
 | `TAMA_CLAUDE_EFFORT` | `low` | Esfuerzo de razonamiento de Claude (`low` = más rápido) |
 | `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |

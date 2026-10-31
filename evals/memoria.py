@@ -3,7 +3,7 @@
 Los datos son ficticios: nada personal de Renzo. Mide cuántos hechos recuerda cada capa, cuántas
 entidades duplicadas o mal nombradas crea, si inventa recuerdos y el tamaño real del prompt.
 
-    uv run python -m evals.memoria --capas nube claude local
+    uv run python -m evals.memoria --capas nube local
     uv run python -m evals.memoria --capas local --offline
 """
 
@@ -324,6 +324,7 @@ def main() -> int:
     # Claude queda fuera por defecto: cuida el cupo mensual de la API.
     parser.add_argument("--capas", nargs="+", default=["nube", "local"])
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
+    parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
     args = parser.parse_args()
 

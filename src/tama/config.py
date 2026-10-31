@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     cloud_model: str = "gemma4:31b-cloud"
     cloud_first_token_s: float = 8.0
 
-    # Capa 2: Claude.
+    # Capa 2: Claude. Las evals la apagan (ver evals/__init__.py) para cuidar el cupo de la API.
+    claude_enabled: bool = True
     anthropic_api_key: SecretStr | None = Field(
         None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "TAMA_ANTHROPIC_API_KEY")
     )

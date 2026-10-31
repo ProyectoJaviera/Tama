@@ -238,6 +238,8 @@ def render_report() -> str:
         "",
         "Generado por `uv run python -m evals`. Cada escenario se puntúa de 1 a 5 por criterio con",
         f'un juez LLM; a todos se suma el criterio "{GENERIC_CRITERION}". Aprobado = media ≥ 4.',
+        "",
+        "La capa de Claude queda sin medir por decisión de Renzo, para cuidar el cupo de la API.",
     ]
     for path in sorted(EVALS_DIR.glob("results-*.json"), key=_mode_order):
         mode = path.stem.removeprefix("results-")

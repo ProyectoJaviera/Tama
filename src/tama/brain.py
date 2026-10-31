@@ -110,6 +110,8 @@ def build(
         # Sin tiempo máximo: es la última capa y cargar el modelo en CPU puede tardar.
         Layer(local_provider, None, breaker()),
     ]
+    if not settings.claude_enabled:
+        layers = [layer for layer in layers if layer.provider.name != "claude"]
     if only:
         layers = [layer for layer in layers if layer.provider.name in only]
     tools = build_tools(settings, connectivity, breaker) if with_tools else None

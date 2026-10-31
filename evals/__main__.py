@@ -94,6 +94,7 @@ def main() -> int:
     parser.add_argument(
         "--capas", nargs="+", help="usa solo estas capas (nube, claude, local) para medir cada una"
     )
+    parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--sin-juez", action="store_true", help="no puntuar (solo latencias)")
     parser.add_argument("--juez-local", action="store_true", help="no usar el juez de la nube")
     parser.add_argument(
