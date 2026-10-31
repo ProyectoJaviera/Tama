@@ -325,10 +325,13 @@ def no_match(db: sqlite3.Connection) -> str:
     if not rows:
         return "No hay nada anotado sobre eso."
     listed = ", ".join(f"{r['name']} ({r['type']})" for r in rows)
-    return (
+    text = (
         "No hay coincidencias con esas palabras. Entidades guardadas: "
         f"{listed}. Si alguna puede servir, búscala por su nombre; si no, no está anotado."
     )
+    owner = find_entity(db, OWNER)
+    facts = recent_observations(db, owner["id"]) if owner else []
+    return f"{text} Datos recientes de Renzo: {'; '.join(facts)}." if facts else text
 
 
 def without_date(text: str) -> str:
@@ -358,6 +361,8 @@ def fts_query(text: str) -> str:
         "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
         "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
         "evento, salud, objeto, gusto) y "
+        'cada observation debe entenderse sola, diciendo de quién habla ("el cumpleaños de su '
+        'mamá es..."). '
         "observations (frases cortas). Si la entidad ya existe, se completa."
     )
 )

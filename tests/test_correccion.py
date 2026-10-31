@@ -212,6 +212,12 @@ def test_existing_relative_gets_its_short_alias():
     assert links("Almuerzo con su esposa") == 2
 
 
+def test_no_match_shows_recent_facts_of_renzo():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Renzo", "persona", "Odia el cilantro")])
+    assert "Odia el cilantro" in memoria.search_nodes("hierba")
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])
