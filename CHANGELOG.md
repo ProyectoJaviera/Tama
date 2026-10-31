@@ -6,6 +6,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Tras la demo del Sprint 3: `update_observation` corrige un dato sin confirmación y sin borrarlo;
+  `/olvidar <tema>` busca por palabras, deja elegir y también limpia los mensajes del tema; las
+  confirmaciones se leen en español; la línea gris muestra las capas sin usar y su motivo.
 - Sprint 3: memoria entre sesiones. Perfil `memoria/nucleo.md`, servidor MCP de memoria con grafo
   en SQLite (observaciones con fecha, origen y vigencia, alias y búsqueda FTS5), recuerdo de la
   última conversación, `recent_events`, `/memoria`, `/olvidar`, `tama memoria export` y evals de

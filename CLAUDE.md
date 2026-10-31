@@ -45,6 +45,7 @@ vendor/          copias de paquetes de terceros (MCP)
 ## Cómo trabajar
 
 - Ciclo: spec del sprint → rama corta → tests → evals + demo → OK de Renzo → merge a `main`.
+- Un sprint a la vez, sin trabajo en paralelo sobre el siguiente: no se avanza hasta que Renzo apruebe el actual ("OK demo") y esté mergeado a `main`.
 - Commits con Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
 - Definición de terminado: tests verdes, evals sin regresión **con y sin internet**, README y CHANGELOG al día, demo aprobada por Renzo.
 - Código e identificadores en inglés; documentación, prompts de Tama y mensajes al usuario en español.

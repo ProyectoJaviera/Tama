@@ -548,5 +548,50 @@
         "tokens_prompt": 2290
       }
     ]
+  },
+  "corrección nube": {
+    "capa": "nube",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": true,
+    "recuerda_nuevo": true,
+    "respuesta": "Vas a viajar a Chiloé con tu familia.",
+    "herramientas": [
+      "create_entities",
+      "update_observation",
+      "search_nodes"
+    ]
+  },
+  "corrección claude": {
+    "capa": "claude",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": true,
+    "recuerda_nuevo": true,
+    "respuesta": "Para fin de año vas a viajar a **Chiloé** con tu familia. Me dijiste que cambiaste los planes de Pucón por Chiloé.",
+    "herramientas": [
+      "create_entities",
+      "create_relations",
+      "update_observation",
+      "create_relations",
+      "create_entities",
+      "create_relations",
+      "search_nodes"
+    ]
+  },
+  "corrección local": {
+    "capa": "local",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": false,
+    "antiguo_no_vigente": false,
+    "recuerda_nuevo": true,
+    "respuesta": "Vas a Chiloé para fin de año. Cambié de planes de ir a Pucón por allá.",
+    "herramientas": [
+      "update_observation",
+      "search_nodes"
+    ]
   }
 }

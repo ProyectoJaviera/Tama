@@ -11,6 +11,14 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 | local | 9/10 | 3/3 | 10 | 0 | 1 | 2578 |
 | local (sin red) | 9/10 | 3/3 | 10 | 0 | 0 | 2415 |
 
+## Corrección de un dato
+
+| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo |
+|---|---|---|---|
+| nube | ok | ok | ok |
+| claude | ok | ok | ok |
+| local | ok | FALLA | ok |
+
 ## Fallos
 
 - `nube` · duplicada: lucia / mudanza de lucia
