@@ -73,13 +73,18 @@ ALTER TABLE facts RENAME TO observations;
 FACT_KINDS = """
 ALTER TABLE observations ADD COLUMN kind TEXT NOT NULL DEFAULT 'estado';
 ALTER TABLE observations ADD COLUMN occurred_at TEXT;
-UPDATE observations SET occurred_at = substr(created_at, 1, 10);
+UPDATE observations SET occurred_at = date(created_at, 'localtime');
 UPDATE observations SET kind = 'evento' WHERE content LIKE '%médic%' OR content LIKE '%medic%'
     OR content LIKE '%duele%' OR content LIKE '%dolor%' OR id IN (
         SELECT l.observation_id FROM observation_entities l JOIN entities e ON e.id = l.entity_id
         WHERE e.type IN ('salud', 'evento'));
 """
-MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS]
+# La primera versión de FACT_KINDS usó el día UTC, que en Chile puede ser el día siguiente.
+LOCAL_DATES = """
+UPDATE observations SET occurred_at = date(created_at, 'localtime')
+    WHERE occurred_at = substr(created_at, 1, 10);
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES]
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
@@ -87,7 +92,9 @@ MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
 MAX_HISTORY = 3
+SOON_DAYS = 60
 # Lo de salud nunca se reemplaza: es la historia médica de Renzo.
+HEALTH_TOPICS = ("salud", "medic", "enferm", "doctor", "clinic")
 HEALTH_WORDS = (
     "duele",
     "dolor",
@@ -131,6 +138,7 @@ NUMBERS = dict(
 ABSOLUTE_DATE = re.compile(
     rf"\b(\d{{1,2}}) de ({'|'.join(MONTHS)})(?: del? (\d{{4}}))?", re.IGNORECASE
 )
+MONTH_ONLY = re.compile(rf"\ben ({'|'.join(MONTHS)})(?: del? (\d{{4}}))?\b", re.IGNORECASE)
 ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 AGO = re.compile(rf"\bhace (\d+|{'|'.join(NUMBERS)}) d[ií]as?\b", re.IGNORECASE)
 # "en la mañana" no es una fecha: solo cuenta "mañana" sin artículo delante.
@@ -263,10 +271,12 @@ def link(db: sqlite3.Connection, observation_id: int, entity_ids: set[int]) -> N
 
 
 def mentioned_entities(db: sqlite3.Connection, text: str) -> set[int]:
-    """Entidades cuyo nombre o alias aparece tal cual en el hecho."""
+    """Personas, lugares o cosas nombradas en el hecho; un plan no se enlaza solo por mención."""
     words = f" {' '.join(re.findall(r'\w+', normalize(text)))} "
     rows = db.execute(
-        "SELECT id, norm FROM entities UNION SELECT entity_id, norm FROM aliases"
+        "SELECT e.id, e.norm FROM entities e WHERE e.type NOT IN ('plan', 'evento', 'proyecto')"
+        " UNION SELECT a.entity_id, a.norm FROM aliases a JOIN entities e ON e.id = a.entity_id"
+        " WHERE e.type NOT IN ('plan', 'evento', 'proyecto')"
     ).fetchall()
     return {r[0] for r in rows if len(r[1]) > 1 and f" {r[1]} " in words}
 
@@ -316,6 +326,16 @@ def as_list(value: Any) -> list[str]:
     return [value] if isinstance(value, str) else [str(item) for item in value]
 
 
+def dated(today: date, year: str | None, month: int, day: int) -> str:
+    """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas."""
+    if year:
+        return date(int(year), month, day).isoformat()
+    result = date(today.year, month, day)
+    if result > today + timedelta(days=SOON_DAYS):
+        result = date(today.year - 1, month, day)
+    return result.isoformat()
+
+
 def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
     today = today or date.today()
@@ -336,10 +356,13 @@ def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
         if re.search(pattern, text, flags=re.IGNORECASE):
             text = re.sub(pattern, f"el {shift(days)}", text, flags=re.IGNORECASE)
     absolute = ABSOLUTE_DATE.search(text)
+    month_only = MONTH_ONLY.search(text)
     if absolute:
-        year = int(absolute.group(3) or today.year)
         month = MONTHS.index(absolute.group(2).lower()) + 1
-        found = date(year, month, int(absolute.group(1))).isoformat()
+        found = dated(today, absolute.group(3), month, int(absolute.group(1)))
+    elif month_only:
+        month = MONTHS.index(month_only.group(1).lower()) + 1
+        found = dated(today, month_only.group(2), month, 1)
     iso = ISO_DATE.search(text)
     return text, found or (iso.group(0) if iso else "")
 
@@ -730,8 +753,8 @@ def update_observation(
             listed = ", ".join(f"o{n}" for n in missing)
             similar = "; ".join(related_facts(db, nueva, [])) or "ninguno"
             raise ValueError(
-                f"Nada cambió: {listed} no existe o ya no está vigente. Datos parecidos: {similar}. "
-                "Reintenta con sus ids."
+                f"Nada cambió: {listed} no existe o ya no está vigente. "
+                f"Datos parecidos: {similar}. Reintenta con sus ids."
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
@@ -795,10 +818,32 @@ def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list
     return [f"[o{r['id']}] {r['content']}" for r in found[:MAX_RELATED]]
 
 
+def about(row: sqlite3.Row, tema: str) -> bool:
+    """Si un hecho trata del tema: por sus palabras, sus entidades o, en salud, sus sinónimos."""
+    text = normalize(f"{row['content']} {row['names'] or ''}")
+    if any(word in normalize(tema) for word in HEALTH_TOPICS):
+        return "salud" in text or any(word in text for word in HEALTH_WORDS)
+    return any(word in text for word in stems(tema) - {"histor"})
+
+
+def with_chain(ids: set[int], rows: list[sqlite3.Row]) -> set[int]:
+    """Agrega toda la cadena de reemplazos, hacia atrás y hacia adelante."""
+    links = [(r["id"], r["superseded_by"]) for r in rows if r["superseded_by"]]
+    result = set(ids)
+    size = 0
+    while size != len(result):
+        size = len(result)
+        for old, new in links:
+            if old in result or new in result:
+                result |= {old, new}
+    return result
+
+
 @server.tool(
     description=(
         "Historial en orden cronológico, incluidos los datos antiguos. Úsala para preguntas de "
-        'historial o "desde cuándo". tema (o entidad), desde y hasta (AAAA-MM-DD) son opcionales.'
+        "historial o 'desde cuándo' (p. ej., tema salud). tema (o entidad), desde y hasta "
+        "(AAAA-MM-DD) son opcionales. Cuenta un evento por línea, sin fusionarlos."
     ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
@@ -810,17 +855,16 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
             " FROM observations o ORDER BY o.occurred_at, o.id"
         ).fetchall()
-    rows = [
-        r for r in rows if r["occurred_at"] >= desde and (not hasta or r["occurred_at"] <= hasta)
-    ]
-    wanted = stems(tema)
-    found = [
-        r for r in rows if any(w in normalize(f"{r['content']} {r['names'] or ''}") for w in wanted)
-    ]
-    # Las palabras del tema pueden no aparecer ("historial médico"): el modelo elige de todo.
-    chosen = (found or rows)[-MAX_TIMELINE:]
+    by_id = {r["id"]: r for r in rows}
+    found = [r for r in rows if about(r, tema)] if tema.strip() else rows
+    chosen_ids = with_chain({r["id"] for r in found}, rows)
+    chosen = [
+        by_id[n]
+        for n in sorted(chosen_ids, key=lambda n: (by_id[n]["occurred_at"], n))
+        if by_id[n]["occurred_at"] >= desde and (not hasta or by_id[n]["occurred_at"] <= hasta)
+    ][-MAX_TIMELINE:]
     if not chosen:
-        return "No hay nada anotado en ese período."
+        return "No hay nada anotado sobre eso en ese período."
     lines = []
     for row in chosen:
         state = "vigente" if row["valid"] else "ya no vigente"

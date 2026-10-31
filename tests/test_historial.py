@@ -37,6 +37,12 @@ def first_id():
         ("Corre en la mañana", "Corre en la mañana", ""),
         ("El 3 de marzo de 2026 fue", "El 3 de marzo de 2026 fue", "2026-03-03"),
         ("Pasado mañana viaja", "el 2026-11-02 viaja", "2026-11-02"),
+        ("En mayo tuve alergia", "En mayo tuve alergia", "2026-05-01"),
+        ("Me mudé en mayo de 2024", "Me mudé en mayo de 2024", "2024-05-01"),
+        ("Viajo en diciembre", "Viajo en diciembre", "2026-12-01"),
+        ("El 3 de marzo me operaron", "El 3 de marzo me operaron", "2026-03-03"),
+        ("Fue en septiembre", "Fue en septiembre", "2026-09-01"),
+        ("El 20 de febrero nací", "El 20 de febrero nací", "2026-02-20"),
     ],
 )
 def test_dates_become_absolute(text, expected, when):
@@ -120,9 +126,41 @@ def test_timeline_filters_by_topic_and_dates():
     assert "rodilla" not in memoria.linea_de_tiempo(desde="2026-04-01")
 
 
-def test_timeline_without_topic_match_gives_everything():
+def test_health_topic_keeps_only_health_facts():
     memoria.create_entities([entity("Renzo", "persona", "Se operó la rodilla")])
-    assert "rodilla" in memoria.linea_de_tiempo("historial médico")
+    memoria.create_entities([entity("Renzo", "persona", "Almuerza con Ana")])
+    for topic in ("historial médico", "salud"):
+        text = memoria.linea_de_tiempo(topic)
+        assert "rodilla" in text and "Almuerza" not in text
+
+
+def test_topic_without_matches_returns_nothing():
+    memoria.create_entities([entity("Renzo", "persona", "Almuerza con Ana")])
+    assert "No hay nada" in memoria.linea_de_tiempo("astronomía")
+
+
+def test_timeline_follows_the_whole_chain():
+    memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
+    memoria.update_observation([first_id()], "Irá de vaqueros")
+    memoria.update_observation([first_id()], "Irá de astronautas")
+    text = memoria.linea_de_tiempo("disfraz")
+    assert "Shrek" in text and "vaqueros" in text and "astronautas (vigente)" in text
+
+
+def test_timeline_gives_one_event_per_line():
+    memoria.create_entities([entity("Renzo", "persona", "Le duele el pie", "Le duele el brazo")])
+    assert len(memoria.linea_de_tiempo("salud").splitlines()) == 2
+
+
+def test_fact_does_not_link_to_a_plan_by_mention():
+    memoria.create_entities([entity("Halloween", "plan", "Habrá fiesta")])
+    memoria.create_entities([entity("Renzo", "persona", "Sanó antes de Halloween")])
+    with memoria.connect() as db:
+        row = db.execute(
+            "SELECT COUNT(*) FROM observation_entities l JOIN observations o"
+            " ON o.id = l.observation_id WHERE o.content = 'Sanó antes de Halloween'"
+        ).fetchone()
+    assert row[0] == 1
 
 
 def test_one_off_plan_goes_to_the_people_it_names():
