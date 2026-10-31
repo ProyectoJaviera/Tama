@@ -305,65 +305,65 @@
     "fecha": "2026-10-30",
     "hechos": 9,
     "total_hechos": 10,
-    "guardados": 10,
+    "guardados": 11,
     "negativos": 3,
     "total_negativos": 3,
-    "tokens_prompt_max": 2578,
+    "tokens_prompt_max": 2704,
     "calidad": {
-      "entidades": 10,
+      "entidades": 7,
       "duplicadas": [],
-      "mal_nombradas": [
-        "te verde en las tardes"
-      ]
+      "mal_nombradas": []
     },
     "detalle": [
       {
         "pregunta": "¿A qué ciudad se muda mi hermana?",
         "ok": true,
-        "respuesta": "Mi hermana Lucía se muda a Temuco.  \nEsa fecha es del 2026-10-30.  \n¿Quieres que lo guarde como dato en tu perfil?",
+        "respuesta": "Tu hermana Lucía se muda a Temuco.  \nEso fue en marzo de 2026.  \n¿Querés que te lo anote?",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2503
+        "tokens_prompt": 2550
       },
       {
         "pregunta": "¿Qué estoy plantando en el balcón?",
         "ok": true,
-        "respuesta": "Estás plantando tomates cherry en el balcón.  \n¿Quieres que te dé más detalles o una foto de cómo están creciendo?",
+        "respuesta": "Estás plantando tomates cherry en el balcón.  \nEsa es una buena elección porque crecen bien con luz solar directa.  \n¿Quieres que te diga cómo cuidarlos cada día?",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2506
+        "tokens_prompt": 2555
       },
       {
         "pregunta": "¿Cómo se llama mi perro?",
         "ok": true,
-        "respuesta": "Tu perro se llama Bruno. 😊",
+        "respuesta": "Tu perro se llama Bruno. Lo tengo registrado como mascota de Renzo.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2494
+        "tokens_prompt": 2544
       },
       {
         "pregunta": "¿Qué hierba no me gusta?",
         "ok": false,
-        "respuesta": "No tengo información sobre tus gustos en hierbas. Si me dices qué hierbas has probado, puedo ayudarte a ver si hay alguna que no te gusta. ¿Quieres compartir algo?",
+        "respuesta": "No tengo información sobre hierbas ni gustos específicos que tengas. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba que usas en cocina o en remedios?",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2452
+        "tokens_prompt": 2479
       },
       {
         "pregunta": "¿Qué libro estoy leyendo?",
         "ok": true,
-        "respuesta": "Estás leyendo *Cien años de soledad*. Es un libro que Renzo está leyendo desde hace unos días. ¿Quieres saber más sobre él o qué página está?",
+        "respuesta": "Estás leyendo *Cien años de soledad*. Lo mencionaste el 30 de octubre, a las 22:46.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2486
+        "tokens_prompt": 2658
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
         "ok": true,
-        "respuesta": "Mi proyecto de este trimestre es el reloj con Arduino. ¿Quieres que lo revisemos juntos?",
-        "herramientas": [],
+        "respuesta": "Tu proyecto de este trimestre es el reloj con Arduino. También trabajas con Tomás en el proyecto Faro, y tienes una huerta en el balcón con tomates cherry.",
+        "herramientas": [
+          "search_nodes"
+        ],
         "capa": "local",
-        "tokens_prompt": 2576
+        "tokens_prompt": 2702
       },
       {
         "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
@@ -371,57 +371,55 @@
         "respuesta": "El cumpleaños de tu mamá es el 14 de diciembre.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2492
+        "tokens_prompt": 2666
       },
       {
         "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
         "ok": true,
-        "respuesta": "El proyecto en el que trabajas con Tomás se llama Faro.",
-        "herramientas": [
-          "search_nodes"
-        ],
+        "respuesta": "Faro. Es el proyecto en el que Renzo y Tomás trabajan juntos.",
+        "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2578
+        "tokens_prompt": 2704
       },
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
         "ok": true,
-        "respuesta": "Estás aprendiendo portugués. Lo mencionaste en las tardes, junto con tu preferencia por el té verde.",
+        "respuesta": "Estás aprendiendo portugués. Lo empezaste en las tardes.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2452
+        "tokens_prompt": 2479
       },
       {
         "pregunta": "¿Qué prefiero tomar en las tardes?",
         "ok": true,
-        "respuesta": "Prefiero tomar té verde en las tardes. Es mejor que el café para mí.",
+        "respuesta": "Prefiero té verde en las tardes. Es más relajante que el café. ¿Quieres que lo anote como hábito?",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2517
+        "tokens_prompt": 2661
       },
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato. Si lo recuerdas, dime y lo guardo.",
+        "respuesta": "No tengo ese dato guardado. Si me dices más, puedo ayudarte a buscarlo o recordarlo.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2452
+        "tokens_prompt": 2479
       },
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No tengo ese dato. Si me dices más, puedo ayudarte a recordarlo.",
+        "respuesta": "No tengo ese dato. Si me lo dices, lo guardo para siempre.",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2452
+        "tokens_prompt": 2479
       },
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No tengo ese dato. Si me dices cuál es, lo guardo para siempre. 😊",
+        "respuesta": "No tengo ese dato. ¿Te suena familiar alguna vez decirme qué color te gusta?",
         "herramientas": [],
         "capa": "local",
-        "tokens_prompt": 2453
+        "tokens_prompt": 2480
       }
     ]
   },
@@ -555,10 +553,17 @@
     "sin_confirmacion": true,
     "conserva_antiguo": true,
     "antiguo_no_vigente": true,
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 2,
     "recuerda_nuevo": true,
-    "respuesta": "Vas a viajar a Chiloé con tu familia.",
+    "respuesta": "Se disfrazarán de piratas tú y tu esposa.",
     "herramientas": [
       "create_entities",
+      "create_entities",
+      "create_relations",
+      "search_nodes",
+      "update_observation",
+      "search_nodes",
       "update_observation",
       "search_nodes"
     ]
@@ -569,15 +574,17 @@
     "sin_confirmacion": true,
     "conserva_antiguo": true,
     "antiguo_no_vigente": true,
-    "recuerda_nuevo": true,
-    "respuesta": "Para fin de año vas a viajar a **Chiloé** con tu familia. Me dijiste que cambiaste los planes de Pucón por Chiloé.",
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 1,
+    "recuerda_nuevo": false,
+    "respuesta": "Según lo que me contaste, tú y tu esposa irán de piratas. Antes habían cambiado de idea varias veces (primero ella de Fiona, luego la Bella y la Bestia), pero la última decisión fue esa.",
     "herramientas": [
       "create_entities",
-      "create_relations",
+      "add_observations",
+      "search_nodes",
       "update_observation",
-      "create_relations",
-      "create_entities",
-      "create_relations",
+      "search_nodes",
+      "update_observation",
       "search_nodes"
     ]
   },
@@ -586,12 +593,11 @@
     "sin_red": false,
     "sin_confirmacion": true,
     "conserva_antiguo": false,
-    "antiguo_no_vigente": false,
-    "recuerda_nuevo": true,
-    "respuesta": "Vas a Chiloé para fin de año. Cambié de planes de ir a Pucón por allá.",
-    "herramientas": [
-      "update_observation",
-      "search_nodes"
-    ]
+    "antiguo_no_vigente": true,
+    "hechos_vigentes": 0,
+    "entidades_enlazadas": 0,
+    "recuerda_nuevo": false,
+    "respuesta": "Vamos a disfrazarnos de piratas. Antes querías ser de Bella y la Bestia, pero al final decidiste que eran piratas.",
+    "herramientas": []
   }
 }

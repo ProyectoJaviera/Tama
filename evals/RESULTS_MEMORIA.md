@@ -8,19 +8,19 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 |---|---:|---:|---:|---:|---:|---:|
 | nube | 10/10 | 3/3 | 12 | 1 | 0 | 2038 |
 | claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
-| local | 9/10 | 3/3 | 10 | 0 | 1 | 2578 |
+| local | 9/10 | 3/3 | 7 | 0 | 0 | 2704 |
 | local (sin red) | 9/10 | 3/3 | 10 | 0 | 0 | 2415 |
 
 ## Corrección de un dato
 
-| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo |
-|---|---|---|---|
-| nube | ok | ok | ok |
-| claude | ok | ok | ok |
-| local | ok | FALLA | ok |
+| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho |
+|---|---|---|---|---|
+| nube | ok | ok | ok | ok |
+| claude | ok | ok | FALLA | ok |
+| local | ok | ok | FALLA | FALLA |
 
 ## Fallos
 
 - `nube` · duplicada: lucia / mudanza de lucia
-- `local` · ¿Qué hierba no me gusta?: No tengo información sobre tus gustos en hierbas. Si me dices qué hierbas has probado, puedo ayudarte a ver si hay algun
+- `local` · ¿Qué hierba no me gusta?: No tengo información sobre hierbas ni gustos específicos que tengas. Si me dices más, puedo ayudarte mejor. ¿Te refieres
 - `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre tus preferencias de hierbas. ¿Querés que lo investiguemos juntos? O tal vez me digas qué hierbas ya

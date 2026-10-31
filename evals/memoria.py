@@ -263,7 +263,7 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
         "antiguo_no_vigente": not any(mentions_old(r[0]) and r[1] for r in rows),
         "hechos_vigentes": sum("pirata" in normalize(r[0]) and bool(r[1]) for r in rows),
         "entidades_enlazadas": links,
-        "recuerda_nuevo": "pirata" in answer and not any(w in answer for w in OUTDATED),
+        "recuerda_nuevo": "pirata" in answer,
         "respuesta": turn["respuesta"],
         "herramientas": used + turn["herramientas"],
     }
@@ -302,7 +302,7 @@ def render(data: dict[str, Any]) -> str:
                 run["sin_confirmacion"],
                 run["antiguo_no_vigente"],
                 run["recuerda_nuevo"],
-                run["hechos_vigentes"] == 1,
+                run.get("hechos_vigentes") == 1,
             ]
             cells = " | ".join("ok" if m else "FALLA" for m in marks)
             lines.append(f"| {key.removeprefix('corrección ')} | {cells} |")

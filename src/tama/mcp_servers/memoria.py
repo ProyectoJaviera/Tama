@@ -76,6 +76,7 @@ MAX_LISTED = 15
 MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
+OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
 SHOWN_DATE = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?\)\s*$")
@@ -199,6 +200,15 @@ def link(db: sqlite3.Connection, observation_id: int, entity_ids: set[int]) -> N
         reindex(db, entity_id)
 
 
+def mentioned_entities(db: sqlite3.Connection, text: str) -> set[int]:
+    """Entidades cuyo nombre o alias aparece tal cual en el hecho."""
+    words = f" {' '.join(re.findall(r'\w+', normalize(text)))} "
+    rows = db.execute(
+        "SELECT id, norm FROM entities UNION SELECT entity_id, norm FROM aliases"
+    ).fetchall()
+    return {r[0] for r in rows if len(r[1]) > 1 and f" {r[1]} " in words}
+
+
 def drop_orphans(db: sqlite3.Connection) -> None:
     """Un hecho sin entidades ya no se puede encontrar: se borra con la última de ellas."""
     db.execute(
@@ -224,6 +234,13 @@ def upsert_entity(db: sqlite3.Connection, name: str, type_: str) -> tuple[int, b
         "INSERT INTO entities (name, norm, type, created_at) VALUES (?, ?, ?, ?)",
         (name.strip(), normalize(name), type_, now()),
     )
+    # "esposa de Renzo" también se reconoce como "esposa" al enlazar hechos.
+    relative, _, owner = normalize(name).rpartition(" de ")
+    if relative and owner == OWNER:
+        db.execute(
+            "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)",
+            (relative, cursor.lastrowid),
+        )
     return cursor.lastrowid, True
 
 
@@ -248,7 +265,7 @@ def add_obs(
                 (text, now(), source),
             ).lastrowid
             added += 1
-        link(db, observation_id, entities)
+        link(db, observation_id, entities | mentioned_entities(db, text))
     return added
 
 
@@ -376,8 +393,8 @@ def create_relations(relations: list[dict[str, str]]) -> str:
 
 @server.tool(
     description=(
-        "Agrega datos nuevos. Cada elemento lleva entityName (o entityNames si el hecho menciona "
-        "a varias) y contents (frases cortas). Si la entidad no existe, se crea. Si un dato "
+        "Agrega datos nuevos. Cada elemento lleva entityName (o entityNames con TODAS las "
+        "que menciona) y contents (frases cortas). Si la entidad no existe, se crea. Si un dato "
         "reemplaza a otro, usa update_observation."
     )
 )
@@ -488,8 +505,8 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
     description=(
         "Corrige datos cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad). Antes "
         "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
-        "antiguos, en todas las entidades) y nueva (un solo hecho vigente, que queda enlazado a "
-        "las mismas entidades). `entidades` agrega otras que mencione."
+        "antiguos, en todas las entidades), nueva (un solo hecho vigente) y entidades (TODAS las "
+        "que menciona, p. ej. Renzo, su esposa y Halloween)."
     )
 )
 def update_observation(

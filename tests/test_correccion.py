@@ -150,6 +150,26 @@ def test_one_fact_links_several_entities_with_one_id():
     assert ids_of("Ana") == ids_of("Halloween")
 
 
+def test_fact_links_entities_it_names():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Ana", "persona", "Toma té")])
+    memoria.create_entities([entity("Halloween", "plan", "Renzo y Ana irán de piratas")])
+    assert links("Renzo y Ana irán de piratas") == 3
+
+
+def test_relative_is_linked_by_its_short_name():
+    memoria.create_entities([entity("esposa de Renzo", "persona", "Toma té")])
+    memoria.create_entities([entity("Halloween", "plan", "Con su esposa irán de piratas")])
+    assert links("Con su esposa irán de piratas") == 2
+
+
+def test_correction_inherits_the_entities_of_the_old_facts():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    memoria.create_entities([entity("Ana", "persona", "Fiona")])
+    memoria.update_observation(ids_of("Halloween") + ids_of("Ana"), "Piratas")
+    assert links("Piratas") == 2
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])
