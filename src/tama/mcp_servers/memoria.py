@@ -11,6 +11,7 @@ import re
 import sqlite3
 import unicodedata
 from datetime import UTC, datetime, timedelta
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,9 @@ CREATE VIRTUAL TABLE IF NOT EXISTS search USING fts5(
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
+MAX_FOUND = 10
+FORGOTTEN = "(olvidado)"
+DATE_SUFFIX = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}\)\s*$")
 
 server = MCPServer("memoria", instructions="Lo que Tama recuerda de Renzo.")
 
@@ -205,6 +209,11 @@ def no_match(db: sqlite3.Connection) -> str:
     )
 
 
+def without_date(text: str) -> str:
+    """Quita la fecha que muestran las búsquedas: el modelo a veces copia el dato con ella."""
+    return DATE_SUFFIX.sub("", str(text)).strip()
+
+
 def fts_query(text: str) -> str:
     return " OR ".join(f'"{w}"*' for w in re.findall(r"\w+", text, flags=re.UNICODE))
 
@@ -270,7 +279,8 @@ def create_relations(relations: list[dict[str, str]]) -> str:
 @server.tool(
     description=(
         "Agrega datos nuevos a entidades que ya existen. Cada elemento lleva entityName y "
-        "contents (frases cortas). Si la entidad no existe, se crea."
+        "contents (frases cortas). Si la entidad no existe, se crea. Si un dato reemplaza a otro, "
+        "usa update_observation."
     )
 )
 def add_observations(observations: list[dict[str, Any]], source: int | None = None) -> str:
@@ -343,9 +353,9 @@ def delete_entities(entityNames: list[str]) -> str:
 
 @server.tool(
     description=(
-        "Marca datos como ya no vigentes, por ejemplo si Renzo corrige algo o cambió de opinión. "
-        "No se borran: dejan de usarse. Cada elemento lleva entityName y observations (el texto "
-        "de los datos antiguos)."
+        "Olvida datos: úsala solo cuando Renzo pida olvidar o borrar algo; para corregir un dato "
+        "usa update_observation. Cada elemento lleva entityName y observations (el texto de los "
+        "datos)."
     ),
     annotations=ToolAnnotations(destructive_hint=True),
 )
@@ -357,14 +367,39 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
             if row is None:
                 continue
             for content in item.get("observations") or []:
-                like = f"%{str(content).strip()}%"
+                like = f"%{without_date(content)}%"
                 changed += db.execute(
                     "UPDATE observations SET valid = 0"
                     " WHERE entity_id = ? AND valid = 1 AND content LIKE ?",
                     (row["id"], like),
                 ).rowcount
             reindex(db, row["id"])
+    if not changed:
+        return "No encontré esos datos: nada cambió. Búscalos con search_nodes y copia su texto."
     return f"{changed} datos marcados como no vigentes."
+
+
+@server.tool(
+    description=(
+        "Corrige un dato cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad, otro "
+        "disfraz). El dato antiguo queda como no vigente, con su historia, y se guarda el nuevo. "
+        "Lleva entityName, vieja (texto del dato antiguo) y nueva. Si no lo tienes, búscalo antes "
+        "con search_nodes."
+    )
+)
+def update_observation(entityName: str, vieja: str, nueva: str, source: int | None = None) -> str:
+    with connect() as db:
+        entity_id, _ = upsert_entity(db, entityName, "cosa")
+        changed = db.execute(
+            "UPDATE observations SET valid = 0"
+            " WHERE entity_id = ? AND valid = 1 AND content LIKE ?",
+            (entity_id, f"%{without_date(vieja)}%"),
+        ).rowcount
+        add_obs(db, entity_id, [nueva], source)
+        reindex(db, entity_id)
+    if not changed:
+        return "Guardé el dato nuevo, pero no encontré el antiguo: revísalo con search_nodes."
+    return "Dato corregido: el antiguo quedó como no vigente."
 
 
 @server.tool(
@@ -439,6 +474,103 @@ def proponer_cambio_perfil(cambio: str) -> str:
     separator = "" if not current or current.endswith("\n") else "\n"
     path.write_text(f"{current}{separator}- {cambio.strip()}\n", encoding="utf-8")
     return "Perfil actualizado."
+
+
+def message_query(text: str) -> str:
+    """Todas las palabras importantes: para no tocar mensajes que solo mencionan una."""
+    return " ".join(f'"{w}"*' for w in re.findall(r"\w+", text, flags=re.UNICODE) if len(w) > 3)
+
+
+def matching_messages(db: sqlite3.Connection, query: str) -> list[tuple[int, str]]:
+    match = message_query(query)
+    if not match:
+        return []
+    return db.execute(
+        "SELECT e.id, e.content FROM events_fts f JOIN events e ON e.id = f.rowid"
+        " WHERE events_fts MATCH ?",
+        (match,),
+    ).fetchall()
+
+
+def events_db() -> sqlite3.Connection | None:
+    return sqlite3.connect(events_path()) if events_path().exists() else None
+
+
+@server.tool(
+    description="Busca qué recuerda Tama sobre un tema, para que Renzo elija qué olvidar.",
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+def find_memory(query: str) -> str:
+    """JSON con las coincidencias en entidades y datos; si no hay, las entidades parecidas."""
+    words = [normalize(w) for w in re.findall(r"\w+", query, flags=re.UNICODE) if len(w) > 3]
+    items: list[dict[str, Any]] = []
+    with connect() as db:
+        match = fts_query(" ".join(words))
+        rows = (
+            db.execute(
+                "SELECT e.* FROM search s JOIN entities e ON e.id = s.entity_id"
+                " WHERE search MATCH ? ORDER BY rank LIMIT ?",
+                (match, MAX_FOUND),
+            ).fetchall()
+            if match
+            else []
+        )
+        for row in rows:
+            if any(w in row["norm"] for w in words):
+                text = f"Todo sobre {row['name']} ({row['type']})"
+                items.append({"entidad": row["name"], "texto": text})
+            observations = db.execute(
+                "SELECT id, content FROM observations WHERE entity_id = ? AND valid = 1",
+                (row["id"],),
+            ).fetchall()
+            for observation in observations:
+                if any(w in normalize(observation["content"]) for w in words):
+                    text = f"{row['name']}: {observation['content']}"
+                    items.append({"dato": observation["id"], "texto": text})
+        names = [r["name"] for r in db.execute("SELECT name FROM entities ORDER BY name")]
+    events = events_db()
+    messages = len(matching_messages(events, query)) if events else 0
+    if events:
+        events.close()
+    similar = get_close_matches(query, names, n=3, cutoff=0.5)
+    return json.dumps(
+        {"items": items[:MAX_FOUND], "mensajes": messages, "parecidas": similar or names[:5]},
+        ensure_ascii=False,
+    )
+
+
+@server.tool(
+    description="Borra de verdad lo elegido en /olvidar: entidades, datos y mensajes del tema.",
+    annotations=ToolAnnotations(destructive_hint=True),
+)
+def forget_memory(entidades: list[str], datos: list[int], consulta: str = "") -> str:
+    with connect() as db:
+        for name in entidades:
+            row = find_entity(db, name)
+            if row:
+                db.execute("DELETE FROM entities WHERE id = ?", (row["id"],))
+                reindex(db, row["id"])
+        for observation in datos:
+            row = db.execute(
+                "SELECT entity_id FROM observations WHERE id = ?", (observation,)
+            ).fetchone()
+            if row:
+                db.execute("DELETE FROM observations WHERE id = ?", (observation,))
+                reindex(db, row["entity_id"])
+    redacted = 0
+    events = events_db()
+    if events and consulta:
+        with events:
+            for event_id, content in matching_messages(events, consulta):
+                events.execute(
+                    "INSERT INTO events_fts(events_fts, rowid, content) VALUES ('delete', ?, ?)",
+                    (event_id, content),
+                )
+                events.execute("UPDATE events SET content = ? WHERE id = ?", (FORGOTTEN, event_id))
+                redacted += 1
+    if events:
+        events.close()
+    return f"Olvidado: {len(entidades) + len(datos)} recuerdos y {redacted} mensajes."
 
 
 def export_graph(target: Path) -> int:

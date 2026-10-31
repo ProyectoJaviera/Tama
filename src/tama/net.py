@@ -19,13 +19,20 @@ def tls_context() -> ssl.SSLContext:
     return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
 
-def tcp_probe(host: str = "1.1.1.1", port: int = 443, timeout: float = 1.0) -> bool:
-    """True si se puede abrir una conexión TCP: no envía datos ni resuelve DNS."""
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
+def tcp_probe(
+    host: str = "1.1.1.1", port: int = 443, timeout: float = 2.0, attempts: int = 2
+) -> bool:
+    """True si se puede abrir una conexión TCP: no envía datos ni resuelve DNS.
+
+    Reintenta: con la CPU al 100% un intento puede fallar aunque haya red, y eso saltaría la nube.
+    """
+    for _ in range(attempts):
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return True
+        except OSError:
+            continue
+    return False
 
 
 class Connectivity:

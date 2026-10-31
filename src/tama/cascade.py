@@ -126,6 +126,8 @@ class Answered:
     total_s: float
     tokens_per_s: float | None = None
     """Velocidad de generación; None si el proveedor no informa tokens de salida."""
+    skipped: tuple[str, ...] = ()
+    """Capas que no se intentaron, con su motivo ("nube: sin internet")."""
 
 
 TurnEvent = Text | ToolCall | Switch | Answered | Error
@@ -164,10 +166,13 @@ class Cascade:
 
     def turn(self, messages: list[Message], tools: list[Tool] | None = None) -> Iterator[TurnEvent]:
         failed: tuple[str, str, bool] | None = None  # (capa, motivo, parcial) pendiente de avisar
+        skipped: list[str] = []
         for layer in self.layers:
-            if self.skip_reason(layer):
-                continue
             name = layer.provider.name
+            why = self.skip_reason(layer)
+            if why:
+                skipped.append(f"{name}: {why}")
+                continue
             if failed:
                 yield Switch(failed[0], name, failed[1], failed[2])
                 failed = None
@@ -192,6 +197,7 @@ class Cascade:
                             ttft,
                             total,
                             generation_speed(event, ttft, total),
+                            tuple(skipped),
                         )
                         return
                     if ttft is None:

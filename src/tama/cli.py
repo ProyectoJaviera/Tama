@@ -1,7 +1,9 @@
 """CLI: `tama` abre el chat; `tama "mensaje"` responde una vez."""
 
 import argparse
+import json
 import os
+import re
 import sys
 
 from tama import agent, history
@@ -14,6 +16,8 @@ from tama.ollama import OllamaClient, OllamaError
 from tama.providers import Error, Message, Text, ToolCall
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
+# La consola de Windows muestra los emojis como cuadros.
+UNPRINTABLE = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,14 +55,37 @@ def print_status(brain: Brain) -> None:
         print(dim(f"  {layer.provider.name:<7} {layer.provider.model:<32} {state}"))
 
 
-def confirm(call: ToolCall, info) -> bool:
-    """Pide a Renzo un "s" explícito antes de una acción destructiva."""
-    args = ", ".join(f"{k}={v!r}" for k, v in call.arguments.items())
+def printable(text: str) -> str:
+    return UNPRINTABLE.sub("", text) if sys.platform == "win32" else text
+
+
+def confirm_question(call: ToolCall) -> str:
+    """La pregunta en palabras de Renzo, sin el JSON de la herramienta."""
+    args = call.arguments
+    if call.name == "delete_observations":
+        items = [o for d in args.get("deletions", []) for o in d.get("observations", [])]
+        return "¿Borro de la memoria: " + ", ".join(f"«{short(i)}»" for i in items) + "?"
+    if call.name == "delete_note":
+        return f"¿Borro la nota {args.get('note_id')}?"
+    if call.name == "update_note":
+        return f"¿Cambio la nota {args.get('note_id')}?"
+    if call.name == "overwrite_file":
+        return f"¿Reemplazo todo el contenido de {args.get('path')}?"
+    if call.name == "proponer_cambio_perfil":
+        return f"¿Agrego a tu perfil: «{short(args.get('cambio', ''))}»?"
+    return f"¿Confirmas {call.name}?"
+
+
+def ask_yes(question: str) -> bool:
     try:
-        answer = input(f"¿Confirmas {info.server}.{call.name}({args})? (s/n) ")
+        return input(f"{question} (s/n) ").strip().lower() in {"s", "si", "sí"}
     except EOFError:
         return False
-    return answer.strip().lower() in {"s", "si", "sí"}
+
+
+def confirm(call: ToolCall, info) -> bool:
+    """Pide a Renzo un "s" explícito antes de una acción destructiva."""
+    return ask_yes(confirm_question(call))
 
 
 def short(value: object, limit: int = 60) -> str:
@@ -75,7 +102,7 @@ def reply(
         brain.cascade, brain.tools, history.trim(messages, max_tokens), confirm, max_tools
     ):
         if isinstance(event, Text):
-            print(event.text, end="", flush=True)
+            print(printable(event.text), end="", flush=True)
         elif isinstance(event, Switch):
             if event.partial:
                 print()
@@ -100,6 +127,10 @@ def reply(
                 where = f"· {answered.provider} ({answered.model})"
                 speed = f" · {answered.tokens_per_s:.0f} tok/s" if answered.tokens_per_s else ""
                 print(dim(f"{where} · primer token {ttft} · total {answered.total_s:.1f} s{speed}"))
+                if answered.skipped:
+                    skipped = "; ".join(answered.skipped)
+                    print(dim(f"· sin usar: {skipped}"))
+                    brain.store.log("provider_switch", skipped, answered.provider)
                 brain.store.log(
                     "assistant_msg",
                     event.text,
@@ -125,19 +156,48 @@ def show_memory(brain: Brain) -> None:
     print(dim(brain.tools.call("search_nodes", {"query": ""}).text))
 
 
-def forget(brain: Brain, entity: str) -> None:
-    """Borra una entidad de la memoria, siempre con confirmación."""
-    if brain.tools is None or not entity:
-        print(dim("  uso: /olvidar <entidad>"))
-        return
+def choose(items: list[dict]) -> list[dict]:
+    """Deja elegir qué olvidar: un número, "todas" o nada."""
+    if len(items) == 1:
+        return items
     try:
-        answer = input(f"¿Olvido todo lo que sé sobre {entity}? (s/n) ")
+        answer = input("¿Cuál olvido? (número, todas, o Enter para cancelar) ").strip().lower()
     except EOFError:
-        answer = "n"
-    if answer.strip().lower() not in {"s", "si", "sí"}:
+        return []
+    if answer == "todas":
+        return items
+    return [items[int(answer) - 1]] if answer.isdigit() and 0 < int(answer) <= len(items) else []
+
+
+def forget(brain: Brain, query: str) -> None:
+    """Busca por palabras qué recuerda Tama y borra lo elegido, siempre con confirmación."""
+    if brain.tools is None or not query:
+        print(dim("  uso: /olvidar <tema>"))
+        return
+    outcome = brain.tools.call("find_memory", {"query": query})
+    if not outcome.ok:
+        print(dim(f"  {short(outcome.text)}"))
+        return
+    found = json.loads(outcome.text)
+    items, messages = found["items"], found["mensajes"]
+    if not items and not messages:
+        similar = ", ".join(found["parecidas"]) or "ninguna"
+        print(dim(f"  no encontré nada sobre eso. Entidades parecidas: {similar}"))
+        return
+    for number, item in enumerate(items, 1):
+        print(dim(f"  {number}. {item['texto']}"))
+    if messages:
+        print(dim(f"  además, {messages} mensajes de conversación lo mencionan"))
+    chosen = choose(items) if items else []
+    if (items and not chosen) or not ask_yes("¿Lo olvido para siempre?"):
         print(dim("  no se borró nada"))
         return
-    print(dim(brain.tools.call("delete_entities", {"entityNames": [entity]}).text))
+    arguments = {
+        "entidades": [i["entidad"] for i in chosen if "entidad" in i],
+        "datos": [i["dato"] for i in chosen if "dato" in i],
+        "consulta": query,
+    }
+    print(dim(brain.tools.call("forget_memory", arguments).text))
 
 
 def export_memory(settings: Settings) -> int:
@@ -183,7 +243,7 @@ def chat_loop(
     keep_warm: bool = False,
     max_tools: int = 10,
 ) -> None:
-    print("Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <entidad> y /salir.")
+    print("Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <tema> y /salir.")
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(

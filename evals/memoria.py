@@ -209,6 +209,54 @@ def run_layer(layer: str, offline: bool) -> dict[str, Any]:
     }
 
 
+CORRECTION = [
+    "Para fin de año voy a viajar a Pucón con mi familia.",
+    "Cambié de planes: al final para fin de año vamos a Chiloé, no a Pucón.",
+]
+CORRECTION_QUESTION = "¿A dónde voy a viajar para fin de año?"
+
+
+def run_correction(layer: str, offline: bool) -> dict[str, Any]:
+    """Corregir un dato: sin confirmación, sin borrar nada, y se recuerda el nuevo."""
+    base = Path(tempfile.mkdtemp(prefix=f"tama-correccion-{layer}-"))
+    settings = get_settings().model_copy(
+        update={
+            "data_dir": base / "data",
+            "workdir": base / "trabajo",
+            "memory_dir": base / "memoria",
+            "connectivity_watch_s": 0,
+        }
+    )
+    limits = (settings.history_max_tokens, settings.tools_max)
+    brain = brain_module.build(settings, force_offline=offline, only=[layer])
+    messages = [{"role": "system", "content": session_prompt(settings.memory_dir, brain.store)}]
+    used: list[str] = []
+    for text in CORRECTION:
+        turn = ask(brain, messages, text, *limits)
+        used += turn["herramientas"]
+        print(f"[{layer}] {text[:40]} -> {turn['herramientas']}", flush=True)
+    brain.close()
+    brain = brain_module.build(settings, force_offline=offline, only=[layer])
+    system = session_prompt(settings.memory_dir, brain.store)
+    turn = ask(brain, [{"role": "system", "content": system}], CORRECTION_QUESTION, *limits)
+    brain.close()
+    db = sqlite3.connect(settings.data_dir / "memoria.db")
+    rows = db.execute("SELECT content, valid FROM observations").fetchall()
+    db.close()
+    answer = normalize(turn["respuesta"])
+    old = [r for r in rows if "pucon" in normalize(r[0]) and "chiloe" not in normalize(r[0])]
+    return {
+        "capa": layer,
+        "sin_red": offline,
+        "sin_confirmacion": "delete_observations" not in used,
+        "conserva_antiguo": bool(old),
+        "antiguo_no_vigente": bool(old) and not any(r[1] for r in old),
+        "recuerda_nuevo": "chiloe" in answer,
+        "respuesta": turn["respuesta"],
+        "herramientas": used + turn["herramientas"],
+    }
+
+
 def render(data: dict[str, Any]) -> str:
     lines = [
         "# Evals de memoria",
@@ -222,6 +270,8 @@ def render(data: dict[str, Any]) -> str:
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for key, run in data.items():
+        if key.startswith("corrección"):
+            continue
         q = run["calidad"]
         lines.append(
             f"| {key} | {run['hechos']}/{run['total_hechos']} | "
@@ -229,6 +279,16 @@ def render(data: dict[str, Any]) -> str:
             f"{len(q['duplicadas'])} | {len(q['mal_nombradas'])} | "
             f"{run['tokens_prompt_max'] or '-'} |"
         )
+    corrections = {k: v for k, v in data.items() if k.startswith("corrección")}
+    data = {k: v for k, v in data.items() if not k.startswith("corrección")}
+    if corrections:
+        lines += ["", "## Corrección de un dato", ""]
+        lines += ["| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo |"]
+        lines += ["|---|---|---|---|"]
+        for key, run in corrections.items():
+            marks = [run["sin_confirmacion"], run["antiguo_no_vigente"], run["recuerda_nuevo"]]
+            cells = " | ".join("ok" if m else "FALLA" for m in marks)
+            lines.append(f"| {key.removeprefix('corrección ')} | {cells} |")
     lines += ["", "## Fallos", ""]
     for key, run in data.items():
         for item in run["detalle"]:
@@ -246,13 +306,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--capas", nargs="+", default=["nube", "claude", "local"])
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
+    parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
     args = parser.parse_args()
 
     out = EVALS_DIR / "memoria-results.json"
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     for layer in args.capas:
         key = layer + (" (sin red)" if args.offline else "")
-        data[key] = run_layer(layer, args.offline)
+        if args.correccion:
+            data[f"corrección {key}"] = run_correction(layer, args.offline)
+        else:
+            data[key] = run_layer(layer, args.offline)
         out.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         (EVALS_DIR / "RESULTS_MEMORIA.md").write_text(render(data), encoding="utf-8")
     print(render(data))

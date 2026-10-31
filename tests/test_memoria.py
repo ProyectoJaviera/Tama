@@ -5,7 +5,6 @@ import sys
 
 import pytest
 
-from tama import cli
 from tama.events import EventStore
 from tama.mcp_hub import McpHub, ServerConfig, server_env
 from tama.mcp_servers import memoria
@@ -244,13 +243,3 @@ class Tools:
 class FakeBrain:
     def __init__(self):
         self.tools = Tools()
-
-
-def test_olvidar_needs_confirmation(monkeypatch):
-    brain = FakeBrain()
-    monkeypatch.setattr("builtins.input", lambda _prompt: "n")
-    cli.forget(brain, "Pixel")
-    assert brain.tools.calls == []
-    monkeypatch.setattr("builtins.input", lambda _prompt: "s")
-    cli.forget(brain, "Pixel")
-    assert brain.tools.calls == [("delete_entities", {"entityNames": ["Pixel"]})]
