@@ -27,7 +27,7 @@ comando = ["python", "-m", "tama.mcp_servers.notas"]
 
 [servidores.archivos]
 comando = ["python", "-m", "tama.mcp_servers.archivos"]
-base = ["read_file"]
+base = ["read_file", "create_file", "overwrite_file"]
 
 [servidores.web]
 comando = ["python", "-m", "tama.mcp_servers.web"]

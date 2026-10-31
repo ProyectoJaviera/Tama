@@ -539,7 +539,7 @@ def fts_query(text: str) -> str:
 
 @server.tool(
     description=(
-        "Guarda lo que Renzo cuente de su vida, en cada turno con un dato nuevo, antes de responder. "
+        "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
         "plan, evento, salud, objeto, gusto) y observations (frases que se entiendan solas, con "
         "las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."

@@ -21,6 +21,7 @@ La memoria de Tama se mantiene ordenada sola y empieza a mirar hacia adelante: r
 ## Notas de implementación
 - El modelo ve una sola herramienta de objetivos, `manage_goals`, que usa las cuatro de la spec por dentro: en las evals, el modelo local nunca llegó a ellas a través de `abrir_herramientas`.
 - `add_observations` sale de la vista para hacerle espacio: `create_entities` ya completa las entidades existentes.
+- A la vista quedan 13 herramientas más `abrir_herramientas`, no 8 a 10: el modelo local casi no abre grupos y con menos cae bajo el 90% en las evals de herramientas.
 
 ## Pasos de la demo
 1. Desde `Tama-s4`, con Ollama abierto: `uv run tama`. Para no esperar 20 minutos, deja `TAMA_REFLECTION_IDLE_MIN=1` en `.env`.
