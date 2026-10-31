@@ -10,4 +10,5 @@ def test_essential_tools_stay_within_the_limit():
     always = [name for server in servers for name in server.always]
     assert set(always) == {"get_current_time", "search_nodes", "create_entities"}
     base = [name for server in servers if server.base for name in server.base]
-    assert len(always) + len(base) + 1 <= 9  # el web agrega fetch y abrir_herramientas el décimo
+    # Notas (4) y web (1) no indican base; abrir_herramientas ocupa uno más.
+    assert len(always) + len(base) + 5 + 1 <= 12

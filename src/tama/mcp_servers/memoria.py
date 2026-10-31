@@ -539,13 +539,10 @@ def fts_query(text: str) -> str:
 
 @server.tool(
     description=(
-        "Guarda en la memoria de Tama lo que Renzo cuente de su vida. Llámala en cada turno con un "
-        "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
-        "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
-        "evento, salud, objeto, gusto), observations (frases cortas que se entiendan solas: "
-        "'el cumpleaños de su mamá es...'). Copia las fechas como las dijo ('hace tres días'): se "
-        "calculan solas, no pidas la hora. Algo puntual con alguien (un almuerzo) va en esa "
-        "persona, sin entidad nueva."
+        "Guarda lo que Renzo cuente de su vida, en cada turno con un dato nuevo, antes de responder. "
+        "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
+        "plan, evento, salud, objeto, gusto) y observations (frases que se entiendan solas, con "
+        "las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:

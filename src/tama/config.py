@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
     # Máximo a la vista por turno; el resto se pide con abrir_herramientas (ver selector.py).
-    tools_max: int = 10
+    tools_max: int = 12
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000

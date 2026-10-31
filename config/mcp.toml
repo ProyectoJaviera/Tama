@@ -20,11 +20,10 @@ herramientas = [
     "update_observation", "delete_observations", "recent_events", "proponer_cambio_perfil",
 ]
 siempre = ["search_nodes", "create_entities"]
-base = ["update_observation", "linea_de_tiempo", "recent_events"]
+base = ["update_observation", "linea_de_tiempo"]
 
 [servidores.notas]
 comando = ["python", "-m", "tama.mcp_servers.notas"]
-base = ["create_note"]
 
 [servidores.archivos]
 comando = ["python", "-m", "tama.mcp_servers.archivos"]
