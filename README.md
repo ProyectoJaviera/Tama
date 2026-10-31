@@ -174,7 +174,7 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
-| `TAMA_TOOLS_MAX` | `17` | Máximo de herramientas visibles por turno |
+| `TAMA_TOOLS_MAX` | `18` | Máximo de herramientas visibles por turno |
 | `TAMA_MCP_ENABLED` | `true` | Activa los servidores MCP |
 
 La lista completa, con comentarios, está en `.env.example`.
