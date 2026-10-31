@@ -87,6 +87,29 @@ MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
 MAX_HISTORY = 3
+# Lo de salud nunca se reemplaza: es la historia médica de Renzo.
+HEALTH_WORDS = (
+    "duele",
+    "dolor",
+    "medic",
+    "doctor",
+    "sintoma",
+    "fiebre",
+    "lesion",
+    "operac",
+    "opero",
+    "fractur",
+    "alergi",
+    "remedio",
+    "pastilla",
+    "receta",
+    "kinesi",
+    "dentista",
+    "inflam",
+    "hospital",
+    "clinica",
+    "enferm",
+)
 MAX_TIMELINE = 30
 MONTHS = (
     "enero",
@@ -343,11 +366,10 @@ def add_obs(
 ) -> int:
     """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten.
 
-    Lo fechado en el pasado y lo de salud son eventos: nunca se reemplazan, se acumulan.
+    Todo es un evento, salvo lo que el modelo marca como estado al corregir un dato.
     """
     entities = {entity_ids} if isinstance(entity_ids, int) else entity_ids
     added = 0
-    today = date.today().isoformat()
     for content in contents:
         text, when = resolve_dates(content.strip())
         if not text:
@@ -356,22 +378,36 @@ def add_obs(
         if repeated:
             observation_id = repeated
         else:
-            happened = occurred or when or today
-            event = kind == "evento" or (happened < today) or health_related(db, entities)
+            state = kind == "estado" and not is_health(db, entities, text)
             observation_id = db.execute(
                 "INSERT INTO observations (content, created_at, source, kind, occurred_at)"
                 " VALUES (?, ?, ?, ?, ?)",
-                (text, now(), source, "evento" if event else "estado", happened),
+                (
+                    text,
+                    now(),
+                    source,
+                    "estado" if state else "evento",
+                    occurred or when or date.today().isoformat(),
+                ),
             ).lastrowid
             added += 1
         link(db, observation_id, entities | mentioned_entities(db, text))
     return added
 
 
-def health_related(db: sqlite3.Connection, entities: set[int]) -> bool:
+def is_health(db: sqlite3.Connection, entities: set[int], text: str) -> bool:
+    if any(word in normalize(text) for word in HEALTH_WORDS):
+        return True
     marks = ",".join("?" * len(entities))
     query = f"SELECT 1 FROM entities WHERE id IN ({marks}) AND type IN ('salud', 'evento')"
     return db.execute(query, list(entities)).fetchone() is not None
+
+
+def already_happened(db: sqlite3.Connection, row: sqlite3.Row) -> bool:
+    """Eventos que una corrección no toca: salud, o algo con fecha anterior a cuando se contó."""
+    told = shown_at(row["created_at"])[:10]
+    linked = linked_entities(db, [row["id"]])
+    return row["occurred_at"] < told or is_health(db, linked, row["content"])
 
 
 def stems(text: str) -> set[str]:
@@ -677,7 +713,7 @@ def update_observation(
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
-            f"SELECT id, kind FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
+            f"SELECT * FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
         ).fetchall()
         missing = sorted(set(numbers) - {r["id"] for r in found})
         if missing:
@@ -688,14 +724,15 @@ def update_observation(
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
-        # Los eventos ya ocurrieron: quedan en la historia junto al dato nuevo.
-        states = [r["id"] for r in found if r["kind"] != "evento"]
+        # Corregir marca lo antiguo como estado, salvo lo que ya ocurrió: eso se acumula.
+        states = [r["id"] for r in found if not already_happened(db, r)]
         replaced = ",".join("?" * len(states))
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
-        add_obs(db, linked, [nueva], source)
+        add_obs(db, linked, [nueva], source, kind="estado")
         new_id = same_fact(db, resolve_dates(nueva.strip())[0])
         db.execute(
-            f"UPDATE observations SET superseded_by = ? WHERE id IN ({replaced})", [new_id, *states]
+            f"UPDATE observations SET kind = 'estado', superseded_by = ? WHERE id IN ({replaced})",
+            [new_id, *states],
         )
         for entity_id in linked:
             reindex(db, entity_id)

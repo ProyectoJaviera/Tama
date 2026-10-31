@@ -66,6 +66,26 @@ def test_past_fact_is_an_event_that_survives_a_correction():
     assert valid("El 3 de marzo de 2020 se operó") == 1
 
 
+def test_health_facts_are_events_that_stay_valid_and_in_order():
+    memoria.create_entities([entity("Renzo", "persona", "Me duele mucho el brazo")])
+    first = first_id()
+    memoria.create_entities([entity("Renzo", "persona", "Ya no me duele el brazo")])
+    memoria.update_observation([first], "Ya no me duele el brazo")
+    assert valid("Me duele mucho el brazo") == 1
+    assert valid("Ya no me duele el brazo") == 1
+    lines = memoria.linea_de_tiempo("salud brazo").splitlines()
+    assert "Me duele mucho" in lines[0] and "Ya no me duele" in lines[1]
+    with memoria.connect() as db:
+        kinds = {r[0] for r in db.execute("SELECT kind FROM observations")}
+    assert kinds == {"evento"}
+
+
+def test_new_facts_are_events_by_default():
+    memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
+    with memoria.connect() as db:
+        assert db.execute("SELECT kind FROM observations").fetchone()[0] == "evento"
+
+
 def test_state_is_replaced_and_shown_as_before():
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     memoria.update_observation([first_id()], "Irá de piratas")
