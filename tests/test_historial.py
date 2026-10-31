@@ -13,8 +13,8 @@ def memory_env(tmp_path, monkeypatch):
     monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
 
 
-def entity(name, type_, *obs, **extra):
-    return {"name": name, "entityType": type_, "observations": list(obs), **extra}
+def entity(name, type_, *obs):
+    return {"name": name, "entityType": type_, "observations": list(obs)}
 
 
 def valid(content):
@@ -80,6 +80,14 @@ def test_health_facts_are_events_that_stay_valid_and_in_order():
     assert kinds == {"evento"}
 
 
+def test_observations_sent_as_plain_text_stay_whole():
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": "Toma té verde"}]
+    )
+    memoria.add_observations([{"entityName": "Ana", "contents": "Vive en Talca"}])
+    assert valid("Toma té verde") == 1 and valid("Vive en Talca") == 1
+
+
 def test_new_facts_are_events_by_default():
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     with memoria.connect() as db:
@@ -96,8 +104,8 @@ def test_state_is_replaced_and_shown_as_before():
 
 
 def test_timeline_keeps_everything_in_order():
-    memoria.create_entities([entity("Renzo", "persona", "Se operó", fecha="2026-03-03")])
-    memoria.create_entities([entity("Renzo", "persona", "Tuvo alergia", fecha="2026-01-10")])
+    memoria.create_entities([entity("Renzo", "persona", "Se operó el 2026-03-03")])
+    memoria.create_entities([entity("Renzo", "persona", "Tuvo alergia el 2026-01-10")])
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     memoria.update_observation([first_id()], "Irá de piratas")
     lines = memoria.linea_de_tiempo().splitlines()
@@ -106,8 +114,8 @@ def test_timeline_keeps_everything_in_order():
 
 
 def test_timeline_filters_by_topic_and_dates():
-    memoria.create_entities([entity("Renzo", "persona", "Se operó la rodilla", fecha="2026-03-03")])
-    memoria.create_entities([entity("Renzo", "persona", "Compró un libro", fecha="2026-05-03")])
+    memoria.create_entities([entity("Renzo", "persona", "Se operó la rodilla el 2026-03-03")])
+    memoria.create_entities([entity("Renzo", "persona", "Compró un libro el 2026-05-03")])
     assert "libro" not in memoria.linea_de_tiempo("rodilla")
     assert "rodilla" not in memoria.linea_de_tiempo(desde="2026-04-01")
 

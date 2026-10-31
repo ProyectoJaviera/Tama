@@ -309,6 +309,13 @@ def add_relative_alias(db: sqlite3.Connection, entity_id: int, norm: str) -> Non
         )
 
 
+def as_list(value: Any) -> list[str]:
+    """Lista de frases; el modelo local a veces manda una sola como texto."""
+    if not value:
+        return []
+    return [value] if isinstance(value, str) else [str(item) for item in value]
+
+
 def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
     today = today or date.today()
@@ -361,7 +368,6 @@ def add_obs(
     entity_ids: int | set[int],
     contents: list[str],
     source: int | None,
-    occurred: str = "",
     kind: str = "",
 ) -> int:
     """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten.
@@ -387,7 +393,7 @@ def add_obs(
                     now(),
                     source,
                     "estado" if state else "evento",
-                    occurred or when or date.today().isoformat(),
+                    when or date.today().isoformat(),
                 ),
             ).lastrowid
             added += 1
@@ -512,8 +518,8 @@ def fts_query(text: str) -> str:
         "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
         "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
         "evento, salud, objeto, gusto), observations (frases cortas que se entiendan solas: "
-        "'el cumpleaños de su mamá es...') y fecha (opcional, cuándo ocurrió). Algo puntual con "
-        "alguien (un almuerzo) va en esa persona, sin entidad nueva."
+        "'el cumpleaños de su mamá es...'; si ocurrió otro día, incluye la fecha). Algo puntual "
+        "con alguien (un almuerzo) va en esa persona, sin entidad nueva."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -524,18 +530,17 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            added = list(entity.get("observations") or [])
-            occurred = resolve_dates(str(entity.get("fecha") or ""))[1]
+            added = as_list(entity.get("observations"))
             people = mentioned_entities(db, name)
             owner = find_entity(db, OWNER)
             if type_ in ("plan", "evento") and people and not find_entity(db, name):
                 # Algo puntual con alguien va en sus personas, no en una entidad nueva.
                 targets = people | ({owner["id"]} if owner else set())
-                add_obs(db, targets, added, source, occurred)
+                add_obs(db, targets, added, source)
                 updated.append(name)
                 continue
             entity_id, new = upsert_entity(db, name, type_)
-            add_obs(db, entity_id, added, source, occurred)
+            add_obs(db, entity_id, added, source)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
                 db.execute(
@@ -598,7 +603,7 @@ def add_observations(observations: list[dict[str, Any]], source: int | None = No
             names += [str(item.get("entityName", "")).strip()]
             entities = {upsert_entity(db, n, "objeto")[0] for n in names if n}
             if entities:
-                added += add_obs(db, entities, list(item.get("contents") or []), source)
+                added += add_obs(db, entities, as_list(item.get("contents")), source)
     return f"{added} datos guardados."
 
 
