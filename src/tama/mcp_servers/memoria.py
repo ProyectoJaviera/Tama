@@ -269,14 +269,22 @@ def add_obs(
     return added
 
 
-def recent_observations(db: sqlite3.Connection, entity_id: int) -> list[str]:
+def stems(text: str) -> set[str]:
+    return {w[:6] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
+
+
+def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "") -> list[str]:
+    """Hechos vigentes: primero los que coinciden con la búsqueda, luego los más nuevos."""
     rows = db.execute(
         "SELECT o.id, o.content, o.created_at FROM observations o"
         " JOIN observation_entities l ON l.observation_id = o.id"
-        " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.created_at DESC, o.id DESC LIMIT ?",
-        (entity_id, MAX_OBSERVATIONS),
+        " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.created_at DESC, o.id DESC",
+        (entity_id,),
     ).fetchall()
-    return [f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])})" for r in rows]
+    wanted = stems(query)
+    matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
+    chosen = (matching + [r for r in rows if r not in matching])[:MAX_OBSERVATIONS]
+    return [f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])})" for r in chosen]
 
 
 def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
@@ -289,9 +297,9 @@ def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
     return [f"{r['a']} {r['t']} {r['b']}" for r in rows]
 
 
-def describe(db: sqlite3.Connection, row: sqlite3.Row) -> str:
+def describe(db: sqlite3.Connection, row: sqlite3.Row, query: str = "") -> str:
     lines = [f"{row['name']} ({row['type']})"]
-    lines += [f"- {o}" for o in recent_observations(db, row["id"])]
+    lines += [f"- {o}" for o in recent_observations(db, row["id"], query)]
     lines += [f"- relación: {r}" for r in relations_of(db, row["id"])]
     return "\n".join(lines)
 
@@ -342,7 +350,7 @@ def fts_query(text: str) -> str:
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
-    created, updated = [], []
+    created, updated, older = [], [], []
     with connect() as db:
         for entity in entities:
             name = str(entity.get("name", "")).strip()
@@ -350,7 +358,9 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
             entity_id, new = upsert_entity(db, name, type_)
-            add_obs(db, entity_id, list(entity.get("observations") or []), source)
+            added = list(entity.get("observations") or [])
+            add_obs(db, entity_id, added, source)
+            older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
                 db.execute(
                     "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)",
@@ -363,6 +373,12 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
         parts.append("Creadas: " + ", ".join(created))
     if updated:
         parts.append("Ya existían y se completaron: " + ", ".join(updated))
+    if older:
+        listed = "; ".join(dict.fromkeys(older))
+        parts.append(
+            f"Ya había datos del tema: {listed}. Si el nuevo reemplaza alguno, corrígelo ahora con "
+            "update_observation"
+        )
     return ". ".join(parts) or "No había nada que guardar."
 
 
@@ -434,7 +450,7 @@ def search_nodes(query: str = "") -> str:
             ).fetchall()
         if not rows:
             return no_match(db)
-        return "\n\n".join(describe(db, r) for r in rows)
+        return "\n\n".join(describe(db, r, query) for r in rows)
 
 
 @server.tool(
@@ -545,6 +561,24 @@ def update_observation(
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
     return text
+
+
+def same_topic(db: sqlite3.Connection, entity_id: int, added: list[str]) -> list[str]:
+    """Hechos anteriores de la entidad que comparten palabras con los recién guardados."""
+    wanted = stems(" ".join(added))
+    rows = db.execute(
+        "SELECT o.id, o.content FROM observations o"
+        " JOIN observation_entities l ON l.observation_id = o.id"
+        " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.id DESC",
+        (entity_id,),
+    ).fetchall()
+    found = [
+        r
+        for r in rows
+        if r["content"] not in [a.strip() for a in added]
+        and any(w in normalize(r["content"]) for w in wanted)
+    ]
+    return [f"[o{r['id']}] {r['content']}" for r in found[:MAX_RELATED]]
 
 
 def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list[str]:

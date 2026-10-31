@@ -170,6 +170,25 @@ def test_correction_inherits_the_entities_of_the_old_facts():
     assert links("Piratas") == 2
 
 
+def test_saving_warns_about_older_facts_of_the_same_topic():
+    memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
+    text = memoria.create_entities([entity("Halloween", "plan", "Se disfrazarán de vaqueros")])
+    assert "Se disfrazará de Shrek" in text and "update_observation" in text
+
+
+def test_saving_something_else_gives_no_warning():
+    memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
+    text = memoria.create_entities([entity("Halloween", "plan", "Hay fiesta en Ñuñoa")])
+    assert "update_observation" not in text
+
+
+def test_search_finds_a_fact_buried_in_a_busy_entity():
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Renzo", "persona", "Cumpleaños de su mamá en diciembre")])
+    memoria.create_entities([entity("Renzo", "persona", *facts)])
+    assert "diciembre" in memoria.search_nodes("cumpleaños mamá Renzo")
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])
