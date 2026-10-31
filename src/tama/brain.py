@@ -134,4 +134,5 @@ def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpH
         errlog=open(settings.data_dir / "mcp.log", "a", encoding="utf-8"),  # noqa: SIM115
     )
     hub.start()
+    hub.call("ensure_owner", {"nombre": settings.user_name})
     return hub

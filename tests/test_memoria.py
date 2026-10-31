@@ -66,7 +66,7 @@ def test_search_returns_only_recent_valid_observations():
     obs = [f"dato {i}" for i in range(8)]
     memoria.create_entities([entity("Ana", "persona", *obs)])
     result = memoria.search_nodes("ana")
-    assert result.count("- dato") == memoria.MAX_OBSERVATIONS
+    assert result.count("] dato") == memoria.MAX_OBSERVATIONS
     assert "dato 7" in result and "dato 0" not in result
 
 

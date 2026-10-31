@@ -210,10 +210,13 @@ def run_layer(layer: str, offline: bool) -> dict[str, Any]:
 
 
 CORRECTION = [
-    "Para fin de año voy a viajar a Pucón con mi familia.",
-    "Cambié de planes: al final para fin de año vamos a Chiloé, no a Pucón.",
+    "Para Halloween me voy a disfrazar de Shrek.",
+    "Mi esposa se va a disfrazar de Fiona para Halloween.",
+    "Cambio de planes: con mi esposa iremos de la Bella y la Bestia.",
+    "Al final no, mi esposa y yo iremos de piratas.",
 ]
-CORRECTION_QUESTION = "¿A dónde voy a viajar para fin de año?"
+CORRECTION_QUESTION = "¿De qué nos vamos a disfrazar en Halloween?"
+OUTDATED = ("shrek", "fiona", "bella", "bestia")
 
 
 def run_correction(layer: str, offline: bool) -> dict[str, Any]:
@@ -244,14 +247,17 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
     rows = db.execute("SELECT content, valid FROM observations").fetchall()
     db.close()
     answer = normalize(turn["respuesta"])
-    old = [r for r in rows if "pucon" in normalize(r[0]) and "chiloe" not in normalize(r[0])]
+
+    def mentions_old(text: str) -> bool:
+        return any(word in normalize(text) for word in OUTDATED)
+
     return {
         "capa": layer,
         "sin_red": offline,
         "sin_confirmacion": "delete_observations" not in used,
-        "conserva_antiguo": bool(old),
-        "antiguo_no_vigente": bool(old) and not any(r[1] for r in old),
-        "recuerda_nuevo": "chiloe" in answer,
+        "conserva_antiguo": any(mentions_old(r[0]) and not r[1] for r in rows),
+        "antiguo_no_vigente": not any(mentions_old(r[0]) and r[1] for r in rows),
+        "recuerda_nuevo": "pirata" in answer and not any(w in answer for w in OUTDATED),
         "respuesta": turn["respuesta"],
         "herramientas": used + turn["herramientas"],
     }

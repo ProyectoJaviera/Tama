@@ -45,6 +45,7 @@ class Connectivity:
         offline_ttl: float = 10.0,
         clock: Callable[[], float] = time.monotonic,
         on_offline: Callable[[], None] | None = None,
+        misses_to_offline: int = 2,
     ) -> None:
         self._probe = probe
         self._ttl = ttl
@@ -53,6 +54,8 @@ class Connectivity:
         self._checked_at: float | None = None
         self._online = False
         self._stale = False
+        self._misses = 0
+        self._misses_to_offline = misses_to_offline
         self._lock = threading.Lock()
         self.on_offline = on_offline
         """Se llama cuando se detecta un corte (de con red a sin red)."""
@@ -66,8 +69,13 @@ class Connectivity:
             if fresh and not self._stale:
                 return self._online
             was_online = self._checked_at is not None and self._online
-            self._online = self._probe()
-            self._checked_at = now
+            reachable = self._probe()
+            self._misses = 0 if reachable else self._misses + 1
+            # Con la CPU saturada una prueba puede fallar aunque haya red: una sola no basta. Si la
+            # red cayó de verdad, la nube falla rápido y se vuelve a probar de inmediato.
+            doubtful = was_online and not reachable and self._misses < self._misses_to_offline
+            self._online = reachable or doubtful
+            self._checked_at = None if doubtful else now
             self._stale = False
             went_offline = was_online and not self._online
         if went_offline and self.on_offline:

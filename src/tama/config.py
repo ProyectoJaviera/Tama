@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # 0 = solo CPU y RAM. La GPU de este PC (GTX 660, 2 GB) no sirve para modelos.
     num_gpu: int = 0
     timeout: float = 300.0
+    user_name: str = "Renzo"
     data_dir: Path = Path("data")
     # Perfil (`nucleo.md`) y export del grafo; datos personales, nunca en el repo público.
     memory_dir: Path = Path("memoria")

@@ -53,7 +53,29 @@ MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
 MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
-DATE_SUFFIX = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}\)\s*$")
+MAX_RELATED = 5
+# Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
+SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
+SHOWN_DATE = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?\)\s*$")
+ENTITY_TYPES = (
+    "persona",
+    "mascota",
+    "lugar",
+    "organizacion",
+    "proyecto",
+    "plan",
+    "evento",
+    "salud",
+    "objeto",
+    "gusto",
+)
+TYPE_ALIASES = {
+    "cosa": "objeto",
+    "empresa": "organizacion",
+    "trabajo": "organizacion",
+    "libro": "objeto",
+    "animal": "mascota",
+}
 
 server = MCPServer("memoria", instructions="Lo que Tama recuerda de Renzo.")
 
@@ -135,6 +157,8 @@ def upsert_entity(db: sqlite3.Connection, name: str, type_: str) -> tuple[int, b
     """Devuelve (id, nueva). Un nombre parecido del mismo tipo queda como alias, sin duplicar."""
     existing = find_entity(db, name)
     if existing:
+        if existing["type"] in ("cosa", "objeto") and type_ != "objeto":
+            db.execute("UPDATE entities SET type = ? WHERE id = ?", (type_, existing["id"]))
         return existing["id"], False
     similar = same_person(db, name, type_)
     if similar:
@@ -170,11 +194,11 @@ def add_obs(db: sqlite3.Connection, entity_id: int, contents: list[str], source:
 
 def recent_observations(db: sqlite3.Connection, entity_id: int) -> list[str]:
     rows = db.execute(
-        "SELECT content, created_at FROM observations WHERE entity_id = ? AND valid = 1"
+        "SELECT id, content, created_at FROM observations WHERE entity_id = ? AND valid = 1"
         " ORDER BY created_at DESC, id DESC LIMIT ?",
         (entity_id, MAX_OBSERVATIONS),
     ).fetchall()
-    return [f"{r['content']} ({r['created_at'][:10]})" for r in rows]
+    return [f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])})" for r in rows]
 
 
 def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
@@ -210,8 +234,20 @@ def no_match(db: sqlite3.Connection) -> str:
 
 
 def without_date(text: str) -> str:
-    """Quita la fecha que muestran las búsquedas: el modelo a veces copia el dato con ella."""
-    return DATE_SUFFIX.sub("", str(text)).strip()
+    """Deja solo el texto de un dato copiado de una búsqueda."""
+    return SHOWN_DATE.sub("", SHOWN_ID.sub("", str(text))).strip()
+
+
+def entity_type(value: str) -> str:
+    """Uno de los tipos de ENTITY_TYPES; lo desconocido queda como objeto."""
+    norm = normalize(value)
+    norm = TYPE_ALIASES.get(norm, norm)
+    return norm if norm in ENTITY_TYPES else "objeto"
+
+
+def shown_at(iso: str) -> str:
+    """Fecha y hora locales: entre dos versiones de un dato, vale la más reciente."""
+    return datetime.fromisoformat(iso).astimezone().strftime("%Y-%m-%d %H:%M")
 
 
 def fts_query(text: str) -> str:
@@ -222,7 +258,8 @@ def fts_query(text: str) -> str:
     description=(
         "Guarda en la memoria de Tama lo que Renzo cuente de su vida. Llámala en cada turno con un "
         "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
-        "entidad lleva name, entityType (persona, mascota, proyecto, lugar, gusto, libro, plan) y "
+        "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
+        "evento, salud, objeto, gusto) y "
         "observations (frases cortas). Si la entidad ya existe, se completa."
     )
 )
@@ -233,7 +270,7 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             name = str(entity.get("name", "")).strip()
             if not name:
                 continue
-            type_ = normalize(str(entity.get("entityType") or "cosa"))
+            type_ = entity_type(str(entity.get("entityType") or "objeto"))
             entity_id, new = upsert_entity(db, name, type_)
             add_obs(db, entity_id, list(entity.get("observations") or []), source)
             for alias in entity.get("aliases") or []:
@@ -278,7 +315,7 @@ def create_relations(relations: list[dict[str, str]]) -> str:
 
 @server.tool(
     description=(
-        "Agrega datos nuevos a entidades que ya existen. Cada elemento lleva entityName y "
+        "Agrega datos nuevos a entidades. Cada elemento lleva entityName y "
         "contents (frases cortas). Si la entidad no existe, se crea. Si un dato reemplaza a otro, "
         "usa update_observation."
     )
@@ -290,7 +327,7 @@ def add_observations(observations: list[dict[str, Any]], source: int | None = No
             name = str(item.get("entityName", "")).strip()
             if not name:
                 continue
-            entity_id, _ = upsert_entity(db, name, "cosa")
+            entity_id, _ = upsert_entity(db, name, "objeto")
             added += add_obs(db, entity_id, list(item.get("contents") or []), source)
             reindex(db, entity_id)
     return f"{added} datos guardados."
@@ -298,7 +335,7 @@ def add_observations(observations: list[dict[str, Any]], source: int | None = No
 
 @server.tool(
     description=(
-        "Busca lo que Renzo te contó: familia, mascotas, gustos, proyectos, fechas, planes. "
+        "Busca lo que Renzo te contó. Cada dato trae su id ([o42]), fecha y hora. "
         "Llámala siempre que pregunte algo sobre él o su vida, antes de responder; tu memoria de "
         "sesiones anteriores solo está aquí. Si no hay resultados, dile que no tienes ese dato."
     ),
@@ -381,25 +418,66 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 
 @server.tool(
     description=(
-        "Corrige un dato cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad, otro "
-        "disfraz). El dato antiguo queda como no vigente, con su historia, y se guarda el nuevo. "
-        "Lleva entityName, vieja (texto del dato antiguo) y nueva. Si no lo tienes, búscalo antes "
-        "con search_nodes."
+        "Corrige datos cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad). Antes "
+        "busca el tema con search_nodes. Lleva ids (los [o42] de TODOS los datos antiguos, en "
+        "todas las entidades) y nueva (el dato vigente). Los antiguos dejan de usarse."
     )
 )
-def update_observation(entityName: str, vieja: str, nueva: str, source: int | None = None) -> str:
+def update_observation(
+    ids: list[str], nueva: str, entityName: str = "", source: int | None = None
+) -> str:
+    numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
+    if not numbers or not nueva.strip():
+        raise ValueError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
     with connect() as db:
-        entity_id, _ = upsert_entity(db, entityName, "cosa")
-        changed = db.execute(
-            "UPDATE observations SET valid = 0"
-            " WHERE entity_id = ? AND valid = 1 AND content LIKE ?",
-            (entity_id, f"%{without_date(vieja)}%"),
-        ).rowcount
-        add_obs(db, entity_id, [nueva], source)
+        marks = ",".join("?" * len(numbers))
+        found = db.execute(
+            f"SELECT id, entity_id FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
+        ).fetchall()
+        missing = sorted(set(numbers) - {r["id"] for r in found})
+        if missing:
+            listed = ", ".join(f"o{n}" for n in missing)
+            raise ValueError(
+                f"Nada cambió: {listed} no existe o ya no está vigente. Busca con search_nodes "
+                "y reintenta con los ids que aparezcan."
+            )
+        db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({marks})", numbers)
+        entities = {r["entity_id"] for r in found}
+        target = upsert_entity(db, entityName, "objeto")[0] if entityName else found[0]["entity_id"]
+        add_obs(db, target, [nueva], source)
+        for entity_id in entities | {target}:
+            reindex(db, entity_id)
+        others = related_facts(db, nueva, numbers)
+    text = f"Corregido: {len(numbers)} datos antiguos dejaron de estar vigentes."
+    if others:
+        text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
+        text += " Si alguno quedó antiguo, corrígelo con update_observation."
+    return text
+
+
+def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list[str]:
+    """Datos vigentes, en cualquier entidad, que comparten palabras con lo recién corregido."""
+    marks = ",".join("?" * len(retired))
+    old = db.execute(f"SELECT content FROM observations WHERE id IN ({marks})", retired).fetchall()
+    joined = " ".join([text, *[r["content"] for r in old]])
+    words = {normalize(w)[:6] for w in re.findall(r"\w+", joined, flags=re.UNICODE) if len(w) > 4}
+    rows = db.execute(
+        "SELECT o.id, e.name, o.content FROM observations o JOIN entities e ON e.id = o.entity_id"
+        " WHERE o.valid = 1 AND o.content != ? ORDER BY o.id DESC",
+        (text.strip(),),
+    ).fetchall()
+    found = [r for r in rows if any(w in normalize(r["content"]) for w in words)]
+    return [f"[o{r['id']}] {r['name']}: {r['content']}" for r in found[:MAX_RELATED]]
+
+
+@server.tool(description="Crea la entidad de Renzo si falta. La usa Tama al iniciar.")
+def ensure_owner(nombre: str) -> str:
+    with connect() as db:
+        entity_id, _ = upsert_entity(db, nombre, "persona")
+        db.execute("UPDATE entities SET type = 'persona' WHERE id = ?", (entity_id,))
+        db.execute("INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES ('yo', ?)", (entity_id,))
         reindex(db, entity_id)
-    if not changed:
-        return "Guardé el dato nuevo, pero no encontré el antiguo: revísalo con search_nodes."
-    return "Dato corregido: el antiguo quedó como no vigente."
+    return "Listo."
 
 
 @server.tool(

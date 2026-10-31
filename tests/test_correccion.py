@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 
@@ -25,12 +26,43 @@ def rows():
         return [tuple(r) for r in db.execute("SELECT content, valid FROM observations ORDER BY id")]
 
 
+def ids_of(name):
+    return re.findall(r"\[(o\d+)\]", memoria.search_nodes(name))
+
+
 def test_update_keeps_the_old_fact_as_not_valid():
     memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
-    text = memoria.update_observation("Halloween", "Se disfrazará de Shrek", "Irá de Bestia")
-    assert "corregido" in text
+    text = memoria.update_observation(ids_of("Halloween"), "Irá de Bestia")
+    assert "Corregido" in text
     assert rows() == [("Se disfrazará de Shrek", 0), ("Irá de Bestia", 1)]
     assert "Shrek" not in memoria.search_nodes("Halloween")
+
+
+def test_update_covers_several_entities_at_once():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    memoria.create_entities([entity("Ana", "persona", "Fiona")])
+    memoria.update_observation(ids_of("Halloween") + ids_of("Ana"), "Piratas")
+    assert rows() == [("Shrek", 0), ("Fiona", 0), ("Piratas", 1)]
+
+
+def test_unknown_id_is_an_explicit_error_and_changes_nothing():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    with pytest.raises(ValueError, match="o99"):
+        memoria.update_observation([*ids_of("Halloween"), "o99"], "Piratas")
+    assert rows() == [("Shrek", 1)]
+
+
+def test_already_retired_id_is_an_error():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    old = ids_of("Halloween")
+    memoria.update_observation(old, "Piratas")
+    with pytest.raises(ValueError, match="vigente"):
+        memoria.update_observation(old, "Vaqueros")
+
+
+def test_update_without_ids_is_an_error():
+    with pytest.raises(ValueError):
+        memoria.update_observation([], "Piratas")
 
 
 def test_update_is_not_destructive():
@@ -39,13 +71,17 @@ def test_update_is_not_destructive():
     assert not (annotations and annotations.destructive_hint)
 
 
-def test_date_copied_from_the_search_still_matches():
-    memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
-    memoria.update_observation("Halloween", "Se disfrazará de Shrek (2026-10-31)", "Irá de Bestia")
-    assert rows()[0][1] == 0
+def test_search_shows_id_date_and_time():
+    memoria.create_entities([entity("Halloween", "plan", "Shrek")])
+    assert re.search(
+        r"\[o\d+\] Shrek \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}\)", memoria.search_nodes("Halloween")
+    )
+
+
+def test_text_copied_from_a_search_still_matches():
     memoria.create_entities([entity("Pie", "salud", "Está inflamado")])
     memoria.delete_observations(
-        [{"entityName": "Pie", "observations": ["Está inflamado (2026-10-31)"]}]
+        [{"entityName": "Pie", "observations": ["[o1] Está inflamado (2026-10-31 21:05)"]}]
     )
     assert rows()[-1] == ("Está inflamado", 0)
 
@@ -56,10 +92,39 @@ def test_delete_says_when_nothing_changed():
     assert "nada cambió" in text
 
 
-def test_update_says_when_the_old_fact_is_missing():
-    memoria.create_entities([entity("Pie", "salud", "Está inflamado")])
-    assert "no encontré" in memoria.update_observation("Pie", "otra cosa", "Ya sanó")
-    assert ("Ya sanó", 1) in rows()
+def test_correction_points_to_related_facts_in_other_entities():
+    memoria.create_entities([entity("Halloween", "plan", "Se disfrazará de Shrek")])
+    memoria.create_entities([entity("esposa de Renzo", "persona", "Se disfrazará de Fiona")])
+    text = memoria.update_observation(ids_of("Halloween"), "Se disfrazarán de piratas")
+    assert "esposa de Renzo: Se disfrazará de Fiona" in text
+
+
+def test_owner_is_a_person_with_alias_and_is_not_duplicated():
+    memoria.add_observations([{"entityName": "Renzo", "contents": ["Le duele un brazo"]}])
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Renzo", "persona", "Juega fútbol")])
+    memoria.create_entities([entity("yo", "persona", "Toma té")])
+    assert count_entities() == 1
+    assert "Renzo (persona)" in memoria.search_nodes("Renzo")
+
+
+def count_entities():
+    with memoria.connect() as db:
+        return db.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("Organización", "organizacion"), ("cosa", "objeto"), ("nave", "objeto"), ("salud", "salud")],
+)
+def test_entity_types_are_normalized(value, expected):
+    assert memoria.entity_type(value) == expected
+
+
+def test_generic_type_is_upgraded():
+    memoria.add_observations([{"entityName": "Faro", "contents": ["Una app"]}])
+    memoria.create_entities([entity("Faro", "proyecto", "Con mapas")])
+    assert "Faro (proyecto)" in memoria.search_nodes("Faro")
 
 
 def seed_events(tmp_path):
