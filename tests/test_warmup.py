@@ -1,12 +1,16 @@
 import json
 import threading
+from functools import partial
 
 import httpx
 
-from tama.net import Connectivity, watch
+from tama.net import Connectivity as TolerantConnectivity
+from tama.net import watch
 from tama.ollama import OllamaClient, OllamaError
 from tama.warmup import LocalWarmer
 from tests.fakes import FakeClock
+
+Connectivity = partial(TolerantConnectivity, misses_to_offline=1)
 
 
 class FakeLoader:

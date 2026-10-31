@@ -3,11 +3,11 @@
 import threading
 from dataclasses import dataclass, field
 
-from tama import prompts
 from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
 from tama.config import Settings
 from tama.events import EventStore
 from tama.mcp_hub import McpHub, load_config, server_env
+from tama.memory import recall_context, session_prompt
 from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.providers.claude import ClaudeProvider
@@ -80,9 +80,12 @@ def build(
         local,
         settings.local_model,
         {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu},
-        system_prompt=prompts.identity(),
+        system_prompt=session_prompt(settings.memory_dir, store),
     )
     connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s, on_offline=warmer.warm)
+    local_provider = OllamaLocalProvider(
+        local, settings.local_model, settings.num_ctx, settings.num_gpu
+    )
     layers = [
         Layer(
             cloud,
@@ -105,15 +108,15 @@ def build(
             ),
         ),
         # Sin tiempo máximo: es la última capa y cargar el modelo en CPU puede tardar.
-        Layer(
-            OllamaLocalProvider(local, settings.local_model, settings.num_ctx, settings.num_gpu),
-            None,
-            breaker(),
-        ),
+        Layer(local_provider, None, breaker()),
     ]
+    if not settings.claude_enabled:
+        layers = [layer for layer in layers if layer.provider.name != "claude"]
     if only:
         layers = [layer for layer in layers if layer.provider.name in only]
     tools = build_tools(settings, connectivity, breaker) if with_tools else None
+    if tools is not None and settings.local_auto_recall:
+        local_provider.recall = lambda text: recall_context(tools, text)
     return Brain(Cascade(layers, connectivity), store, local, connectivity, warmer, tools)
 
 
@@ -124,7 +127,7 @@ def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpH
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     hub = McpHub(
         load_config(settings.mcp_config),
-        server_env(settings.data_dir, settings.workdir),
+        server_env(settings.data_dir, settings.workdir, settings.memory_dir),
         online=connectivity.online,
         start_timeout_s=settings.tool_start_timeout_s,
         call_timeout_s=settings.tool_timeout_s,
@@ -133,4 +136,5 @@ def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpH
         errlog=open(settings.data_dir / "mcp.log", "a", encoding="utf-8"),  # noqa: SIM115
     )
     hub.start()
+    hub.call("ensure_owner", {"nombre": settings.user_name})
     return hub

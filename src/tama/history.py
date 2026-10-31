@@ -18,7 +18,7 @@ def trim(messages: list[Message], max_tokens: int) -> list[Message]:
     kept: list[Message] = []
     used = 0
     for message in reversed(dialog):
-        cost = estimate_tokens(message.get("content") or "")
+        cost = estimate_tokens((message.get("content") or "") + str(message.get("tool_calls", "")))
         if kept and used + cost > max_tokens:
             break
         kept.append(message)

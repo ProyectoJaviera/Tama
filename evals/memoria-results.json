@@ -1,0 +1,659 @@
+{
+  "nube": {
+    "capa": "nube",
+    "sin_red": false,
+    "fecha": "2026-10-31",
+    "hechos": 9,
+    "total_hechos": 10,
+    "guardados": 10,
+    "negativos": 3,
+    "total_negativos": 3,
+    "tokens_prompt_max": 2232,
+    "calidad": {
+      "entidades": 9,
+      "duplicadas": [
+        "mama de renzo / renzo"
+      ],
+      "mal_nombradas": []
+    },
+    "detalle": [
+      {
+        "pregunta": "¿A qué ciudad se muda mi hermana?",
+        "ok": true,
+        "respuesta": "Tu hermana Lucía se muda a Temuco en marzo.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2229
+      },
+      {
+        "pregunta": "¿Qué estoy plantando en el balcón?",
+        "ok": true,
+        "respuesta": "Estás plantando tomates cherry en tu huerta del balcón.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2230
+      },
+      {
+        "pregunta": "¿Cómo se llama mi perro?",
+        "ok": true,
+        "respuesta": "Tu perro se llama Bruno.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2227
+      },
+      {
+        "pregunta": "¿Qué hierba no me gusta?",
+        "ok": false,
+        "respuesta": "No tengo ese dato en mi memoria. ¿Cuál es la hierba que no te gusta?",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2228
+      },
+      {
+        "pregunta": "¿Qué libro estoy leyendo?",
+        "ok": true,
+        "respuesta": "Estás leyendo Cien años de soledad.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2226
+      },
+      {
+        "pregunta": "¿Cuál es mi proyecto de este trimestre?",
+        "ok": true,
+        "respuesta": "Tu proyecto para este trimestre es el reloj con Arduino.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2229
+      },
+      {
+        "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
+        "ok": true,
+        "respuesta": "El cumpleaños de tu mamá es el 14 de diciembre.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2230
+      },
+      {
+        "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
+        "ok": true,
+        "respuesta": "El proyecto en el que trabajas con Tomás se llama Faro.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2232
+      },
+      {
+        "pregunta": "¿Qué idioma estoy aprendiendo?",
+        "ok": true,
+        "respuesta": "Estás aprendiendo portugués en las tardes.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2227
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "Prefieres tomar té verde antes que café.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2229
+      },
+      {
+        "pregunta": "¿Cómo se llama mi dentista?",
+        "ok": true,
+        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo para la próxima.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2228
+      },
+      {
+        "pregunta": "¿En qué año me casé?",
+        "ok": true,
+        "respuesta": "No tengo ese dato guardado. Si quieres, cuéntame y lo recuerdo para la próxima.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2228
+      },
+      {
+        "pregunta": "¿Cuál es mi color favorito?",
+        "ok": true,
+        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo y lo recuerdo.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "nube",
+        "tokens_prompt": 2227
+      }
+    ]
+  },
+  "claude": {
+    "capa": "claude",
+    "sin_red": false,
+    "fecha": "2026-10-30",
+    "hechos": 10,
+    "total_hechos": 10,
+    "guardados": 10,
+    "negativos": 3,
+    "total_negativos": 3,
+    "tokens_prompt_max": 4251,
+    "calidad": {
+      "entidades": 11,
+      "duplicadas": [],
+      "mal_nombradas": []
+    },
+    "detalle": [
+      {
+        "pregunta": "¿A qué ciudad se muda mi hermana?",
+        "ok": true,
+        "respuesta": "Tu hermana Lucía se muda a Temuco en marzo.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4243
+      },
+      {
+        "pregunta": "¿Qué estoy plantando en el balcón?",
+        "ok": true,
+        "respuesta": "Según lo que me has contado, estás armando una huerta en el balcón, y por ahora incluye tomates cherry. No tengo registro de otras plantas ni de notas sobre el tema. Si quieres, puedo anotar las que vayas sumando.",
+        "herramientas": [
+          "search_nodes",
+          "search_notes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4242
+      },
+      {
+        "pregunta": "¿Cómo se llama mi perro?",
+        "ok": true,
+        "respuesta": "Tu perro se llama Bruno y tiene 4 años.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4239
+      },
+      {
+        "pregunta": "¿Qué hierba no me gusta?",
+        "ok": true,
+        "respuesta": "Según lo que me contaste, la hierba que no te gusta es el cilantro, que dijiste que odias.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4239
+      },
+      {
+        "pregunta": "¿Qué libro estoy leyendo?",
+        "ok": true,
+        "respuesta": "Según lo que tengo guardado, estás leyendo *Cien años de soledad*. Lo anoté el 30 de octubre de 2026. Si ya lo terminaste o cambiaste de lectura, dímelo y lo actualizo.",
+        "herramientas": [
+          "search_nodes",
+          "recent_events"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4240
+      },
+      {
+        "pregunta": "¿Cuál es mi proyecto de este trimestre?",
+        "ok": true,
+        "respuesta": "Tu proyecto de este trimestre es **construir un reloj con Arduino**. Además, tienes en marcha el Proyecto Faro (junto a tu colega Tomás) y una huerta de balcón con tomates cherry.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4245
+      },
+      {
+        "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
+        "ok": true,
+        "respuesta": "Según lo que me contaste, el cumpleaños de tu mamá es el 14 de diciembre. ¿Quieres que te ayude a dejar un recordatorio o una nota para que no se te pase?",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4247
+      },
+      {
+        "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
+        "ok": true,
+        "respuesta": "El proyecto en que trabajas con Tomás se llama **Proyecto Faro**, según lo que me contaste antes.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4251
+      },
+      {
+        "pregunta": "¿Qué idioma estoy aprendiendo?",
+        "ok": true,
+        "respuesta": "Según lo que me contaste el 30 de octubre de 2026, estás aprendiendo portugués en las tardes. ¿Cómo va?",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4243
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "En las tardes prefieres el té verde antes que el café, según lo que me contaste el 30 de octubre.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4243
+      },
+      {
+        "pregunta": "¿Cómo se llama mi dentista?",
+        "ok": true,
+        "respuesta": "No tengo guardado el nombre de tu dentista. Entre lo que me has contado aparecen Tomás, Lucía, tu mamá y tu mascota Bruno, pero nada sobre un dentista. Si me dices su nombre, lo anoto para la próxima.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4240
+      },
+      {
+        "pregunta": "¿En qué año me casé?",
+        "ok": true,
+        "respuesta": "No tengo ningún dato sobre tu matrimonio ni sobre el año en que te casaste. Lo único que encontré en mi memoria es que estás leyendo *Cien años de soledad* y que tienes un perro llamado Bruno, de 4 años. Si me cuentas el año, lo guardo para que no se me olvide.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4235
+      },
+      {
+        "pregunta": "¿Cuál es mi color favorito?",
+        "ok": true,
+        "respuesta": "No tengo registrado cuál es tu color favorito. Entre lo que me has contado sí aparecen el té verde, el portugués que empezaste a estudiar y proyectos como el Reloj con Arduino o la Huerta de balcón. Si me dices tu color favorito, lo guardo para la próxima.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "claude",
+        "tokens_prompt": 4239
+      }
+    ]
+  },
+  "local": {
+    "capa": "local",
+    "sin_red": false,
+    "fecha": "2026-10-31",
+    "hechos": 9,
+    "total_hechos": 10,
+    "guardados": 9,
+    "negativos": 3,
+    "total_negativos": 3,
+    "tokens_prompt_max": 3040,
+    "calidad": {
+      "entidades": 10,
+      "duplicadas": [],
+      "mal_nombradas": [
+        "leer cien anos de soledad"
+      ]
+    },
+    "detalle": [
+      {
+        "pregunta": "¿A qué ciudad se muda mi hermana?",
+        "ok": true,
+        "respuesta": "Tu hermana Lucía se muda a Temuco. Lo dije el 31 de octubre de 2026.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2948
+      },
+      {
+        "pregunta": "¿Qué estoy plantando en el balcón?",
+        "ok": true,
+        "respuesta": "Estás plantando tomates cherry en el balcón. Los armaron el 31 de octubre de 2026.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2955
+      },
+      {
+        "pregunta": "¿Cómo se llama mi perro?",
+        "ok": true,
+        "respuesta": "Bruno. Es tu perro de cuatro años, el que vive en el balcón con tomates cherry.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2942
+      },
+      {
+        "pregunta": "¿Qué hierba no me gusta?",
+        "ok": false,
+        "respuesta": "No tengo información sobre tus gustos en hierbas. Si tienes dudas, pregúntame directamente.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2718
+      },
+      {
+        "pregunta": "¿Qué libro estoy leyendo?",
+        "ok": true,
+        "respuesta": "Estás leyendo *Cien años de soledad*. Lo mencionaste el 31 de octubre a las 15:00.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2767
+      },
+      {
+        "pregunta": "¿Cuál es mi proyecto de este trimestre?",
+        "ok": true,
+        "respuesta": "Tu proyecto de este trimestre es el reloj con Arduino. Lo estás desarrollando junto a Tomás.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 3038
+      },
+      {
+        "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
+        "ok": true,
+        "respuesta": "El cumpleaños de tu mamá es el 14 de diciembre. Lo guardé en mi memoria cuando me lo dijiste.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2769
+      },
+      {
+        "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
+        "ok": true,
+        "respuesta": "El proyecto es Faro. Lo trabajas con Tomás.",
+        "herramientas": [
+          "search_nodes"
+        ],
+        "capa": "local",
+        "tokens_prompt": 3040
+      },
+      {
+        "pregunta": "¿Qué idioma estoy aprendiendo?",
+        "ok": true,
+        "respuesta": "Estás aprendiendo portugués. Lo dijiste en las tardes, cuando mencionaste que empezaste a aprenderlo.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2718
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "Prefiero té verde en las tardes.  \nLo digo porque me ayuda a relajarme y me siento más en paz.  \n¿Quieres que lo anote como un gusto?",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2811
+      },
+      {
+        "pregunta": "¿Cómo se llama mi dentista?",
+        "ok": true,
+        "respuesta": "No tengo esa información. Si quieres, puedo ayudarte a buscarlo o recordarte si ya lo hablamos.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2718
+      },
+      {
+        "pregunta": "¿En qué año me casé?",
+        "ok": true,
+        "respuesta": "No tengo ese dato. Si quieres, puedo ayudarte a buscarlo o recordar algo relacionado.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2718
+      },
+      {
+        "pregunta": "¿Cuál es mi color favorito?",
+        "ok": true,
+        "respuesta": "No lo sé. No lo he mencionado nunca. ¿Te lo recuerdas o quieres decirme algo?",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2719
+      }
+    ]
+  },
+  "local (sin red)": {
+    "capa": "local",
+    "sin_red": true,
+    "fecha": "2026-10-31",
+    "hechos": 9,
+    "total_hechos": 10,
+    "guardados": 8,
+    "negativos": 3,
+    "total_negativos": 3,
+    "tokens_prompt_max": 2880,
+    "calidad": {
+      "entidades": 9,
+      "duplicadas": [],
+      "mal_nombradas": [
+        "leer cien anos de soledad"
+      ]
+    },
+    "detalle": [
+      {
+        "pregunta": "¿A qué ciudad se muda mi hermana?",
+        "ok": true,
+        "respuesta": "Tu hermana Lucía se muda a Temuco.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2793
+      },
+      {
+        "pregunta": "¿Qué estoy plantando en el balcón?",
+        "ok": true,
+        "respuesta": "Estás plantando tomates cherry en el balcón.  \nLos armaste tú mismo en octubre de 2026.  \n¿Quieres que te diga cómo los cuidas?",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2619
+      },
+      {
+        "pregunta": "¿Cómo se llama mi perro?",
+        "ok": true,
+        "respuesta": "Bruno. Es tu perro de cuatro años, que siempre está cerca cuando estás trabajando.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2787
+      },
+      {
+        "pregunta": "¿Qué hierba no me gusta?",
+        "ok": false,
+        "respuesta": "No tengo información sobre tus gustos en hierbas. Si me dices más, puedo ayudarte mejor.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2568
+      },
+      {
+        "pregunta": "¿Qué libro estoy leyendo?",
+        "ok": true,
+        "respuesta": "Estás leyendo *Cien años de soledad*. Lo leíste el 31 de octubre de 2026 a las 15:18.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2617
+      },
+      {
+        "pregunta": "¿Cuál es mi proyecto de este trimestre?",
+        "ok": true,
+        "respuesta": "Tu proyecto de este trimestre es el reloj con Arduino. Lo estás desarrollando junto con Tomás.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2878
+      },
+      {
+        "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
+        "ok": true,
+        "respuesta": "El cumpleaños de tu mamá es el 14 de diciembre. Lo guardé en mi memoria cuando me lo dijiste.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2619
+      },
+      {
+        "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
+        "ok": true,
+        "respuesta": "El proyecto en que trabajas con Tomás se llama Faro.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2880
+      },
+      {
+        "pregunta": "¿Qué idioma estoy aprendiendo?",
+        "ok": true,
+        "respuesta": "Estás aprendiendo portugués. Empezaste en las tardes.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2568
+      },
+      {
+        "pregunta": "¿Qué prefiero tomar en las tardes?",
+        "ok": true,
+        "respuesta": "Prefiero té verde. Lo dijiste el 31 de octubre. ¿Quieres que lo anote?",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2612
+      },
+      {
+        "pregunta": "¿Cómo se llama mi dentista?",
+        "ok": true,
+        "respuesta": "No tengo esa información. Si necesitas recordar o buscarlo, pregúntame o revisa tus notas.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2568
+      },
+      {
+        "pregunta": "¿En qué año me casé?",
+        "ok": true,
+        "respuesta": "No tengo ese dato. Si me dices más, puedo buscarlo o ayudarte a recordarlo.",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2568
+      },
+      {
+        "pregunta": "¿Cuál es mi color favorito?",
+        "ok": true,
+        "respuesta": "No lo sé. Renzo nunca mencionó su color favorito. ¿Te lo acordás o quieres que lo averigüemos?",
+        "herramientas": [],
+        "capa": "local",
+        "tokens_prompt": 2569
+      }
+    ]
+  },
+  "corrección nube": {
+    "capa": "nube",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": true,
+    "recuerda_anterior": true,
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 3,
+    "recuerda_nuevo": true,
+    "respuesta": "Se disfrazarán de piratas. Fue lo último que decidiste con tu esposa.",
+    "herramientas": [
+      "create_entities",
+      "create_entities",
+      "search_nodes",
+      "update_observation",
+      "search_nodes",
+      "update_observation",
+      "search_nodes"
+    ]
+  },
+  "corrección claude": {
+    "capa": "claude",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": true,
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 1,
+    "recuerda_nuevo": false,
+    "respuesta": "Según lo que me contaste, tú y tu esposa irán de piratas. Antes habían cambiado de idea varias veces (primero ella de Fiona, luego la Bella y la Bestia), pero la última decisión fue esa.",
+    "herramientas": [
+      "create_entities",
+      "add_observations",
+      "search_nodes",
+      "update_observation",
+      "search_nodes",
+      "update_observation",
+      "search_nodes"
+    ]
+  },
+  "corrección local": {
+    "capa": "local",
+    "sin_red": false,
+    "sin_confirmacion": true,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": false,
+    "recuerda_anterior": false,
+    "hechos_vigentes": 0,
+    "entidades_enlazadas": 0,
+    "recuerda_nuevo": true,
+    "respuesta": "Vamos de piratas. Ya lo decidimos con tu esposa.",
+    "herramientas": [
+      "create_entities",
+      "create_entities",
+      "update_observation",
+      "update_observation"
+    ]
+  },
+  "corrección local (sin red)": {
+    "capa": "local",
+    "sin_red": true,
+    "sin_confirmacion": true,
+    "conserva_antiguo": false,
+    "antiguo_no_vigente": false,
+    "recuerda_anterior": true,
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 3,
+    "recuerda_nuevo": true,
+    "respuesta": "Vamos a disfrazarnos de piratas. Eso fue lo que decidimos finalmente.",
+    "herramientas": [
+      "create_entities",
+      "add_observations",
+      "update_observation",
+      "update_observation"
+    ]
+  },
+  "historial nube": {
+    "capa": "nube",
+    "sin_red": false,
+    "completo": true,
+    "en_orden": true,
+    "respuesta": "Tienes estos registros en orden: primero la operación de rodilla el 3 de marzo, luego la alergia a la penicilina el 20 de mayo y la fractura de muñeca el 2 de agosto. Finalmente, fuiste al dentista por una muela el 28 de octubre.",
+    "herramientas": [
+      "linea_de_tiempo"
+    ]
+  },
+  "historial local": {
+    "capa": "local",
+    "sin_red": false,
+    "completo": true,
+    "en_orden": true,
+    "respuesta": "Tu historial médico, en orden cronológico:\n\n- 3 de marzo de 2026: operación en la rodilla.  \n- 20 de mayo de 2026: alergia a la penicilina.  \n- 2 de agosto de 2026: fractura en la muñeca.  \n- 28 de octubre de 2026: visita al dentista por una muela.  \n\n¿Querés que te lo resuma en una nota o que te diga algo sobre uno de estos eventos?",
+    "herramientas": [
+      "linea_de_tiempo"
+    ]
+  },
+  "historial local (sin red)": {
+    "capa": "local",
+    "sin_red": true,
+    "completo": true,
+    "en_orden": true,
+    "respuesta": "Tienes tres eventos médicos registrados:  \n- 3 de marzo: operación en la rodilla.  \n- 20 de mayo: alergia a la penicilina.  \n- 2 de agosto: fractura en la muñeca.  \n- 28 de octubre: consulta dental por una muela.  \n\nTodos están en orden cronológico.",
+    "herramientas": [
+      "linea_de_tiempo"
+    ]
+  }
+}

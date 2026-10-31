@@ -22,7 +22,9 @@ def test_connectivity_is_cached_for_ttl():
 
 def test_invalidate_forces_new_probe():
     results = iter([True, False])
-    connectivity = Connectivity(lambda: next(results), ttl=30, clock=FakeClock())
+    connectivity = Connectivity(
+        lambda: next(results), ttl=30, clock=FakeClock(), misses_to_offline=1
+    )
     assert connectivity.online() is True
     connectivity.invalidate()
     assert connectivity.online() is False
@@ -41,3 +43,11 @@ def test_tcp_probe_true_when_port_is_open():
         server.bind(("127.0.0.1", 0))
         server.listen()
         assert tcp_probe("127.0.0.1", server.getsockname()[1], timeout=0.5) is True
+
+
+def test_one_failed_probe_does_not_mean_offline():
+    results = iter([True, False, False])
+    connectivity = Connectivity(lambda: next(results), ttl=0)
+    assert connectivity.online() is True
+    assert connectivity.online() is True  # una falla: se duda
+    assert connectivity.online() is False  # dos seguidas: sin red

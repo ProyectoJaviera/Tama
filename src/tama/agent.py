@@ -12,6 +12,7 @@ from tama.cascade import Answered, Cascade, Switch
 from tama.providers import Error, Message, Text, ToolCall
 
 MAX_STEPS = 5
+MAX_RESULT_IN_HISTORY = 300
 REJECTED = (
     "CANCELADO: Renzo respondió que NO. La acción NO se ejecutó y todo sigue exactamente igual. "
     "Dile claramente que no se hizo y que sigue como estaba. No pidas otra confirmación."
@@ -47,6 +48,9 @@ class ToolResult:
 @dataclass(frozen=True)
 class FinalAnswer:
     text: str
+    trace: tuple[Message, ...] = ()
+    """Llamadas a herramientas del turno. Quedan en el historial: si el modelo solo viera texto,
+    imitaría esas respuestas y dejaría de usar herramientas (p. ej., de guardar en la memoria)."""
 
 
 Confirm = Callable[[ToolCall, Any], bool]
@@ -64,6 +68,14 @@ def with_tool_status(messages: list[Message], down: list[str]) -> list[Message]:
     )
     first = {**messages[0], "content": messages[0]["content"] + "\n\n" + notice}
     return [first, *messages[1:]]
+
+
+def compact(trace: list[Message]) -> list[Message]:
+    """Acorta los resultados de herramientas para que el historial siga corto."""
+    return [
+        {**m, "content": m["content"][:MAX_RESULT_IN_HISTORY]} if m["role"] == "tool" else m
+        for m in trace
+    ]
 
 
 def prepare(
@@ -87,6 +99,7 @@ def run_turn(
 ) -> Iterator[AgentEvent]:
     """Corre un turno completo. `messages` no se modifica: el bucle trabaja sobre una copia."""
     work, tool_specs = prepare(tools, messages, max_tools)
+    start = len(work)
 
     for step in range(max_steps + 1):
         # El último paso va sin herramientas: el modelo debe responder con lo que tiene.
@@ -109,7 +122,7 @@ def run_turn(
                 yield event
                 return
         if not calls:
-            yield FinalAnswer("".join(text))
+            yield FinalAnswer("".join(text), tuple(compact(work[start:])))
             return
 
         ids = [call.id or f"call_{step}_{i}" for i, call in enumerate(calls)]

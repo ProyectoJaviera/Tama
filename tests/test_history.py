@@ -33,3 +33,15 @@ def test_last_message_survives_even_if_too_long():
 
 def test_estimate_is_roughly_chars_over_3_5():
     assert 280 <= estimate_tokens("a" * 1000) <= 300
+
+
+def test_tool_groups_are_not_left_orphaned_after_trim():
+    messages = [
+        msg("user", 3500),
+        {"role": "assistant", "content": "", "tool_calls": [{"id": "c1"}]},
+        {"role": "tool", "tool_call_id": "c1", "content": "x" * 3500},
+        msg("assistant", 35),
+        msg("user", 35),
+    ]
+    result = trim(messages, max_tokens=100)
+    assert result[0]["role"] == "user" and not any(m["role"] == "tool" for m in result)

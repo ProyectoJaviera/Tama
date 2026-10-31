@@ -4,7 +4,7 @@ Cada capa se prueba por separado y con datos de ejemplo frescos. El resultado es
 herramientas llamó el modelo, con qué argumentos, si pidió confirmación antes de una acción
 destructiva y si se abstuvo cuando no hacía falta ninguna.
 
-    uv run python -m evals.tools --capas nube claude local   # una corrida por capa
+    uv run python -m evals.tools --capas nube local   # una corrida por capa
     uv run python -m evals.tools --capas local --offline      # sin red (la web queda fuera)
 """
 
@@ -249,7 +249,9 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--capas", nargs="+", default=["nube", "claude", "local"])
+    # Claude queda fuera por defecto: cuida el cupo mensual de la API.
+    parser.add_argument("--capas", nargs="+", default=["nube", "local"])
+    parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
 

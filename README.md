@@ -95,6 +95,7 @@ contenedor), definidos en `config/mcp.toml`:
 | Servidor | Herramientas | Notas |
 |---|---|---|
 | tiempo | `get_current_time` | Oficial `mcp-server-time`, zona America/Santiago |
+| memoria | `search_nodes`, `create_entities`, `add_observations`, `create_relations`, `delete_observations`, `recent_events`, `proponer_cambio_perfil` | Propio, con SQLite (ver Memoria) |
 | notas | `create_note`, `search_notes`, `update_note`, `delete_note` | SQLite con búsqueda de texto (`data/notas.db`) |
 | archivos | `find_files`, `read_file`, `create_file`, `overwrite_file` | Solo dentro de la carpeta de trabajo (`TAMA_WORKDIR`) |
 | web | `fetch` | Oficial `mcp-server-fetch`; solo con internet |
@@ -104,6 +105,21 @@ contenedor), definidos en `config/mcp.toml`:
 - Si un servidor falla, sus herramientas desaparecen y Tama sigue conversando con las demás;
   tres fallos seguidos lo dejan fuera 5 minutos. `/herramientas` muestra el estado.
 - En Docker, la carpeta de trabajo es `./trabajo` del host (cambiar con `TAMA_WORKDIR_HOST`).
+
+### Memoria
+
+Tama recuerda entre sesiones, sin base de datos vectorial:
+
+- **Perfil** (`memoria/nucleo.md`): datos estables, siempre en el prompt. Lo editas a mano, o Tama
+  propone un cambio y pide confirmación.
+- **Grafo** (`data/memoria.db`): personas, proyectos y gustos, con observaciones fechadas. Tama
+  guarda lo que le cuentas y lo busca cuando hace falta; lo contradicho deja de usarse, no se borra.
+- **Conversaciones** (`data/events.db`): "¿de qué hablamos ayer?".
+- `/memoria` muestra lo vigente, `/memoria historial <tema>` da la línea de tiempo completa, `/olvidar <tema>` busca por palabras y borra lo que elijas (con confirmación) y
+  `tama memoria export` vuelca el grafo a `memoria/grafo.jsonl`.
+
+`memoria/` y `data/` tienen datos personales: nunca van a un repositorio público. En Docker viven
+en los volúmenes `tama-memoria` y `tama-data`.
 
 ## Instalación sin internet (en otra máquina)
 
@@ -147,6 +163,7 @@ Variables en `.env` (ver `.env.example`):
 | `OLLAMA_API_KEY` | vacío | Opcional: nube de Ollama directo a ollama.com (sin ella, vía `ollama signin`) |
 | `TAMA_CLOUD_MODEL` | `gemma4:31b-cloud` | Modelo de la nube de Ollama |
 | `ANTHROPIC_API_KEY` | vacío | Activa la capa de Claude |
+| `TAMA_CLAUDE_ENABLED` | `true` | Usar la capa de Claude; las evals la apagan salvo con `--con-claude` |
 | `TAMA_CLAUDE_MODEL` | `claude-haiku-5-5` | Modelo de Claude |
 | `TAMA_CLAUDE_EFFORT` | `low` | Esfuerzo de razonamiento de Claude (`low` = más rápido) |
 | `TAMA_CLAUDE_MONTHLY_USD` | `5` | Tope de gasto mensual en Claude |
@@ -154,8 +171,10 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
 | `TAMA_CONNECTIVITY_WATCH_S` | `5` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
 | `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
+| `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
-| `TAMA_TOOLS_MAX` | `10` | Máximo de herramientas visibles por turno |
+| `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
+| `TAMA_TOOLS_MAX` | `18` | Máximo de herramientas visibles por turno |
 | `TAMA_MCP_ENABLED` | `true` | Activa los servidores MCP |
 
 La lista completa, con comentarios, está en `.env.example`.

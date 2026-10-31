@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     # 0 = solo CPU y RAM. La GPU de este PC (GTX 660, 2 GB) no sirve para modelos.
     num_gpu: int = 0
     timeout: float = 300.0
+    user_name: str = "Renzo"
     data_dir: Path = Path("data")
+    # Perfil (`nucleo.md`) y export del grafo; datos personales, nunca en el repo público.
+    memory_dir: Path = Path("memoria")
 
     # Capa 1: nube de Ollama.
     ollama_api_key: SecretStr | None = Field(
@@ -34,7 +37,8 @@ class Settings(BaseSettings):
     cloud_model: str = "gemma4:31b-cloud"
     cloud_first_token_s: float = 8.0
 
-    # Capa 2: Claude.
+    # Capa 2: Claude. Las evals la apagan (ver evals/__init__.py) para cuidar el cupo de la API.
+    claude_enabled: bool = True
     anthropic_api_key: SecretStr | None = Field(
         None, validation_alias=AliasChoices("ANTHROPIC_API_KEY", "TAMA_ANTHROPIC_API_KEY")
     )
@@ -56,12 +60,16 @@ class Settings(BaseSettings):
     connectivity_watch_s: float = 5.0
     # Mantener el modelo local siempre cargado en RAM (útil si sobra memoria).
     local_keep_warm: bool = False
+    # La capa local busca en la memoria con las palabras del mensaje (ADR 0003).
+    local_auto_recall: bool = True
 
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
-    tools_max: int = 10
+    # Deben caber todas las de config/mcp.toml: si no, las últimas (la web) quedan fuera.
+    # El benchmark del ADR 0002 mide 100% con 20 herramientas en la nube; subirlo cuesta tokens.
+    tools_max: int = 18
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000
