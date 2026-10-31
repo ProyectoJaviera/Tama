@@ -1,7 +1,7 @@
 {
   "reflexion": {
     "fecha": "2026-10-30",
-    "segundos": 152,
+    "segundos": 191,
     "fusionados": [
       "Mónica Rojas = Moni Rojas",
       "Proyecto Faro = Faro",
@@ -13,6 +13,7 @@
     "fusiones_incorrectas": [],
     "contradicciones": [
       "Trabaja en el Banco Sur",
+      "Vive en Talca",
       "Es de color rojo"
     ],
     "total_contradicciones": 3,
@@ -23,11 +24,12 @@
       "fusioné Café Altura y Cafe Altura Providencia en Café Altura",
       "fusioné Escuela Allegro y Escuela de Música Allegro en Escuela de Música Allegro",
       "Camioneta: 1 datos ya no vigentes",
+      "Luis: 1 datos ya no vigentes",
       "Andrea: 1 datos ya no vigentes",
       "fusioné Mónica Rojas y Moni Rojas en Mónica Rojas",
       "fusioné Bruno y Brunito en Bruno"
     ],
-    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-ptlo1q84"
+    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-5_g7gsrp"
   },
   "diario": {
     "fecha": "2026-10-30",

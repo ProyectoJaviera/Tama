@@ -116,7 +116,15 @@ Tama recuerda entre sesiones, sin base de datos vectorial:
   guarda lo que le cuentas y lo busca cuando hace falta; lo contradicho deja de usarse, no se borra.
 - **Conversaciones** (`data/events.db`): "¿de qué hablamos ayer?".
 - `/memoria` muestra lo recordado, `/olvidar <entidad>` lo borra (con confirmación) y
-  `tama memoria export` vuelca el grafo a `memoria/grafo.jsonl`.
+  `tama memoria export` vuelca el grafo y los objetivos a `memoria/grafo.jsonl`.
+- `/objetivos` lista los objetivos y `/objetivos borrar <objetivo>` borra uno (con confirmación).
+  Se crean y actualizan conversando con Tama; descartar uno también pide confirmación.
+- `/diario` escribe el diario de hoy y `/diario AAAA-MM-DD` muestra el de esa fecha. Quedan en
+  `memoria/diario/`; el del día anterior se escribe solo al abrir el chat.
+- Tras 20 minutos sin actividad, si hay RAM libre, Tama reflexiona con el modelo local y sin red:
+  fusiona entidades duplicadas, marca como no vigentes los datos reemplazados (no los borra) y
+  deja hasta 2 sugerencias para la próxima sesión. Si duda, no toca nada y te pregunta. Se cancela
+  apenas escribes y queda registrado en `events.db`.
 
 `memoria/` y `data/` tienen datos personales: nunca van a un repositorio público. En Docker viven
 en los volúmenes `tama-memoria` y `tama-data`.
@@ -173,7 +181,10 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
-| `TAMA_TOOLS_MAX` | `17` | Máximo de herramientas visibles por turno |
+| `TAMA_TOOLS_MAX` | `10` | Máximo de herramientas visibles por turno |
+| `TAMA_REFLECTION` | `true` | Reflexión en inactividad |
+| `TAMA_REFLECTION_IDLE_MIN` | `20` | Minutos sin actividad antes de reflexionar |
+| `TAMA_REFLECTION_MIN_FREE_GB` | `6` | RAM libre mínima para reflexionar |
 | `TAMA_MCP_ENABLED` | `true` | Activa los servidores MCP |
 
 La lista completa, con comentarios, está en `.env.example`.

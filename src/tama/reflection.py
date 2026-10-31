@@ -36,12 +36,18 @@ MERGE_PROMPT = (
     '| "dudo", "conservar": "<el nombre más completo de los dos>"}.'
 )
 CONTRADICTION_PROMPT = (
-    "Revisas los datos guardados sobre una entidad, con su fecha. Hay contradicción solo si dos "
-    "datos hablan de lo mismo y no pueden ser ciertos a la vez: vivía en un lugar y se mudó a "
-    "otro, cambió de trabajo, cambió de color. Un dato que agrega detalle o muestra avance NO "
-    'contradice al anterior: "escribe una novela" y "ya lleva 100 páginas" son compatibles. '
-    'Responde en JSON: {"contradicciones": [{"razon": "<una frase>", "antiguo": <número>, '
-    '"nuevo": <número>}]}. Si no hay ninguna, lista vacía.'
+    "Revisas los datos guardados sobre una entidad, con su fecha. Busca datos antiguos que hoy ya "
+    'no son ciertos porque uno más nuevo los reemplazó. Ejemplos de reemplazo: "vive en Arica" y '
+    'luego "se fue a vivir a Iquique"; "el auto es verde" y luego "lo pintó de negro". No '
+    'es reemplazo si ambos siguen siendo ciertos: "escribe una novela" y "ya lleva 100 '
+    'páginas". Responde en JSON: {"reemplazados": [{"razon": "<una frase>", "antiguo": <número>, '
+    '"nuevo": <número>}]}. Si no hay ninguno, lista vacía.'
+)
+VERIFY_PROMPT = (
+    "Te dan dos datos sobre la misma entidad, el segundo más nuevo. Si el dato nuevo es cierto "
+    "hoy, ¿el dato antiguo sigue siendo cierto también? Un detalle adicional sobre lo mismo deja "
+    'al antiguo en pie. Responde en JSON: {"razon": "<una frase>", "antiguo_sigue_cierto": '
+    "true | false}."
 )
 SUGGESTION_PROMPT = (
     "Eres Tama, acompañante de Renzo. Mira sus objetivos activos. Solo si alguno lleva 14 días o "
@@ -51,7 +57,8 @@ SUGGESTION_PROMPT = (
 )
 DIARY_PROMPT = (
     "Escribe en español el diario de un día de Tama, la asistente de Renzo, en Markdown breve. "
-    "Usa solo lo que aparece en el registro; no agregues planes, tareas, opiniones ni sentimientos. "
+    "Usa solo lo que aparece en el registro; no agregues planes, tareas, opiniones ni "
+    "sentimientos. "
     "Renzo es quien escribe y a veces cuenta cosas de otras personas: conserva quién hizo cada "
     "cosa, con su nombre. Tres secciones:\n"
     "## Conversamos: de qué habló Renzo, en frases cortas.\n"
@@ -71,7 +78,7 @@ MERGE_SCHEMA = {
 CONTRADICTION_SCHEMA = {
     "type": "object",
     "properties": {
-        "contradicciones": {
+        "reemplazados": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -84,7 +91,15 @@ CONTRADICTION_SCHEMA = {
             },
         }
     },
-    "required": ["contradicciones"],
+    "required": ["reemplazados"],
+}
+VERIFY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "razon": {"type": "string"},
+        "antiguo_sigue_cierto": {"type": "boolean"},
+    },
+    "required": ["razon", "antiguo_sigue_cierto"],
 }
 SUGGESTION_SCHEMA = {
     "type": "object",
@@ -157,6 +172,12 @@ def unify_entities(thinker: Thinker) -> list[str]:
     return done
 
 
+def is_replaced(thinker: Thinker, name: str, old: dict[str, Any], new: dict[str, Any]) -> bool:
+    """Segunda mirada, par a par: retirar un dato vigente es peor que dejar uno antiguo."""
+    user = f"{name}.\nAntiguo ({old['date']}): {old['text']}\nNuevo ({new['date']}): {new['text']}"
+    return thinker.json(VERIFY_PROMPT, user, VERIFY_SCHEMA).get("antiguo_sigue_cierto") is False
+
+
 def retire_contradictions(thinker: Thinker) -> list[str]:
     """Marca como no vigentes los datos contradichos por otros más nuevos."""
     done = []
@@ -166,9 +187,14 @@ def retire_contradictions(thinker: Thinker) -> list[str]:
         answer = thinker.json(
             CONTRADICTION_PROMPT, f"{entity['name']}:\n{lines}", CONTRADICTION_SCHEMA
         )
-        found = answer.get("contradicciones", [])
+        found = answer.get("reemplazados", [])
         pairs = [(c.get("antiguo", 0), c.get("nuevo", 0)) for c in found]
-        chosen = {old for old, new in pairs if 1 <= old < new <= len(listed)}
+        chosen = {
+            old
+            for old, new in pairs
+            if 1 <= old < new <= len(listed)
+            and is_replaced(thinker, entity["name"], listed[old - 1], listed[new - 1])
+        }
         ids = [listed[i - 1]["id"] for i in sorted(chosen)]
         if memoria.retire_observations(entity["id"], ids):
             done.append(f"{entity['name']}: {len(ids)} datos ya no vigentes")

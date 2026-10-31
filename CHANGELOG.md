@@ -6,6 +6,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 4: objetivos (`create_goal`, `update_goal`, `list_goals`, `add_goal_progress`,
+  `discard_goal` con confirmación y `/objetivos`), diario en `memoria/diario/` (`/diario`) y
+  reflexión en inactividad con el modelo local: fusiona duplicados, retira datos reemplazados sin
+  borrarlos y deja hasta 2 sugerencias. Se apaga con `TAMA_REFLECTION=false`. Evals en
+  `python -m evals.reflexion`.
 - Sprint 3: memoria entre sesiones. Perfil `memoria/nucleo.md`, servidor MCP de memoria con grafo
   en SQLite (observaciones con fecha, origen y vigencia, alias y búsqueda FTS5), recuerdo de la
   última conversación, `recent_events`, `/memoria`, `/olvidar`, `tama memoria export` y evals de
@@ -22,6 +27,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 - La línea gris bajo cada respuesta muestra los tokens por segundo de generación, cuando el
   proveedor informa los tokens de salida.
+
+### Cambiado
+
+- Selector de herramientas (`tama/selector.py`): máximo 10 a la vista por turno. Van siempre las
+  esenciales, luego lo usado en el turno anterior y las de uso común; el resto se pide con
+  `abrir_herramientas`. `TAMA_TOOLS_MAX` baja de 17 a 10 y se acortan las descripciones.
+- `tama memoria export` también incluye los objetivos.
 
 ## Sprint 1: conversación (2026-10-30)
 

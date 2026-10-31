@@ -101,7 +101,9 @@ def test_invalid_answer_is_retried_later():
 
 def test_contradiction_is_marked_not_deleted():
     memoria.create_entities([entity("Vale", "persona", "Vive en Talca", "Vive en Temuco")])
-    think, client = thinker({"contradicciones": [{"antiguo": 1, "nuevo": 2}]})
+    think, client = thinker(
+        {"reemplazados": [{"antiguo": 1, "nuevo": 2}]}, {"antiguo_sigue_cierto": False}
+    )
     assert retire_contradictions(think) == ["Vale: 1 datos ya no vigentes"]
     assert "1." in client.prompts[0]
     assert "Vive en Talca" not in memoria.search_nodes("Vale")
@@ -109,18 +111,25 @@ def test_contradiction_is_marked_not_deleted():
         assert db.execute("SELECT COUNT(*) FROM observations").fetchone()[0] == 2
 
 
+def test_second_look_keeps_a_fact_that_is_still_true():
+    memoria.create_entities([entity("Vale", "persona", "Toca piano", "Toca piano los martes")])
+    think, _ = thinker(
+        {"reemplazados": [{"antiguo": 1, "nuevo": 2}]}, {"antiguo_sigue_cierto": True}
+    )
+    assert retire_contradictions(think) == []
+    assert "Toca piano (" in memoria.search_nodes("Vale")
+
+
 def test_newest_observation_is_never_retired():
     memoria.create_entities([entity("Vale", "persona", "Vive en Talca", "Vive en Temuco")])
-    think, _ = thinker(
-        {"contradicciones": [{"antiguo": 2, "nuevo": 1}, {"antiguo": 9, "nuevo": 10}]}
-    )
+    think, _ = thinker({"reemplazados": [{"antiguo": 2, "nuevo": 1}, {"antiguo": 9, "nuevo": 10}]})
     assert retire_contradictions(think) == []
     assert "Vive en Temuco" in memoria.search_nodes("Vale")
 
 
 def test_reviewed_entity_is_not_read_again_without_news():
     memoria.create_entities([entity("Vale", "persona", "Vive en Talca", "Toca piano")])
-    think, client = thinker({"contradicciones": []})
+    think, client = thinker({"reemplazados": []})
     retire_contradictions(think)
     retire_contradictions(think)
     assert len(client.prompts) == 1
