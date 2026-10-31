@@ -45,7 +45,7 @@ def recall_context(tools, text: str) -> str:
     return f"De tu memoria:\n{outcome.text[:MAX_AUTO_RECALL_CHARS]}"
 
 
-def session_prompt(memory_dir: Path, store: EventStore) -> str:
+def session_prompt(memory_dir: Path, store: EventStore, suggestion: str = "") -> str:
     """Identidad + perfil + recuerdo: lo único que va siempre en el prompt."""
     parts = [prompts.identity()]
     profile = read_profile(memory_dir)
@@ -54,4 +54,6 @@ def session_prompt(memory_dir: Path, store: EventStore) -> str:
     line = last_conversation_line(store)
     if line:
         parts.append(line)
+    if suggestion:
+        parts.append(f"Tema pendiente; menciónalo una vez, con tacto y sin insistir: {suggestion}")
     return "\n\n".join(parts)

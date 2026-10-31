@@ -68,10 +68,15 @@ class Settings(BaseSettings):
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
     # Máximo a la vista por turno; el resto se pide con abrir_herramientas (ver selector.py).
-    tools_max: int = 14
+    tools_max: int = 16
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000
+
+    # Reflexión en inactividad (siempre con el modelo local). Se puede apagar.
+    reflection: bool = True
+    reflection_idle_min: float = 20.0
+    reflection_min_free_gb: float = 6.0
 
     # Historial de la sesión que se envía al modelo (tokens estimados, sin contar la identidad).
     history_max_tokens: int = 2000
