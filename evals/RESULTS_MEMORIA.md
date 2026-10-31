@@ -6,10 +6,10 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 | Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
 |---|---:|---:|---:|---:|---:|---:|
-| nube | 9/10 | 3/3 | 9 | 1 | 0 | 2232 |
+| nube | 10/10 | 3/3 | 12 | 1 | 0 | 1727 |
 | claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
-| local | 9/10 | 3/3 | 10 | 0 | 1 | 3040 |
-| local (sin red) | 9/10 | 3/3 | 9 | 0 | 1 | 2880 |
+| local | 9/10 | 3/3 | 15 | 1 | 0 | 2448 |
+| local (sin red) | 8/10 | 3/3 | 14 | 0 | 0 | 2295 |
 
 ## Historial médico
 
@@ -30,7 +30,8 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 ## Fallos
 
-- `nube` · ¿Qué hierba no me gusta?: No tengo ese dato en mi memoria. ¿Cuál es la hierba que no te gusta?
 - `nube` · duplicada: mama de renzo / renzo
-- `local` · ¿Qué hierba no me gusta?: No tengo información sobre tus gustos en hierbas. Si tienes dudas, pregúntame directamente.
-- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo información sobre tus gustos en hierbas. Si me dices más, puedo ayudarte mejor.
+- `local` · ¿Qué hierba no me gusta?: No tengo datos sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor.
+- `local` · duplicada: mama de renzo / renzo
+- `local (sin red)` · ¿A qué ciudad se muda mi hermana?: No tengo información sobre la ciudad a la que se muda tu hermana. Si me dices más detalles, puedo ayudarte mejor.
+- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre tus gustos en hierbas. Si me dices qué hierbas has probado, puedo ayudarte a ver cuál no te gusta.
