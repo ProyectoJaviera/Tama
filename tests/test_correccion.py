@@ -41,7 +41,7 @@ def test_update_keeps_the_old_fact_as_not_valid():
     text = memoria.update_observation(ids_of("Halloween"), "Irá de Bestia")
     assert "Corregido" in text
     assert rows() == [("Se disfrazará de Shrek", 0), ("Irá de Bestia", 1)]
-    assert "Shrek" not in memoria.search_nodes("Halloween")
+    assert "- [o1]" not in memoria.search_nodes("Halloween")
 
 
 def test_update_covers_several_entities_at_once():

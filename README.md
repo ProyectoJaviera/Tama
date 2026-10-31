@@ -115,7 +115,7 @@ Tama recuerda entre sesiones, sin base de datos vectorial:
 - **Grafo** (`data/memoria.db`): personas, proyectos y gustos, con observaciones fechadas. Tama
   guarda lo que le cuentas y lo busca cuando hace falta; lo contradicho deja de usarse, no se borra.
 - **Conversaciones** (`data/events.db`): "¿de qué hablamos ayer?".
-- `/memoria` muestra lo recordado, `/olvidar <tema>` busca por palabras y borra lo que elijas (con confirmación) y
+- `/memoria` muestra lo vigente, `/memoria historial <tema>` da la línea de tiempo completa, `/olvidar <tema>` busca por palabras y borra lo que elijas (con confirmación) y
   `tama memoria export` vuelca el grafo a `memoria/grafo.jsonl`.
 
 `memoria/` y `data/` tienen datos personales: nunca van a un repositorio público. En Docker viven

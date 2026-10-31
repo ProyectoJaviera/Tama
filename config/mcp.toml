@@ -14,7 +14,7 @@ get_current_time = "Da la fecha y la hora actuales (zona America/Santiago). Úsa
 comando = ["python", "-m", "tama.mcp_servers.memoria"]
 # Fuera de la vista del modelo: borrar entidades o relaciones y todo lo de /olvidar.
 herramientas = [
-    "search_nodes", "create_entities", "add_observations", "create_relations",
+    "search_nodes", "create_entities", "add_observations", "linea_de_tiempo",
     "update_observation", "delete_observations", "recent_events", "proponer_cambio_perfil",
 ]
 

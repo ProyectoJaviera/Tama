@@ -216,6 +216,14 @@ CORRECTION = [
     "Ya lo decidimos: con mi esposa iremos de piratas a Halloween.",
 ]
 CORRECTION_QUESTION = "¿De qué nos vamos a disfrazar en Halloween?"
+PREVIOUS_QUESTION = "¿Qué disfraz teníamos antes de los piratas?"
+MEDICAL = [
+    "El 3 de marzo de 2026 me operaron de la rodilla.",
+    "El 20 de mayo de 2026 tuve una alergia a la penicilina.",
+    "El 2 de agosto de 2026 me fracturé la muñeca.",
+    "Hace tres días fui al dentista por una muela.",
+]
+MEDICAL_ORDER = ("rodilla", "penicilina", "muneca", "muela")
 OUTDATED = ("shrek", "fiona", "bella", "bestia")
 
 
@@ -243,6 +251,16 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
     system = session_prompt(settings.memory_dir, brain.store)
     turn = ask(brain, [{"role": "system", "content": system}], CORRECTION_QUESTION, *limits)
     brain.close()
+    # Lo anterior debe salir de la memoria, no del registro de conversaciones.
+    events = sqlite3.connect(settings.data_dir / "events.db")
+    events.executescript(
+        "DELETE FROM events; INSERT INTO events_fts(events_fts) VALUES('rebuild');"
+    )
+    events.close()
+    brain = brain_module.build(settings, force_offline=offline, only=[layer])
+    system = session_prompt(settings.memory_dir, brain.store)
+    previous = ask(brain, [{"role": "system", "content": system}], PREVIOUS_QUESTION, *limits)
+    brain.close()
     db = sqlite3.connect(settings.data_dir / "memoria.db")
     rows = db.execute("SELECT content, valid FROM observations").fetchall()
     links = db.execute(
@@ -261,11 +279,49 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
         "sin_confirmacion": "delete_observations" not in used,
         "conserva_antiguo": any(mentions_old(r[0]) and not r[1] for r in rows),
         "antiguo_no_vigente": not any(mentions_old(r[0]) and r[1] for r in rows),
+        "recuerda_anterior": any(
+            w in normalize(previous["respuesta"]) for w in ("bella", "bestia")
+        ),
         "hechos_vigentes": sum("pirata" in normalize(r[0]) and bool(r[1]) for r in rows),
         "entidades_enlazadas": links,
         "recuerda_nuevo": "pirata" in answer,
         "respuesta": turn["respuesta"],
         "herramientas": used + turn["herramientas"],
+    }
+
+
+def run_history(layer: str, offline: bool) -> dict[str, Any]:
+    """Cuatro eventos médicos, uno contado días después; se piden en orden en otra sesión."""
+    base = Path(tempfile.mkdtemp(prefix=f"tama-historial-{layer}-"))
+    settings = get_settings().model_copy(
+        update={
+            "data_dir": base / "data",
+            "workdir": base / "trabajo",
+            "memory_dir": base / "memoria",
+            "connectivity_watch_s": 0,
+        }
+    )
+    limits = (settings.history_max_tokens, settings.tools_max)
+    brain = brain_module.build(settings, force_offline=offline, only=[layer])
+    messages = [{"role": "system", "content": session_prompt(settings.memory_dir, brain.store)}]
+    for text in MEDICAL:
+        turn = ask(brain, messages, text, *limits)
+        print(f"[{layer}] {text[:40]} -> {turn['herramientas']}", flush=True)
+    brain.close()
+    brain = brain_module.build(settings, force_offline=offline, only=[layer])
+    system = session_prompt(settings.memory_dir, brain.store)
+    question = "Cuéntame mi historial médico, en orden."
+    turn = ask(brain, [{"role": "system", "content": system}], question, *limits)
+    brain.close()
+    answer = normalize(turn["respuesta"])
+    where = [answer.find(word) for word in MEDICAL_ORDER]
+    return {
+        "capa": layer,
+        "sin_red": offline,
+        "completo": all(w >= 0 for w in where),
+        "en_orden": all(w >= 0 for w in where) and where == sorted(where),
+        "respuesta": turn["respuesta"],
+        "herramientas": turn["herramientas"],
     }
 
 
@@ -282,7 +338,7 @@ def render(data: dict[str, Any]) -> str:
         "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for key, run in data.items():
-        if key.startswith("corrección"):
+        if key.startswith(("corrección", "historial")):
             continue
         q = run["calidad"]
         lines.append(
@@ -292,17 +348,27 @@ def render(data: dict[str, Any]) -> str:
             f"{run['tokens_prompt_max'] or '-'} |"
         )
     corrections = {k: v for k, v in data.items() if k.startswith("corrección")}
-    data = {k: v for k, v in data.items() if not k.startswith("corrección")}
+    histories = {k: v for k, v in data.items() if k.startswith("historial")}
+    data = {k: v for k, v in data.items() if not k.startswith(("corrección", "historial"))}
+    if histories:
+        lines += ["", "## Historial médico", "", "| Capa | Completo | En orden |", "|---|---|---|"]
+        for key, run in histories.items():
+            cells = " | ".join("ok" if run[c] else "FALLA" for c in ("completo", "en_orden"))
+            lines.append(f"| {key.removeprefix('historial ')} | {cells} |")
     if corrections:
         lines += ["", "## Corrección de un dato", ""]
-        lines += ["| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho |"]
-        lines += ["|---|---|---|---|---|"]
+        lines += [
+            "| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho "
+            "| Anterior |"
+        ]
+        lines += ["|---|---|---|---|---|---|"]
         for key, run in corrections.items():
             marks = [
                 run["sin_confirmacion"],
                 run["antiguo_no_vigente"],
                 run["recuerda_nuevo"],
                 run.get("hechos_vigentes") == 1,
+                run.get("recuerda_anterior"),
             ]
             cells = " | ".join("ok" if m else "FALLA" for m in marks)
             lines.append(f"| {key.removeprefix('corrección ')} | {cells} |")
@@ -326,13 +392,16 @@ def main() -> int:
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
+    parser.add_argument("--historial", action="store_true", help="solo historial médico")
     args = parser.parse_args()
 
     out = EVALS_DIR / "memoria-results.json"
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     for layer in args.capas:
         key = layer + (" (sin red)" if args.offline else "")
-        if args.correccion:
+        if args.historial:
+            data[f"historial {key}"] = run_history(layer, args.offline)
+        elif args.correccion:
             data[f"corrección {key}"] = run_correction(layer, args.offline)
         else:
             data[key] = run_layer(layer, args.offline)

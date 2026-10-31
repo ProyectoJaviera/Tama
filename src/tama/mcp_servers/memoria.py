@@ -10,7 +10,7 @@ import os
 import re
 import sqlite3
 import unicodedata
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from difflib import SequenceMatcher, get_close_matches
 from pathlib import Path
 from typing import Any
@@ -69,13 +69,49 @@ INSERT INTO facts (id, content, created_at, source, valid)
 DROP TABLE observations;
 ALTER TABLE facts RENAME TO observations;
 """
-MIGRATIONS = [SCHEMA, LINKED_FACTS]
+# Un estado se reemplaza; un evento ocurrió en una fecha y se acumula.
+FACT_KINDS = """
+ALTER TABLE observations ADD COLUMN kind TEXT NOT NULL DEFAULT 'estado';
+ALTER TABLE observations ADD COLUMN occurred_at TEXT;
+UPDATE observations SET occurred_at = substr(created_at, 1, 10);
+UPDATE observations SET kind = 'evento' WHERE content LIKE '%médic%' OR content LIKE '%medic%'
+    OR content LIKE '%duele%' OR content LIKE '%dolor%' OR id IN (
+        SELECT l.observation_id FROM observation_entities l JOIN entities e ON e.id = l.entity_id
+        WHERE e.type IN ('salud', 'evento'));
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS]
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
 MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
+MAX_HISTORY = 3
+MAX_TIMELINE = 30
+MONTHS = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+NUMBERS = dict(
+    zip(("un", "dos", "tres", "cuatro", "cinco", "seis", "siete"), range(1, 8), strict=True)
+)
+ABSOLUTE_DATE = re.compile(
+    rf"\b(\d{{1,2}}) de ({'|'.join(MONTHS)})(?: del? (\d{{4}}))?", re.IGNORECASE
+)
+ISO_DATE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
+AGO = re.compile(rf"\bhace (\d+|{'|'.join(NUMBERS)}) d[ií]as?\b", re.IGNORECASE)
+# "en la mañana" no es una fecha: solo cuenta "mañana" sin artículo delante.
+RELATIVE = {"pasado mañana": 2, "anteayer": -2, "ayer": -1, "hoy": 0, "mañana": 1}
 SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
@@ -157,6 +193,8 @@ def same_person(db: sqlite3.Connection, name: str, type_: str) -> sqlite3.Row | 
     words = set(normalize(name).split())
     for row in db.execute("SELECT * FROM entities WHERE type = ?", (type_,)):
         other = set(row["norm"].split())
+        if "de" in words | other:  # "esposa de Renzo" es otra persona, no Renzo
+            continue
         if words <= other or other <= words:
             return row
     return None
@@ -248,37 +286,92 @@ def add_relative_alias(db: sqlite3.Connection, entity_id: int, norm: str) -> Non
         )
 
 
+def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
+    """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
+    today = today or date.today()
+    found = ""
+
+    def shift(days: int) -> str:
+        nonlocal found
+        found = (today + timedelta(days=days)).isoformat()
+        return found
+
+    def ago(match: re.Match) -> str:
+        amount = match.group(1).lower()
+        return "el " + shift(-(int(amount) if amount.isdigit() else NUMBERS[amount]))
+
+    text = AGO.sub(ago, text)
+    for word, days in RELATIVE.items():
+        pattern = rf"(?<!\bla )(?<!\besta )\b{word}\b"
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            text = re.sub(pattern, f"el {shift(days)}", text, flags=re.IGNORECASE)
+    absolute = ABSOLUTE_DATE.search(text)
+    if absolute:
+        year = int(absolute.group(3) or today.year)
+        month = MONTHS.index(absolute.group(2).lower()) + 1
+        found = date(year, month, int(absolute.group(1))).isoformat()
+    iso = ISO_DATE.search(text)
+    return text, found or (iso.group(0) if iso else "")
+
+
+def fact_key(text: str) -> tuple[str, str, set[str]]:
+    """Forma comparable de un hecho: sin mayúsculas, tildes, puntuación ni formato de fecha."""
+    _, when = resolve_dates(text)
+    plain = ISO_DATE.sub("", ABSOLUTE_DATE.sub("", text))
+    words = re.findall(r"\w+", normalize(plain))
+    return " ".join(w for w in words if w != "el"), when, {w for w in words if w.isdigit()}
+
+
 def same_fact(db: sqlite3.Connection, text: str) -> int | None:
-    """Hecho vigente que dice lo mismo, salvo mayúsculas, tildes o puntuación."""
-    wanted = " ".join(re.findall(r"\w+", normalize(text)))
+    """Hecho vigente que dice lo mismo, salvo el formato; otra fecha u otro número no lo es."""
+    wanted, when, digits = fact_key(text)
     for row in db.execute("SELECT id, content FROM observations WHERE valid = 1"):
-        current = " ".join(re.findall(r"\w+", normalize(row["content"])))
-        if SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT:
+        current, other_when, other_digits = fact_key(row["content"])
+        close = SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT
+        if close and when == other_when and digits == other_digits:
             return row["id"]
     return None
 
 
 def add_obs(
-    db: sqlite3.Connection, entity_ids: int | set[int], contents: list[str], source: int | None
+    db: sqlite3.Connection,
+    entity_ids: int | set[int],
+    contents: list[str],
+    source: int | None,
+    occurred: str = "",
+    kind: str = "",
 ) -> int:
-    """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten."""
+    """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten.
+
+    Lo fechado en el pasado y lo de salud son eventos: nunca se reemplazan, se acumulan.
+    """
     entities = {entity_ids} if isinstance(entity_ids, int) else entity_ids
     added = 0
+    today = date.today().isoformat()
     for content in contents:
-        text = content.strip()
+        text, when = resolve_dates(content.strip())
         if not text:
             continue
         repeated = same_fact(db, text)
         if repeated:
             observation_id = repeated
         else:
+            happened = occurred or when or today
+            event = kind == "evento" or (happened < today) or health_related(db, entities)
             observation_id = db.execute(
-                "INSERT INTO observations (content, created_at, source) VALUES (?, ?, ?)",
-                (text, now(), source),
+                "INSERT INTO observations (content, created_at, source, kind, occurred_at)"
+                " VALUES (?, ?, ?, ?, ?)",
+                (text, now(), source, "evento" if event else "estado", happened),
             ).lastrowid
             added += 1
         link(db, observation_id, entities | mentioned_entities(db, text))
     return added
+
+
+def health_related(db: sqlite3.Connection, entities: set[int]) -> bool:
+    marks = ",".join("?" * len(entities))
+    query = f"SELECT 1 FROM entities WHERE id IN ({marks}) AND type IN ('salud', 'evento')"
+    return db.execute(query, list(entities)).fetchone() is not None
 
 
 def stems(text: str) -> set[str]:
@@ -296,7 +389,26 @@ def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "")
     wanted = stems(query)
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
     chosen = (matching + [r for r in rows if r not in matching])[:MAX_OBSERVATIONS]
-    return [f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])})" for r in chosen]
+    return [
+        f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])}){earlier_versions(db, r['id'])}"
+        for r in chosen
+    ]
+
+
+def earlier_versions(db: sqlite3.Connection, observation_id: int) -> str:
+    """Línea corta con lo que este hecho reemplazó, del más nuevo al más antiguo."""
+    found: list[str] = []
+    frontier = [observation_id]
+    while frontier and len(found) < MAX_HISTORY:
+        marks = ",".join("?" * len(frontier))
+        rows = db.execute(
+            "SELECT id, content, occurred_at FROM observations"
+            f" WHERE superseded_by IN ({marks}) ORDER BY id DESC",
+            frontier,
+        ).fetchall()
+        found += [f"{r['content']} ({r['occurred_at']})" for r in rows]
+        frontier = [r["id"] for r in rows]
+    return "\n  antes: " + "; ".join(found[:MAX_HISTORY]) if found else ""
 
 
 def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
@@ -319,7 +431,10 @@ def describe(db: sqlite3.Connection, row: sqlite3.Row, query: str = "") -> str:
 def no_match(db: sqlite3.Connection) -> str:
     """Sin coincidencias: da los nombres guardados para que el modelo pueda revisar alguno."""
     rows = db.execute(
-        "SELECT name, type FROM entities ORDER BY created_at DESC, id DESC LIMIT ?",
+        "SELECT e.name, e.type FROM entities e"
+        " WHERE EXISTS (SELECT 1 FROM observation_entities l JOIN observations o"
+        " ON o.id = l.observation_id WHERE l.entity_id = e.id AND o.valid = 1)"
+        " ORDER BY e.created_at DESC, e.id DESC LIMIT ?",
         (MAX_LISTED,),
     ).fetchall()
     if not rows:
@@ -360,10 +475,9 @@ def fts_query(text: str) -> str:
         "Guarda en la memoria de Tama lo que Renzo cuente de su vida. Llámala en cada turno con un "
         "dato nuevo, antes de responder: lo que no se guarda se olvida al cerrar la sesión. Cada "
         "entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, plan, "
-        "evento, salud, objeto, gusto) y "
-        'cada observation debe entenderse sola, diciendo de quién habla ("el cumpleaños de su '
-        'mamá es..."). '
-        "observations (frases cortas). Si la entidad ya existe, se completa."
+        "evento, salud, objeto, gusto), observations (frases cortas que se entiendan solas: "
+        "'el cumpleaños de su mamá es...') y fecha (opcional, cuándo ocurrió). Algo puntual con "
+        "alguien (un almuerzo) va en esa persona, sin entidad nueva."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -374,9 +488,18 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            entity_id, new = upsert_entity(db, name, type_)
             added = list(entity.get("observations") or [])
-            add_obs(db, entity_id, added, source)
+            occurred = resolve_dates(str(entity.get("fecha") or ""))[1]
+            people = mentioned_entities(db, name)
+            owner = find_entity(db, OWNER)
+            if type_ in ("plan", "evento") and people and not find_entity(db, name):
+                # Algo puntual con alguien va en sus personas, no en una entidad nueva.
+                targets = people | ({owner["id"]} if owner else set())
+                add_obs(db, targets, added, source, occurred)
+                updated.append(name)
+                continue
+            entity_id, new = upsert_entity(db, name, type_)
+            add_obs(db, entity_id, added, source, occurred)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
                 db.execute(
@@ -462,7 +585,10 @@ def search_nodes(query: str = "") -> str:
             ).fetchall()
         else:
             rows = db.execute(
-                "SELECT e.* FROM entities e ORDER BY e.created_at DESC, e.id DESC LIMIT ?",
+                "SELECT e.* FROM entities e"
+                " WHERE EXISTS (SELECT 1 FROM observation_entities l JOIN observations o"
+                " ON o.id = l.observation_id WHERE l.entity_id = e.id AND o.valid = 1)"
+                " ORDER BY e.created_at DESC, e.id DESC LIMIT ?",
                 (MAX_ENTITIES,),
             ).fetchall()
         if not rows:
@@ -551,7 +677,7 @@ def update_observation(
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
-            f"SELECT id FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
+            f"SELECT id, kind FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
         ).fetchall()
         missing = sorted(set(numbers) - {r["id"] for r in found})
         if missing:
@@ -562,18 +688,21 @@ def update_observation(
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
-        db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({marks})", numbers)
+        # Los eventos ya ocurrieron: quedan en la historia junto al dato nuevo.
+        states = [r["id"] for r in found if r["kind"] != "evento"]
+        replaced = ",".join("?" * len(states))
+        db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
         add_obs(db, linked, [nueva], source)
-        new_id = db.execute(
-            "SELECT id FROM observations WHERE content = ? AND valid = 1", (nueva.strip(),)
-        ).fetchone()["id"]
+        new_id = same_fact(db, resolve_dates(nueva.strip())[0])
         db.execute(
-            f"UPDATE observations SET superseded_by = ? WHERE id IN ({marks})", [new_id, *numbers]
+            f"UPDATE observations SET superseded_by = ? WHERE id IN ({replaced})", [new_id, *states]
         )
         for entity_id in linked:
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
-    text = f"Corregido: {len(numbers)} datos antiguos dejaron de estar vigentes."
+    text = f"Corregido: {len(states)} datos antiguos dejaron de estar vigentes."
+    if len(states) < len(numbers):
+        text += " Los eventos pasados se conservan en la historia."
     if others:
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
@@ -610,6 +739,41 @@ def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list
     ).fetchall()
     found = [r for r in rows if any(w in normalize(r["content"]) for w in words)]
     return [f"[o{r['id']}] {r['content']}" for r in found[:MAX_RELATED]]
+
+
+@server.tool(
+    description=(
+        "Historial en orden cronológico, incluidos los datos antiguos. Úsala para preguntas de "
+        'historial o "desde cuándo". tema (o entidad), desde y hasta (AAAA-MM-DD) son opcionales.'
+    ),
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at,"
+            " (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
+            " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
+            " FROM observations o ORDER BY o.occurred_at, o.id"
+        ).fetchall()
+    rows = [
+        r for r in rows if r["occurred_at"] >= desde and (not hasta or r["occurred_at"] <= hasta)
+    ]
+    wanted = stems(tema)
+    found = [
+        r for r in rows if any(w in normalize(f"{r['content']} {r['names'] or ''}") for w in wanted)
+    ]
+    # Las palabras del tema pueden no aparecer ("historial médico"): el modelo elige de todo.
+    chosen = (found or rows)[-MAX_TIMELINE:]
+    if not chosen:
+        return "No hay nada anotado en ese período."
+    lines = []
+    for row in chosen:
+        state = "vigente" if row["valid"] else "ya no vigente"
+        if row["superseded_by"]:
+            state = f"reemplazado por o{row['superseded_by']}"
+        lines.append(f"{row['occurred_at']} [o{row['id']}] {row['content']} ({state})")
+    return "\n".join(lines)
 
 
 @server.tool(description="Crea la entidad de Renzo si falta. La usa Tama al iniciar.")

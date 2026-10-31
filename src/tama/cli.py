@@ -149,9 +149,14 @@ def reply(
     return None
 
 
-def show_memory(brain: Brain) -> None:
+def show_memory(brain: Brain, args: str = "") -> None:
+    """`/memoria` muestra lo vigente; `/memoria historial <tema>`, la línea de tiempo."""
     if brain.tools is None:
         print(dim("  sin memoria: los servidores MCP no están activos"))
+        return
+    if args.startswith("historial"):
+        tema = args[len("historial") :].strip()
+        print(dim(brain.tools.call("linea_de_tiempo", {"tema": tema}).text))
         return
     print(dim(brain.tools.call("search_nodes", {"query": ""}).text))
 
@@ -265,8 +270,8 @@ def chat_loop(
         if text.lower() == "/herramientas":
             print_tools(brain)
             continue
-        if text.lower() == "/memoria":
-            show_memory(brain)
+        if text.lower().startswith("/memoria"):
+            show_memory(brain, text[len("/memoria") :].strip())
             continue
         if text.lower().startswith("/olvidar"):
             forget(brain, text[len("/olvidar") :].strip())
