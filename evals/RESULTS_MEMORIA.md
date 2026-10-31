@@ -18,7 +18,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 | nube | ok | ok | ok | ok |
 | claude | ok | ok | FALLA | ok |
 | local | ok | ok | ok | ok |
-| local (sin red) | ok | FALLA | ok | FALLA |
+| local (sin red) | ok | ok | ok | ok |
 
 ## Fallos
 
