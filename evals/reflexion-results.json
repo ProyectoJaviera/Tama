@@ -14,41 +14,41 @@
     "turnos": [
       {
         "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
-        "respuesta": "Hola Renzo. Ya lo anoté como objetivo. Es una meta ambiciosa pero muy motivadora para empezar el año.",
+        "respuesta": "Hola Renzo. Ya lo anoté como objetivo. Me parece un desafío genial para motivarte y mantenerte activo.",
         "herramientas": [
           "manage_goals"
         ],
         "capa": "nube",
-        "tokens_prompt": 2102
+        "tokens_prompt": 2117
       },
       {
         "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
-        "respuesta": "Vas súper bien, Renzo. Esos 12 kilómetros son un gran avance para llegar a los 21.",
+        "respuesta": "Buen ritmo, Renzo. Vas avanzando firme hacia la meta.",
         "herramientas": [
-          "create_entities",
-          "manage_goals"
+          "manage_goals",
+          "create_entities"
         ],
         "capa": "nube",
-        "tokens_prompt": 2233
+        "tokens_prompt": 2246
       },
       {
         "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
-        "respuesta": "Tienes un objetivo activo: correr una media maratón antes de junio. Vas por buen camino, ya que registraste que corriste 12 kilómetros esta semana.",
+        "respuesta": "Tienes el objetivo de correr una media maratón para junio de 2025. Vas bien, ya registramos que corriste 12 kilómetros hace poco.",
         "herramientas": [
           "manage_goals"
         ],
         "capa": "nube",
-        "tokens_prompt": 2421
+        "tokens_prompt": 2434
       },
       {
         "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
-        "respuesta": "Lamento mucho lo de tu rodilla, Renzo. Ya pausé el objetivo de la media maratón. Te recomiendo que consultes con un kinesiólogo o médico para que te evalúe bien.",
+        "respuesta": "Listo, ya pausé el objetivo. Lamento lo de tu rodilla, te sugiero que consultes con un kinesiólogo o médico para recuperarte bien.",
         "herramientas": [
-          "create_entities",
-          "manage_goals"
+          "manage_goals",
+          "create_entities"
         ],
         "capa": "nube",
-        "tokens_prompt": 2563
+        "tokens_prompt": 2576
       }
     ]
   },
@@ -150,7 +150,7 @@
   },
   "reflexion": {
     "fecha": "2026-11-01",
-    "segundos": 178,
+    "segundos": 197,
     "fusionados": [
       "Mónica Rojas = Moni Rojas",
       "Proyecto Faro = Faro",
@@ -176,7 +176,7 @@
       "Andrea: 1 datos ya no vigentes",
       "fusioné Escuela Allegro y Escuela de Música Allegro en Escuela de Música Allegro"
     ],
-    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-32g_pgky"
+    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-r7wewlx9"
   },
   "diario": {
     "fecha": "2026-11-01",
