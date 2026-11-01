@@ -6,7 +6,7 @@
     "hechos": 9,
     "total_hechos": 10,
     "guardados": 10,
-    "negativos": 2,
+    "negativos": 3,
     "total_negativos": 3,
     "tokens_prompt_max": 2099,
     "calidad": {
@@ -50,7 +50,7 @@
       {
         "pregunta": "¿Qué hierba no me gusta?",
         "ok": false,
-        "respuesta": "No tengo registro de ninguna hierba que no te guste. Solo recuerdo que prefieres el té verde antes que el café por las tardes.",
+        "respuesta": "No tengo anotado que haya alguna hierba que no te guste. Solo recuerdo que prefieres el té verde sobre el café en las tardes.",
         "herramientas": [
           "search_nodes"
         ],
@@ -62,8 +62,7 @@
         "ok": true,
         "respuesta": "Estás leyendo Cien años de soledad.",
         "herramientas": [
-          "search_nodes",
-          "search_notes"
+          "search_nodes"
         ],
         "capa": "nube",
         "tokens_prompt": 2093
@@ -71,7 +70,7 @@
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
         "ok": true,
-        "respuesta": "Tu proyecto para este trimestre es construir un reloj con Arduino.",
+        "respuesta": "Tu proyecto de este trimestre es el reloj con Arduino. También recuerdo que trabajas en el proyecto Faro junto a Tomás.",
         "herramientas": [
           "search_nodes"
         ],
@@ -121,7 +120,7 @@
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. ¿Quieres que lo guarde ahora?",
+        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
@@ -130,8 +129,8 @@
       },
       {
         "pregunta": "¿En qué año me casé?",
-        "ok": false,
-        "respuesta": "",
+        "ok": true,
+        "respuesta": "No tengo ese dato anotado. Si quieres, cuéntame y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
@@ -141,7 +140,7 @@
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes decir ahora y lo recuerdo.",
+        "respuesta": "No lo sé, no tengo ese dato anotado.",
         "herramientas": [
           "search_nodes"
         ],
@@ -548,20 +547,17 @@
     "capa": "nube",
     "sin_red": false,
     "sin_confirmacion": true,
-    "conserva_antiguo": false,
-    "antiguo_no_vigente": false,
-    "recuerda_anterior": false,
-    "hechos_vigentes": 0,
-    "entidades_enlazadas": 0,
+    "conserva_antiguo": true,
+    "antiguo_no_vigente": true,
+    "recuerda_anterior": true,
+    "hechos_vigentes": 1,
+    "entidades_enlazadas": 3,
     "recuerda_nuevo": true,
-    "respuesta": "Se van a disfrazar de piratas. Es la última decisión que tomaron.",
+    "respuesta": "Se disfrazarán de piratas. Es una buena elección porque es un disfraz clásico y fácil de armar.",
     "herramientas": [
       "create_entities",
       "create_entities",
       "search_nodes",
-      "update_observation",
-      "update_observation",
-      "update_observation",
       "update_observation",
       "search_nodes",
       "update_observation",
