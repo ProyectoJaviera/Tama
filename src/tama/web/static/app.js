@@ -101,7 +101,14 @@
       button.disabled = false;
       return;
     }
-    turnId = (await response.json()).turn;
+    const result = await response.json();
+    if (result.reply !== undefined) {
+      add("command", result.reply);
+      button.disabled = false;
+      input.focus();
+      return;
+    }
+    turnId = result.turn;
     follow();
   });
   log.scrollTop = log.scrollHeight;

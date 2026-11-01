@@ -68,7 +68,21 @@ def test_manage_goals_infers_the_action():
 
 def test_update_rejects_entities_that_are_not_a_list():
     with pytest.raises(ValueError, match="create_entities"):
-        memoria.update_observation(["o1"], "Algo", {})
+        memoria.update_observation(["o1"], "Algo", "Renzo")
+
+
+def test_update_accepts_empty_entities():
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": ["Vive en Talca"]}]
+    )
+    memoria.update_observation(["o1"], "Vive en Temuco", {})
+    assert "Vive en Temuco" in memoria.search_nodes("Ana")
+
+
+def test_goals_view_includes_paused_ones():
+    memoria.create_goal("Leer un libro")
+    memoria.update_goal("1", estado="pausado")
+    assert "Leer un libro" in memoria.manage_goals("ver")
 
 
 def test_suggestions_can_be_listed_without_marking_them():

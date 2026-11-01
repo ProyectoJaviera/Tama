@@ -67,6 +67,15 @@ h2 { font-size: 1.05rem; margin: 20px 0 8px; }
 
 .user { align-self: flex-end; background: var(--mine); }
 .assistant { background: var(--panel); border: 1px solid var(--line); }
+.command {
+  padding: 8px 12px;
+  background: var(--panel);
+  border-left: 3px solid var(--accent);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
 .line, .muted { color: var(--dim); font-size: 0.85rem; }
 .error, .bad { color: var(--bad); }
 .ok { color: var(--accent); }

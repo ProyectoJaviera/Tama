@@ -21,7 +21,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response, Streami
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from tama import agent, chat
+from tama import agent, chat, commands
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -174,6 +174,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
+        if text.startswith("/"):
+            return {"reply": commands.run(brain, text, settings.memory_dir)}
         turn_id = session.start(text)
         if turn_id is None:
             raise HTTPException(status_code=409, detail="Tama aún está respondiendo")

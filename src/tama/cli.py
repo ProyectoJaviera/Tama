@@ -8,7 +8,7 @@ import sys
 import threading
 from datetime import date
 
-from tama import agent, chat, history
+from tama import agent, chat, commands, history
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -112,18 +112,7 @@ def reply(
 
 
 def show_memory(brain: Brain, args: str = "") -> None:
-    """`/memoria` muestra lo vigente; `/memoria historial <tema>`, la línea de tiempo."""
-    if brain.tools is None:
-        print(dim("  sin memoria: los servidores MCP no están activos"))
-        return
-    if args.startswith("historial"):
-        tema = args[len("historial") :].strip()
-        print(dim(brain.tools.call("linea_de_tiempo", {"tema": tema}).text))
-        return
-    if args:
-        print(dim(brain.tools.call("open_nodes", {"names": [args]}).text))
-        return
-    print(dim(brain.tools.call("search_nodes", {"query": ""}).text))
+    print(dim(commands.memory_text(brain, args)))
 
 
 def choose(items: list[dict]) -> list[dict]:

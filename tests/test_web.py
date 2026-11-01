@@ -92,6 +92,19 @@ def test_chat_streams_text_and_grey_line(web):
     assert [r["content"] for r in brain.store.rows("user_msg")] == ["hola"]
 
 
+def test_commands_run_without_the_model(web, tmp_path):
+    client, brain = web()
+    brain.tools.call = lambda name, args: ToolOutcome(True, f"{name}: {args}")
+    memory = client.post("/chat", data={"text": "/memoria Renzo"}).json()["reply"]
+    assert "open_nodes" in memory and "Renzo" in memory
+    timeline = client.post("/chat", data={"text": "/memoria historial salud"}).json()["reply"]
+    assert "linea_de_tiempo" in timeline and "salud" in timeline
+    assert "Capas" in client.post("/chat", data={"text": "/estado"}).json()["reply"]
+    assert "No hay diario" in client.post("/chat", data={"text": "/diario"}).json()["reply"]
+    assert "Comandos" in client.post("/chat", data={"text": "/nada"}).json()["reply"]
+    assert brain.store.rows("user_msg") == []
+
+
 def test_history_is_shown_escaped(web):
     client, brain = web()
     brain.store.log("user_msg", "<script>alert(1)</script>")

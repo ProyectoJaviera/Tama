@@ -129,6 +129,7 @@ CREATE TABLE reviewed_entities (
 MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS]
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
+NO_GOALS = "No hay objetivos en ese estado."
 MIN_SIMILARITY = 0.75
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
@@ -791,7 +792,8 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 def update_observation(
     ids: list[str], nueva: str, entidades: Any = None, source: int | None = None
 ) -> str:
-    if entidades is not None and not isinstance(entidades, list):
+    # El modelo a veces manda {} cuando no tiene entidades que agregar.
+    if entidades and not isinstance(entidades, list):
         raise ValueError(
             "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
             "otro, usa create_entities."
@@ -1238,7 +1240,7 @@ def list_goals(estado: str = "activo") -> str:
                 "SELECT * FROM goals WHERE status = ? ORDER BY id", (status,)
             ).fetchall()
         if not rows:
-            return "No hay objetivos en ese estado."
+            return NO_GOALS
         return "\n\n".join(describe_goal(db, r) for r in rows)
 
 
@@ -1313,6 +1315,12 @@ def next_suggestion() -> str:
         return row["text"]
 
 
+def open_goals() -> str:
+    """Lo que sigue en curso: un objetivo pausado también existe."""
+    found = [list_goals(state) for state in ("activo", "pausado")]
+    return "\n\n".join(f for f in found if f != NO_GOALS) or NO_GOALS
+
+
 @server.tool(
     description=(
         "Objetivos de Renzo: metas que quiere lograr. Úsala siempre que hable de una meta o cuente "
@@ -1340,7 +1348,7 @@ def manage_goals(
     if action == "avance":
         return add_goal_progress(objetivo or titulo, avance or detalle, source)
     if action == "ver":
-        return list_goals(estado or "activo")
+        return list_goals(estado) if estado else open_goals()
     if action == "cambiar":
         return update_goal(objetivo or titulo, titulo if objetivo else "", detalle, fecha, estado)
     return "Acción no válida: usa crear, avance, ver o cambiar."
