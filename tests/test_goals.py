@@ -53,6 +53,12 @@ def test_discard_and_delete_are_destructive():
     assert tools["delete_goal"].annotations.destructive_hint
 
 
+def test_wrong_tool_error_points_to_goals():
+    memoria.create_goal("Correr 10K")
+    with pytest.raises(ValueError, match="manage_goals"):
+        memoria.update_observation(["o9"], "Corrí 5 km")
+
+
 def test_manage_goals_covers_the_whole_flow():
     assert "creado" in memoria.manage_goals("crear", titulo="Correr 10K")
     assert "anotado" in memoria.manage_goals("avance", objetivo="correr", avance="Corrí 5 km")

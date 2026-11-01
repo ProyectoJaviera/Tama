@@ -800,7 +800,7 @@ def update_observation(
             similar = "; ".join(related_facts(db, nueva, [])) or "ninguno"
             raise ValueError(
                 f"Nada cambió: {listed} no existe o ya no está vigente. "
-                f"Datos parecidos: {similar}. Reintenta con sus ids."
+                f"Datos parecidos: {similar}. Reintenta con sus ids.{goal_reminder(db)}"
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
@@ -848,6 +848,13 @@ def same_topic(db: sqlite3.Connection, entity_id: int, added: list[str]) -> list
         and any(w in normalize(r["content"]) for w in wanted)
     ]
     return [f"[o{r['id']}] {r['content']}" for r in found[:MAX_RELATED]]
+
+
+def goal_reminder(db: sqlite3.Connection) -> str:
+    """Si Renzo habla de una meta, el camino correcto es manage_goals."""
+    rows = db.execute("SELECT title FROM goals WHERE status = 'activo'").fetchall()
+    titles = ", ".join(r["title"] for r in rows)
+    return f" Si es sobre una meta ({titles}), usa manage_goals." if titles else ""
 
 
 def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list[str]:
@@ -1435,7 +1442,6 @@ def entities_to_review(limit: int = 5) -> list[dict[str, Any]]:
             listed = [
                 {"id": o["id"], "text": o["content"], "date": o["created_at"][:10]}
                 for o in observations
-                if not already_happened(db, o)
             ]
             result.append({"id": row["id"], "name": row["name"], "observations": listed})
         return result
