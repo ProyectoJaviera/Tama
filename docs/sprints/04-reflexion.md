@@ -57,4 +57,7 @@ Pendiente:
 
 - La calidad del modelo local se mide en `XX-modelo-local.md`, incluido el prompt local y las 15 herramientas a la vista.
 - Tama no debe prometer avisos que todavía no puede dar por su cuenta.
+- "¿Tienes alguna sugerencia?" debe revisar primero las pendientes.
+- Las observaciones deben decir de quién son.
+- `/memoria` muestra hasta 5 datos por ficha.
 - La reflexión solo registra cuando cambia algo: conviene dejar constancia de cada pasada.
