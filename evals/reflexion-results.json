@@ -59,12 +59,12 @@
       "crear": true,
       "avance": false,
       "consultar": true,
-      "actualizar": false
+      "actualizar": true
     },
     "turnos": [
       {
         "mensaje": "Hola Tama. Me propuse un objetivo: correr una media maratón antes de junio.",
-        "respuesta": "¿Te gustaría que hagamos un plan semanal para entrenar? Podría empezar con 5 kilómetros cada día y aumentar poco a poco.",
+        "respuesta": "¡Listo! Ya está registrado tu objetivo. ¿Quieres que te sugiera un plan semanal para entrenar?",
         "herramientas": [
           "manage_goals"
         ],
@@ -73,30 +73,31 @@
       },
       {
         "mensaje": "Esta semana corrí 12 kilómetros, voy bien con lo de la media maratón.",
-        "respuesta": "No se actualizó el dato. Pero ya lo tengo en cuenta. Esta semana Renzo corrió 12 km y está bien en su plan.",
+        "respuesta": "No pude actualizar el dato. ¿Quieres que lo haga de nuevo o prefieres que lo deje como está?",
         "herramientas": [
           "update_observation"
         ],
         "capa": "local",
-        "tokens_prompt": 2656
+        "tokens_prompt": 2646
       },
       {
         "mensaje": "¿Qué objetivos tengo ahora y cómo voy?",
-        "respuesta": "Tienes un solo objetivo activo: correr una media maratón antes de junio. Estás avanzando bien, ya que esta semana recorriste 12 km. Podrías seguir con entrenamientos semanales de 5 a 10 km para mantener el ritmo.",
+        "respuesta": "Tienes un solo objetivo activo: correr una media maratón antes de junio.  \nEste mes has corrido 12 km, lo cual es un buen comienzo. Si sigues así, deberías alcanzar los 42 km en el tiempo. ¿Quieres que te ayude a planificar el entrenamiento semanal?",
         "herramientas": [
           "manage_goals"
         ],
         "capa": "local",
-        "tokens_prompt": 2796
+        "tokens_prompt": 2773
       },
       {
         "mensaje": "Pausemos lo de la media maratón, me lesioné la rodilla.",
-        "respuesta": "No se actualizó el dato. Pero ya lo tengo en cuenta. Renzo pausó su objetivo de media maratón por una lesión en la rodilla.",
+        "respuesta": "El objetivo de correr media maratón ahora está pausado por la lesión.  \nTe sugiero que consultes a un médico para ver si puedes hacer ejercicios de fortalecimiento sin lastimar más la rodilla. Cuando estés listo, podemos volver a planificarlo.",
         "herramientas": [
-          "update_observation"
+          "update_observation",
+          "manage_goals"
         ],
         "capa": "local",
-        "tokens_prompt": 2975
+        "tokens_prompt": 2964
       }
     ]
   },
@@ -151,7 +152,7 @@
   },
   "reflexion": {
     "fecha": "2026-10-31",
-    "segundos": 176,
+    "segundos": 188,
     "fusionados": [
       "Mónica Rojas = Moni Rojas",
       "Proyecto Faro = Faro",
@@ -161,6 +162,7 @@
     "total_duplicados": 5,
     "fusiones_incorrectas": [],
     "contradicciones": [
+      "Trabaja en el Banco Sur",
       "Vive en Talca",
       "Es de color rojo"
     ],
@@ -173,9 +175,10 @@
       "fusioné Escuela Allegro y Escuela de Música Allegro en Escuela de Música Allegro",
       "Camioneta: 1 datos ya no vigentes",
       "Luis: 1 datos ya no vigentes",
+      "Andrea: 1 datos ya no vigentes",
       "fusioné Mónica Rojas y Moni Rojas en Mónica Rojas"
     ],
-    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-e9cku49p"
+    "base": "C:\\Users\\Renzo\\AppData\\Local\\Temp\\tama-reflexion-yjk4xw6c"
   },
   "diario": {
     "fecha": "2026-10-31",

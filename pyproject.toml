@@ -10,6 +10,7 @@ dependencies = [
     "mcp>=2.3,<3",
     "mcp-server-fetch==2026.10.28",
     "mcp-server-time==2026.10.28",
+    "psutil>=6.1,<8",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6,<3",
     "pyyaml>=6.0,<7",
@@ -25,7 +26,6 @@ dev = [
     "ruff>=0.9",
 ]
 bench = [
-    "psutil>=6.1",
 ]
 
 [build-system]

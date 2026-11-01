@@ -6,9 +6,9 @@ Generado por `python -m evals.reflexion` con datos ficticios.
 
 - Duplicados fusionados: 4/5 (meta: 4)
 - Fusiones incorrectas: 0 (meta: 0) 
-- Contradicciones marcadas: 2/3 (meta: 3)
+- Contradicciones marcadas: 3/3 (meta: 3)
 - Datos vigentes perdidos: 0 (meta: 0) 
-- Tiempo total: 176 s
+- Tiempo total: 188 s
 
 Soltar el modelo al escribir Renzo: 0.1 s.
 
@@ -17,7 +17,7 @@ Soltar el modelo al escribir Renzo: 0.1 s.
 | Capa | Crear | Avance | Consultar | Actualizar |
 |---|---|---|---|---|
 | nube | ok | ok | ok | ok |
-| local | ok | FALLA | ok | FALLA |
+| local | ok | FALLA | ok | ok |
 | local (sin red) | ok | FALLA | ok | ok |
 
 ## Diario
