@@ -9,7 +9,6 @@ import os
 import queue
 import secrets
 import threading
-import time
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
@@ -69,7 +68,8 @@ def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str) -> None
             if isinstance(event, Text):
                 turn.send("text", text=event.text)
             elif isinstance(event, Switch):
-                turn.send("note", text=f"{event.frm} no respondió ({event.reason}); seguí en {event.to}")
+                note = f"{event.frm} no respondió ({event.reason}); seguí en {event.to}"
+                turn.send("note", text=note)
             elif isinstance(event, agent.ToolUse):
                 turn.send("tool", name=event.name, server=event.server, args=event.arguments)
             elif isinstance(event, agent.ToolResult):
@@ -262,7 +262,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         request: Request,
         entity_id: int,
         nombre: str = Form(...),
-        datos: list[int] = Form(default_factory=list),
+        datos: list[int] = Form(default_factory=list),  # noqa: B008
     ) -> HTMLResponse:
         memoria.split_card(entity_id, datos, nombre)
         return show_card(request, entity_id)
@@ -356,6 +356,5 @@ def serve(settings: Settings) -> int:
     try:
         uvicorn.run(app, host=settings.web_host, port=settings.web_port, log_level="warning")
     finally:
-        time.sleep(0)
         brain.close()
     return 0

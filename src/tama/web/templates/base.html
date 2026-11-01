@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tama</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body data-csrf="{{ csrf }}" hx-headers='{"X-CSRF-Token": "{{ csrf }}"}'>
+  <header>
+    <strong>Tama</strong>
+    <a href="/">Chat</a>
+    <a href="/memoria">Memoria</a>
+    <a href="/objetivos">Objetivos</a>
+    <a href="/diario">Diario</a>
+    <a href="/estado">Estado</a>
+  </header>
+  <main>{% block body %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

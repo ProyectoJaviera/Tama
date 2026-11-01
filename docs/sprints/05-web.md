@@ -29,6 +29,16 @@ Renzo conversa con Tama desde el navegador en vez de la CLI, y desde ahí ve y c
    - Extremo a extremo con Playwright (chatear, confirmar una acción destructiva, editar un dato), con la Chromium ya instalada.
    - Un test con la red bloqueada que verifica que la página no pide nada a internet.
 
+## Pasos de la demo
+1. Desde `Tama-s5`, con Ollama abierto: `uv run tama web`, y abre http://127.0.0.1:8765 en Chrome o Edge.
+2. Conversa y revisa la línea gris; abre una llamada a herramienta plegada.
+3. Pídele borrar una nota: debe aparecer el diálogo Sí/No con texto legible.
+4. En Memoria, edita tu perfil, busca una ficha y corrige un dato: debe quedar su "antes: …".
+5. En Objetivos, crea uno, agrega un avance, páusalo y descártalo.
+6. Revisa Diario y Estado.
+7. Corta internet y conversa de nuevo en la web, con la capa local.
+8. Cierra y abre `uv run tama`: lo editado debe verse en la CLI.
+
 ## Fuera de alcance
 Proactivo y ntfy (S6), voz (S7), PWA y remoto (S8 y S9).
 

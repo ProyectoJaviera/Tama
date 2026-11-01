@@ -1,0 +1,38 @@
+<div class="card" id="ficha-actual">
+  <h2>{{ card.name }} <span class="muted">{{ card.type }}</span></h2>
+  {% for f in card.facts %}
+  <div class="card">
+    <div class="muted">o{{ f.id }} · {{ f.when }} · {{ f.kind }}</div>
+    <form class="row" hx-post="/memoria/ficha/{{ card.id }}/dato/{{ f.id }}" hx-target="#ficha">
+      <input name="texto" value="{{ f.text }}" aria-label="Dato o{{ f.id }}">
+      <button type="submit">Guardar</button>
+      <button type="button" class="plain" hx-post="/memoria/ficha/{{ card.id }}/olvidar/{{ f.id }}"
+        hx-target="#ficha" hx-confirm="¿Olvido este dato para siempre?">Olvidar</button>
+    </form>
+    {% if f.before %}<div class="muted">antes: {{ f.before }}</div>{% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Sin datos vigentes.</p>
+  {% endfor %}
+  {% if not card.owner %}
+  <form class="row" hx-post="/memoria/ficha/{{ card.id }}/fusionar" hx-target="#ficha"
+    hx-confirm="¿Fusiono la ficha elegida en {{ card.name }}?">
+    <select name="con" aria-label="Fusionar con">
+      {% for o in others if o.name != "Renzo" %}<option value="{{ o.id }}">{{ o.name }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="plain">Fusionar aquí</button>
+  </form>
+  {% endif %}
+  {% if card.facts %}
+  <form hx-post="/memoria/ficha/{{ card.id }}/separar" hx-target="#ficha"
+    hx-confirm="¿Muevo los datos marcados a una ficha nueva?">
+    <details><summary class="muted">Separar datos en otra ficha</summary>
+      {% for f in card.facts %}
+      <label class="muted"><input type="checkbox" name="datos" value="{{ f.id }}" style="flex:none;min-width:0"> {{ f.text }}</label><br>
+      {% endfor %}
+      <div class="row"><input name="nombre" placeholder="Nombre de la ficha nueva" aria-label="Ficha nueva">
+      <button type="submit" class="plain">Separar</button></div>
+    </details>
+  </form>
+  {% endif %}
+</div>

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>Nuevo objetivo</h2>
+<form class="row" hx-post="/objetivos" hx-target="#objetivos">
+  <input name="titulo" required placeholder="Título" aria-label="Título">
+  <input name="detalle" placeholder="Detalle" aria-label="Detalle">
+  <input name="fecha" type="date" aria-label="Fecha">
+  <button type="submit">Crear</button>
+</form>
+<div id="objetivos">{% include "objetivos_lista.html" %}</div>
+{% endblock %}

@@ -592,7 +592,8 @@ def fts_query(text: str) -> str:
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
         "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
-        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."
+        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
+        "va en esa persona."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -1399,15 +1400,21 @@ def review_pair(a: str, b: str, verdict: str) -> None:
         )
 
 
-def merge_entities(keep: str, drop: str) -> bool:
-    """Funde `drop` en `keep`: hechos, alias, relaciones y objetivos. Nada se pierde."""
+def merge_entities(keep: str, drop: str, manual: bool = False) -> bool:
+    """Funde `drop` en `keep`: hechos, alias, relaciones y objetivos. Nada se pierde.
+
+    `manual` es la decisión de Renzo en la web: basta con que ninguna de las dos sea él.
+    """
     with connect() as db:
         kept, dropped = find_entity(db, keep), find_entity(db, drop)
         if kept is None or dropped is None or kept["id"] == dropped["id"]:
             return False
-        if not can_merge(kept, dropped):
+        if OWNER in (kept["norm"], dropped["norm"]):
             return False
-        if similarity(kept["norm"], dropped["norm"]) < MIN_SIMILARITY:
+        automatic_ok = (
+            can_merge(kept, dropped) and similarity(kept["norm"], dropped["norm"]) >= MIN_SIMILARITY
+        )
+        if not manual and not automatic_ok:
             return False
         new, old = kept["id"], dropped["id"]
         db.execute(
@@ -1581,6 +1588,139 @@ def repair_chains() -> int:
                 )
                 changed += 1
     return changed
+
+
+# --- Paneles de la web: leen y corrigen la memoria sin pasar por el modelo. ---
+
+
+def list_cards(query: str = "") -> list[dict[str, Any]]:
+    """Fichas con datos vigentes, o las que coinciden con la búsqueda."""
+    with connect() as db:
+        match = fts_query(query)
+        if match:
+            rows = db.execute(
+                "SELECT e.* FROM search s JOIN entities e ON e.id = s.entity_id"
+                " WHERE search MATCH ? ORDER BY rank",
+                (match,),
+            ).fetchall()
+        else:
+            rows = db.execute("SELECT * FROM entities ORDER BY norm").fetchall()
+        cards = []
+        for row in rows:
+            count = db.execute(
+                "SELECT COUNT(*) FROM observation_entities l JOIN observations o"
+                " ON o.id = l.observation_id WHERE l.entity_id = ? AND o.valid = 1",
+                (row["id"],),
+            ).fetchone()[0]
+            if count:
+                cards.append(
+                    {"id": row["id"], "name": row["name"], "type": row["type"], "facts": count}
+                )
+        return cards
+
+
+def card(entity_id: int) -> dict[str, Any] | None:
+    """Una ficha completa: datos vigentes con su historial."""
+    with connect() as db:
+        row = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
+        if row is None:
+            return None
+        facts = db.execute(
+            "SELECT o.* FROM observations o JOIN observation_entities l"
+            " ON l.observation_id = o.id WHERE l.entity_id = ? AND o.valid = 1"
+            " ORDER BY o.created_at DESC, o.id DESC",
+            (entity_id,),
+        ).fetchall()
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "type": row["type"],
+            "owner": row["norm"] == OWNER,
+            "facts": [
+                {
+                    "id": f["id"],
+                    "text": f["content"],
+                    "when": shown_at(f["created_at"]),
+                    "kind": f["kind"],
+                    "before": earlier_versions(db, f["id"]).replace("\n  antes: ", ""),
+                }
+                for f in facts
+            ],
+        }
+
+
+def replace_fact(observation_id: int, text: str) -> bool:
+    """Renzo corrigió un dato: el nuevo lo reemplaza y el antiguo queda en el historial."""
+    with connect() as db:
+        row = db.execute(
+            "SELECT id FROM observations WHERE id = ? AND valid = 1", (observation_id,)
+        ).fetchone()
+        if row is None or not text.strip():
+            return False
+        linked = linked_entities(db, [observation_id])
+        db.execute("UPDATE observations SET valid = 0 WHERE id = ?", (observation_id,))
+        add_obs(db, linked, [text], None)
+        new_id = same_fact(db, resolve_dates(text.strip())[0])
+        db.execute(
+            "UPDATE observations SET kind = 'estado', superseded_by = ? WHERE id = ?",
+            (new_id, observation_id),
+        )
+        for entity_id in linked:
+            reindex(db, entity_id)
+    return True
+
+
+def split_card(entity_id: int, fact_ids: list[int], name: str) -> bool:
+    """Mueve hechos de una ficha a otra nueva; deshace una fusión equivocada."""
+    with connect() as db:
+        source = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
+        if source is None or not name.strip() or not fact_ids:
+            return False
+        # Tras una fusión el nombre antiguo es un alias: al separar, deja de serlo.
+        db.execute(
+            "DELETE FROM aliases WHERE norm = ? AND entity_id = ?", (normalize(name), entity_id)
+        )
+        new_id, _ = upsert_entity(db, name, source["type"])
+        for fact in fact_ids:
+            moved = db.execute(
+                "DELETE FROM observation_entities WHERE observation_id = ? AND entity_id = ?",
+                (fact, entity_id),
+            ).rowcount
+            if moved:
+                link(db, fact, {new_id})
+        reindex(db, entity_id)
+    return True
+
+
+def goals_by_status() -> dict[str, list[dict[str, Any]]]:
+    with connect() as db:
+        rows = db.execute("SELECT * FROM goals ORDER BY id DESC").fetchall()
+        grouped: dict[str, list[dict[str, Any]]] = {state: [] for state in GOAL_STATES}
+        for row in rows:
+            progress = db.execute(
+                "SELECT content, created_at FROM goal_progress WHERE goal_id = ? ORDER BY id DESC",
+                (row["id"],),
+            ).fetchall()
+            grouped[row["status"]].append(
+                {
+                    "id": row["id"],
+                    "title": row["title"],
+                    "detail": row["detail"],
+                    "target": row["target_date"],
+                    "progress": [
+                        {"text": p["content"], "when": p["created_at"][:10]} for p in progress
+                    ],
+                }
+            )
+        return grouped
+
+
+def pending_list() -> list[str]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT text FROM suggestions WHERE mentioned_at IS NULL ORDER BY id"
+        ).fetchall()
+    return [r["text"] for r in rows]
 
 
 def export_graph(target: Path) -> int:

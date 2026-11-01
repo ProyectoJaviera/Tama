@@ -319,6 +319,10 @@ def main(
         return export_memory(settings)
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
+    if args.mensaje == ["web"]:
+        from tama.web.app import serve
+
+        return serve(settings)
     brain = brain or brain_module.build(settings)
     suggestion = "" if args.mensaje or args.check else pending_suggestion(brain)
     system = session_prompt(settings.memory_dir, brain.store, suggestion)

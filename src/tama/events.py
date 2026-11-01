@@ -147,6 +147,15 @@ class EventStore:
         ).fetchall()
         return sorted({datetime.fromisoformat(r[0]).astimezone().date() for r in rows})
 
+    def recent_messages(self, limit: int = 30) -> list[tuple[str, str]]:
+        """Últimos mensajes de la conversación, del más antiguo al más nuevo."""
+        rows = self._db.execute(
+            "SELECT type, content FROM events WHERE type IN ('user_msg', 'assistant_msg')"
+            " ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [(r[0], r[1] or "") for r in reversed(rows)]
+
     def month_tokens(self, provider: str) -> tuple[int, int]:
         """Tokens de entrada y salida del mes en curso (UTC) para un proveedor."""
         month = self._now().strftime("%Y-%m")

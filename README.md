@@ -66,6 +66,12 @@ docker compose run --rm tama --check       # chequeo de salud
 Debajo de cada respuesta aparece en gris qué capa respondió y cuánto tardó. Cada turno queda
 registrado en `events.db` (en el volumen de datos).
 
+### Interfaz web
+
+`uv run tama web` abre Tama en http://127.0.0.1:8765. Ahí conversas, confirmas acciones y corriges
+perfil, memoria y objetivos. Solo escucha en esta máquina y no pide nada a internet. En Docker:
+`docker compose run --rm --service-ports tama web`, publicado solo en localhost.
+
 ### Cerebro en cascada
 
 Tama prueba tres capas en orden y usa la primera que responda:

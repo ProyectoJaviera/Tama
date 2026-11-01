@@ -184,9 +184,7 @@ def test_forget_deletes_the_fact(web):
 def test_manual_merge_and_split(web):
     client, _ = web()
     first = seed()
-    memoria.create_entities(
-        [{"name": "Beto", "entityType": "mascota", "observations": ["Ladra"]}]
-    )
+    memoria.create_entities([{"name": "Beto", "entityType": "mascota", "observations": ["Ladra"]}])
     second = next(c["id"] for c in memoria.list_cards() if c["name"] == "Beto")
     fact = memoria.card(second)["facts"][0]["id"]
     assert client.post(f"/memoria/ficha/{first}/fusionar", data={"con": second}).status_code == 200
@@ -199,9 +197,7 @@ def test_renzo_cannot_be_merged(web):
     client, _ = web()
     first = seed()
     memoria.ensure_owner("Renzo")
-    memoria.create_entities(
-        [{"name": "Renzo", "entityType": "persona", "observations": ["Corre"]}]
-    )
+    memoria.create_entities([{"name": "Renzo", "entityType": "persona", "observations": ["Corre"]}])
     renzo = next(c["id"] for c in memoria.list_cards() if c["name"] == "Renzo")
     assert client.post(f"/memoria/ficha/{first}/fusionar", data={"con": renzo}).status_code == 409
 

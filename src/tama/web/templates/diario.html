@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>Diario</h2>
+<form class="row" method="get" action="/diario">
+  <input type="date" name="fecha" value="{{ day }}" aria-label="Fecha">
+  <button type="submit" class="plain">Ver</button>
+  <button type="button" hx-post="/diario" hx-vals='{"fecha": "{{ day }}"}' hx-target="#diario-texto">Escribir con el modelo local</button>
+</form>
+<div id="diario-texto">{% include "diario_texto.html" %}</div>
+{% endblock %}
