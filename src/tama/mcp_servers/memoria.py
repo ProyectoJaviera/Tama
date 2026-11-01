@@ -130,7 +130,6 @@ MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS]
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 MIN_SIMILARITY = 0.75
-MAX_MENTIONS = 3
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
 MAX_LISTED = 15
@@ -776,16 +775,21 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 
 @server.tool(
     description=(
-        "Corrige datos cuando Renzo cambia de idea (otro plan, otra ciudad); sus metas van en "
-        "manage_goals. Antes "
+        "Reemplaza un dato que ya no es cierto (otro plan, otra ciudad). Un dato nuevo que no "
+        "contradice nada va en create_entities, y las metas en manage_goals. Antes "
         "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
         "antiguos, en todas las entidades), nueva (un solo hecho vigente) y entidades (TODAS las "
         "que menciona, p. ej. Renzo, su esposa y Halloween)."
     )
 )
 def update_observation(
-    ids: list[str], nueva: str, entidades: list[str] | None = None, source: int | None = None
+    ids: list[str], nueva: str, entidades: Any = None, source: int | None = None
 ) -> str:
+    if entidades is not None and not isinstance(entidades, list):
+        raise ValueError(
+            "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
+            "otro, usa create_entities."
+        )
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
         raise ValueError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
@@ -1281,6 +1285,16 @@ def delete_goal(objetivo: str) -> str:
     return f"Objetivo borrado: {goal['title']}."
 
 
+@server.tool(
+    description="Muestra las sugerencias que Tama tiene pendientes para Renzo.",
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+def list_suggestions() -> str:
+    with connect() as db:
+        rows = db.execute("SELECT text FROM suggestions ORDER BY id DESC LIMIT 5").fetchall()
+    return "\n".join(f"- {r['text']}" for r in rows) or "No hay sugerencias pendientes."
+
+
 @server.tool(description="Entrega una sugerencia pendiente y la marca como ya mencionada.")
 def next_suggestion() -> str:
     with connect() as db:
@@ -1302,7 +1316,7 @@ def next_suggestion() -> str:
     )
 )
 def manage_goals(
-    accion: str,
+    accion: str = "",
     objetivo: str = "",
     titulo: str = "",
     detalle: str = "",
@@ -1313,6 +1327,8 @@ def manage_goals(
 ) -> str:
     """Una sola herramienta a la vista: el modelo local no abre grupos de herramientas."""
     action = accion.strip().lower()
+    if not action:
+        action = "avance" if avance else "cambiar" if objetivo and (estado or titulo) else "ver"
     if action == "crear":
         return create_goal(titulo or objetivo, detalle, fecha)
     if action == "avance":
@@ -1330,9 +1346,16 @@ def manage_goals(
 def similarity(a: str, b: str) -> float:
     """1 si un nombre contiene al otro por palabras; si no, parecido entre 0 y 1."""
     first, second = set(a.split()), set(b.split())
-    if first <= second or second <= first:
+    if "de" not in first | second and (first <= second or second <= first):
         return 1.0
     return SequenceMatcher(None, a, b).ratio()
+
+
+def can_merge(first: sqlite3.Row, second: sqlite3.Row) -> bool:
+    """Renzo nunca se fusiona, y dos entidades de distinto tipo tampoco ("objeto" es genérico)."""
+    if OWNER in (first["norm"], second["norm"]):
+        return False
+    return first["type"] == second["type"] or "objeto" in (first["type"], second["type"])
 
 
 def merge_candidates(limit: int = 5) -> list[dict[str, str]]:
@@ -1345,18 +1368,8 @@ def merge_candidates(limit: int = 5) -> list[dict[str, str]]:
         for i, first in enumerate(rows):
             for second in rows[i + 1 :]:
                 score = similarity(first["norm"], second["norm"])
-                if score >= MIN_SIMILARITY:
+                if score >= MIN_SIMILARITY and can_merge(first, second):
                     pairs[(first["id"], second["id"])] = score
-            # Un nombre poco común que aparece en los datos de otra entidad también es candidato.
-            mentions = db.execute(
-                "SELECT entity_id FROM search WHERE search MATCH ? LIMIT ?",
-                (f'"{first["norm"]}"', MAX_MENTIONS + 1),
-            ).fetchall()
-            others = [m["entity_id"] for m in mentions if m["entity_id"] != first["id"]]
-            if len(mentions) <= MAX_MENTIONS:
-                for other in others:
-                    key = (min(first["id"], other), max(first["id"], other))
-                    pairs.setdefault(key, MIN_SIMILARITY)
         result = []
         for (a, b), _ in sorted(pairs.items(), key=lambda item: -item[1]):
             first, second = by_id[a], by_id[b]
@@ -1386,6 +1399,10 @@ def merge_entities(keep: str, drop: str) -> bool:
     with connect() as db:
         kept, dropped = find_entity(db, keep), find_entity(db, drop)
         if kept is None or dropped is None or kept["id"] == dropped["id"]:
+            return False
+        if not can_merge(kept, dropped):
+            return False
+        if similarity(kept["norm"], dropped["norm"]) < MIN_SIMILARITY:
             return False
         new, old = kept["id"], dropped["id"]
         db.execute(
@@ -1508,7 +1525,10 @@ def day_learned(start: str, end: str) -> list[str]:
     """Hechos y avances guardados entre dos instantes UTC (ISO), para el diario."""
     with connect() as db:
         observations = db.execute(
-            "SELECT content FROM observations WHERE created_at >= ? AND created_at < ? ORDER BY id",
+            "SELECT o.content, (SELECT group_concat(e.name, ', ')"
+            " FROM observation_entities l JOIN entities e ON e.id = l.entity_id"
+            " WHERE l.observation_id = o.id) AS names FROM observations o"
+            " WHERE o.created_at >= ? AND o.created_at < ? ORDER BY o.id",
             (start, end),
         ).fetchall()
         progress = db.execute(
@@ -1516,7 +1536,7 @@ def day_learned(start: str, end: str) -> list[str]:
             " WHERE p.created_at >= ? AND p.created_at < ? ORDER BY p.id",
             (start, end),
         ).fetchall()
-    return [f"Dato: {r['content']}" for r in observations] + [
+    return [f"Dato sobre {r['names']}: {r['content']}" for r in observations] + [
         f"Avance en {r['title']}: {r['content']}" for r in progress
     ]
 

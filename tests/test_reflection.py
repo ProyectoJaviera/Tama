@@ -69,6 +69,27 @@ def test_merge_moves_everything_to_the_kept_entity():
     assert "Relacionado con: Bruno" in memoria.list_goals()
 
 
+def test_renzo_is_never_merged():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Renzo Rojas", "objeto", "Dato")])
+    assert not memoria.merge_entities("Renzo", "Renzo Rojas")
+    assert all("Renzo" not in (p["a"], p["b"]) for p in memoria.merge_candidates())
+
+
+def test_relative_of_renzo_or_a_plan_is_not_a_merge_candidate():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("esposa de Renzo", "persona", "Irán de piratas")])
+    memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
+    assert memoria.merge_candidates() == []
+    assert not memoria.merge_entities("Halloween", "esposa de Renzo")
+
+
+def test_different_types_are_never_merged():
+    memoria.create_entities([entity("Clara", "persona", "Estudia")])
+    memoria.create_entities([entity("Clarita", "mascota", "Es gata")])
+    assert not memoria.merge_entities("Clara", "Clarita")
+
+
 def test_unify_merges_only_what_the_model_confirms():
     seed_duplicates()
     think, _ = thinker({"decision": "misma", "conservar": "Bruno"})

@@ -313,7 +313,7 @@ class Reflector:
             except Cancelled:
                 log.debug("reflexión cancelada")
             except (OllamaError, OSError) as exc:
-                log.warning("reflexión interrumpida: %s", exc)
+                log.debug("reflexión interrumpida: %s", exc)
 
         self._job = threading.Thread(target=job, name="tama-reflexion", daemon=True)
         self._job.start()

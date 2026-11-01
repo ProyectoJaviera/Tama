@@ -59,6 +59,33 @@ def test_wrong_tool_error_points_to_goals():
         memoria.update_observation(["o9"], "Corrí 5 km")
 
 
+def test_manage_goals_infers_the_action():
+    memoria.manage_goals(titulo="Correr 10K", accion="crear")
+    assert "pausado" in memoria.manage_goals(objetivo="Correr", estado="pausado")
+    assert "anotado" in memoria.manage_goals(objetivo="Correr", avance="Corrí 5 km")
+    assert "Correr 10K" in memoria.manage_goals(estado="pausado", accion="ver")
+
+
+def test_update_rejects_entities_that_are_not_a_list():
+    with pytest.raises(ValueError, match="create_entities"):
+        memoria.update_observation(["o1"], "Algo", {})
+
+
+def test_suggestions_can_be_listed_without_marking_them():
+    assert "No hay" in memoria.list_suggestions()
+    memoria.add_suggestion("Retomar el libro")
+    assert "Retomar" in memoria.list_suggestions()
+    assert memoria.pending_suggestions() == 1
+
+
+def test_diary_facts_say_who_they_are_about():
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": ["Escribió un libro"]}]
+    )
+    learned = memoria.day_learned("2000-01-01", "2100-01-01")
+    assert learned == ["Dato sobre Ana: Escribió un libro"]
+
+
 def test_manage_goals_covers_the_whole_flow():
     assert "creado" in memoria.manage_goals("crear", titulo="Correr 10K")
     assert "anotado" in memoria.manage_goals("avance", objetivo="correr", avance="Corrí 5 km")

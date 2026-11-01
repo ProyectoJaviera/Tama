@@ -75,6 +75,8 @@ def confirm_question(call: ToolCall) -> str:
         return f"¿Cambio la nota {args.get('note_id')}?"
     if call.name == "overwrite_file":
         return f"¿Reemplazo todo el contenido de {args.get('path')}?"
+    if call.name == "discard_goal":
+        return f"¿Descarto el objetivo «{short(args.get('objetivo', ''))}»?"
     if call.name == "proponer_cambio_perfil":
         return f"¿Agrego a tu perfil: «{short(args.get('cambio', ''))}»?"
     return f"¿Confirmas {call.name}?"
