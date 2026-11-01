@@ -320,6 +320,8 @@ def main(
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
     if args.mensaje == ["web"]:
+        # Antes de importar el servidor: esa carga ya toma unos segundos.
+        print(f"Tama web en http://{settings.web_host}:{settings.web_port}", flush=True)
         from tama.web.app import serve
 
         return serve(settings)

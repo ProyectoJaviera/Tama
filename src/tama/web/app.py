@@ -8,9 +8,11 @@ import json
 import os
 import queue
 import secrets
+import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import date
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -343,18 +345,67 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     return app
 
 
+STARTING = """<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="2"><title>Tama</title></head>
+<body style="font-family: system-ui; padding: 2rem">{message}</body></html>"""
+
+
+class Starting:
+    """Abre el puerto de inmediato; lo lento (herramientas, red, modelo) se prepara detrás."""
+
+    def __init__(self, build: Callable[[], FastAPI]) -> None:
+        self.app: FastAPI | None = None
+        self.problem = ""
+        self.thread = threading.Thread(target=self._prepare, args=(build,), daemon=True)
+        self.thread.start()
+
+    def _prepare(self, build: Callable[[], FastAPI]) -> None:
+        try:
+            self.app = build()
+        except Exception as exc:
+            self.problem = str(exc)
+            print(f"Tama no pudo iniciar: {exc}", file=sys.stderr, flush=True)
+
+    async def __call__(self, scope, receive, send) -> None:
+        if self.app is not None:
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] != "http":
+            return
+        message = (
+            f"No pude iniciar: {escape(self.problem)}" if self.problem else "Tama está iniciando…"
+        )
+        body = STARTING.format(message=message).encode("utf-8")
+        headers = [(b"content-type", b"text/html; charset=utf-8")]
+        await send({"type": "http.response.start", "status": 503, "headers": headers})
+        await send({"type": "http.response.body", "body": body})
+
+
 def serve(settings: Settings) -> int:
-    """`tama web`: arranca el servidor; por defecto solo escucha en esta máquina."""
+    """`tama web`: abre el puerto y prepara Tama detrás; por defecto, solo en esta máquina."""
     import uvicorn
 
-    brain = brain_module.build(settings)
-    if brain.reflector is not None:
-        brain.reflector.close_days()
-        brain.reflector.start()
-    app = create_app(brain, settings)
-    print(f"Tama en http://{settings.web_host}:{settings.web_port}")
+    prepared: list[Brain] = []
+
+    def build() -> FastAPI:
+        brain = brain_module.build(settings)
+        prepared.append(brain)
+        app = create_app(brain, settings)
+        if brain.reflector is not None:
+            brain.reflector.close_days()
+            brain.reflector.start()
+        print("Tama lista.", flush=True)
+        return app
+
     try:
-        uvicorn.run(app, host=settings.web_host, port=settings.web_port, log_level="warning")
+        uvicorn.run(
+            Starting(build),
+            host=settings.web_host,
+            port=settings.web_port,
+            log_level="warning",
+            lifespan="off",
+        )
     finally:
-        brain.close()
+        for brain in prepared:
+            brain.close()
     return 0

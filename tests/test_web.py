@@ -1,5 +1,7 @@
 import json
 import re
+import threading
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,7 +13,7 @@ from tama.events import EventStore
 from tama.mcp_hub import ToolInfo, ToolOutcome
 from tama.mcp_servers import memoria
 from tama.providers import Done, Text, ToolCall
-from tama.web.app import create_app
+from tama.web.app import Starting, create_app
 from tests.fakes import FakeConnectivity
 
 
@@ -224,3 +226,32 @@ def test_static_files_are_local(web):
     page = client.get("/").text
     assert "http://" not in page and "https://" not in page
     assert client.get("/static/htmx.min.js").status_code == 200
+
+
+def test_server_answers_at_once_while_tama_starts(web):
+    client, _ = web()
+    release = threading.Event()
+
+    def slow():
+        release.wait(30)
+        return client.app
+
+    site = TestClient(Starting(slow), base_url="http://127.0.0.1")
+    started = time.monotonic()
+    response = site.get("/")
+    assert time.monotonic() - started < 5
+    assert response.status_code == 503
+    assert "iniciando" in response.text
+    release.set()
+    site.app.thread.join(5)
+    assert site.get("/").status_code == 200
+
+
+def test_failed_start_is_shown(capsys):
+    def broken():
+        raise RuntimeError("sin Ollama <b>")
+
+    starting = Starting(broken)
+    starting.thread.join(5)
+    response = TestClient(starting, base_url="http://127.0.0.1").get("/")
+    assert "sin Ollama &lt;b&gt;" in response.text
