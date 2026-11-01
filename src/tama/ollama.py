@@ -54,9 +54,12 @@ class OllamaClient:
         tools: list[dict[str, Any]] | None = None,
         think: bool | None = None,
         options: dict[str, Any] | None = None,
+        format: dict[str, Any] | str | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Chat en streaming: devuelve cada fragmento JSON tal como lo envía Ollama."""
         payload = _chat_payload(model, messages, stream=True, think=think)
+        if format is not None:
+            payload["format"] = format
         if tools:
             payload["tools"] = tools
         if options:

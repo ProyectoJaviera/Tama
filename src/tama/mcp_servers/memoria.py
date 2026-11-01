@@ -776,7 +776,8 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 
 @server.tool(
     description=(
-        "Corrige datos cuando Renzo cambia de idea o algo cambió (otro plan, otra ciudad). Antes "
+        "Corrige datos cuando Renzo cambia de idea (otro plan, otra ciudad); sus metas van en "
+        "manage_goals. Antes "
         "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
         "antiguos, en todas las entidades), nueva (un solo hecho vigente) y entidades (TODAS las "
         "que menciona, p. ej. Renzo, su esposa y Halloween)."
