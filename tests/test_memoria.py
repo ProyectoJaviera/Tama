@@ -243,3 +243,20 @@ class Tools:
 class FakeBrain:
     def __init__(self):
         self.tools = Tools()
+
+
+def test_model_gets_a_useful_error_through_the_real_server(tmp_path):
+    command = [sys.executable, "-m", "tama.mcp_servers.memoria"]
+    hub = McpHub(
+        [ServerConfig("memoria", command)],
+        server_env(tmp_path / "data", tmp_path / "w", tmp_path / "memoria"),
+    )
+    hub.start()
+    try:
+        outcome = hub.call("update_observation", {"ids": ["o9"], "nueva": "Algo"})
+        assert not outcome.ok and "o9 no existe" in outcome.text
+        hub.call("create_entities", {"entities": [entity("Ana", "persona", "Vive en Talca")]})
+        arguments = {"ids": ["o1"], "nueva": "Vive en Lota", "entidades": [{"name": "Ana"}]}
+        assert hub.call("update_observation", arguments).ok
+    finally:
+        hub.close()

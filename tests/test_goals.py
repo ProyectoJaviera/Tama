@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from tama import cli
 from tama.events import EventStore
@@ -55,7 +56,7 @@ def test_discard_and_delete_are_destructive():
 
 def test_wrong_tool_error_points_to_goals():
     memoria.create_goal("Correr 10K")
-    with pytest.raises(ValueError, match="manage_goals"):
+    with pytest.raises(ToolError, match="manage_goals"):
         memoria.update_observation(["o9"], "Corrí 5 km")
 
 
@@ -67,7 +68,7 @@ def test_manage_goals_infers_the_action():
 
 
 def test_update_rejects_entities_that_are_not_a_list():
-    with pytest.raises(ValueError, match="create_entities"):
+    with pytest.raises(ToolError, match="create_entities"):
         memoria.update_observation(["o1"], "Algo", "Renzo")
 
 
@@ -77,6 +78,14 @@ def test_update_accepts_empty_entities():
     )
     memoria.update_observation(["o1"], "Vive en Temuco", {})
     assert "Vive en Temuco" in memoria.search_nodes("Ana")
+
+
+def test_update_accepts_entities_as_objects():
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": ["Vive en Talca"]}]
+    )
+    memoria.update_observation(["o1"], "Vive en Lota", [{"name": "Ana"}, {"name": "Beto"}])
+    assert "Vive en Lota" in memoria.search_nodes("Beto")
 
 
 def test_goals_view_includes_paused_ones():

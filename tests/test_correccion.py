@@ -3,6 +3,7 @@ import re
 import sqlite3
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from tama import cli
 from tama.cascade import Answered, Cascade, Layer
@@ -53,7 +54,7 @@ def test_update_covers_several_entities_at_once():
 
 def test_unknown_id_is_an_explicit_error_and_changes_nothing():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
-    with pytest.raises(ValueError, match="o99"):
+    with pytest.raises(ToolError, match="o99"):
         memoria.update_observation([*ids_of("Halloween"), "o99"], "Piratas")
     assert rows() == [("Shrek", 1)]
 
@@ -62,12 +63,12 @@ def test_already_retired_id_is_an_error():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     old = ids_of("Halloween")
     memoria.update_observation(old, "Piratas")
-    with pytest.raises(ValueError, match="vigente"):
+    with pytest.raises(ToolError, match="vigente"):
         memoria.update_observation(old, "Vaqueros")
 
 
 def test_update_without_ids_is_an_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolError):
         memoria.update_observation([], "Piratas")
 
 
@@ -224,7 +225,7 @@ def test_saving_returns_the_id_of_the_fact():
 
 def test_wrong_id_error_offers_similar_facts():
     memoria.create_entities([entity("Halloween", "plan", "Irá disfrazado de Shrek")])
-    with pytest.raises(ValueError, match=r"\[o1\] Irá disfrazado de Shrek"):
+    with pytest.raises(ToolError, match=r"\[o1\] Irá disfrazado de Shrek"):
         memoria.update_observation(["o99"], "Irá disfrazado de pirata")
 
 

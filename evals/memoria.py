@@ -137,6 +137,8 @@ def ask(brain, messages: list[dict], text: str, max_tokens: int, max_tools: int)
     ):
         if isinstance(event, agent.ToolUse):
             tools_used.append(event.name)
+        elif isinstance(event, agent.ToolResult) and not event.ok:
+            print(f"  error de {event.name}: {event.text[:300]}", flush=True)
         elif isinstance(event, Answered) and first is None:
             first = event
         elif isinstance(event, agent.FinalAnswer):

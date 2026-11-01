@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 SCHEMA = """
@@ -801,13 +802,13 @@ def update_observation(
 ) -> str:
     # El modelo a veces manda {} cuando no tiene entidades que agregar.
     if entidades and not isinstance(entidades, list):
-        raise ValueError(
+        raise ToolError(
             "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
             "otro, usa create_entities."
         )
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
-        raise ValueError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
+        raise ToolError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
@@ -817,12 +818,12 @@ def update_observation(
         if missing:
             listed = ", ".join(f"o{n}" for n in missing)
             similar = "; ".join(related_facts(db, nueva, [])) or "ninguno"
-            raise ValueError(
+            raise ToolError(
                 f"Nada cambió: {listed} no existe o ya no está vigente. "
                 f"Datos parecidos: {similar}. Reintenta con sus ids.{goal_reminder(db)}"
             )
         linked = linked_entities(db, numbers)
-        linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
+        linked |= {upsert_entity(db, n, "objeto")[0] for n in entity_names(entidades)}
         # Lo de salud se acumula como historia, salvo que el dato fuera un error.
         states = [
             r["id"]
@@ -879,6 +880,12 @@ def goal_reminder(db: sqlite3.Connection) -> str:
     rows = db.execute("SELECT title FROM goals WHERE status = 'activo'").fetchall()
     titles = ", ".join(r["title"] for r in rows)
     return f" Si es sobre una meta ({titles}), usa manage_goals." if titles else ""
+
+
+def entity_names(value: Any) -> list[str]:
+    """Nombres de entidades; el modelo a veces los manda como objetos con `name`."""
+    items = [item.get("name", "") if isinstance(item, dict) else item for item in value or []]
+    return [str(name).strip() for name in items if str(name).strip()]
 
 
 def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list[str]:
