@@ -6,6 +6,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 4: objetivos (una herramienta a la vista, `manage_goals`; `discard_goal` con confirmación y
+  `/objetivos`), diario en `memoria/diario/` (`/diario`) y reflexión en inactividad con el modelo
+  local: fusiona duplicados, marca lo reemplazado (nunca lo que ya ocurrió) y deja hasta 2
+  sugerencias. Se apaga con `TAMA_REFLECTION=false`. `tama memoria reparar` ordena las cadenas de
+  reemplazos antiguas. Evals en `python -m evals.reflexion`.
+- Selector de herramientas (`tama/selector.py`): por turno se ve lo esencial, lo usado en el turno
+  anterior y lo de uso común; el resto se pide con `abrir_herramientas`.
 - Tras la demo del Sprint 3: `update_observation` corrige un dato sin confirmación y sin borrarlo;
   `/olvidar <tema>` busca por palabras, deja elegir y también limpia los mensajes del tema; las
   confirmaciones se leen en español; la línea gris muestra las capas sin usar y su motivo.

@@ -900,6 +900,7 @@ dependencies = [
     { name = "mcp" },
     { name = "mcp-server-fetch" },
     { name = "mcp-server-time" },
+    { name = "psutil" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
@@ -907,9 +908,6 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
-bench = [
-    { name = "psutil" },
-]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
@@ -922,6 +920,7 @@ requires-dist = [
     { name = "mcp", specifier = ">=2.3,<3" },
     { name = "mcp-server-fetch", specifier = "==2026.10.28" },
     { name = "mcp-server-time", specifier = "==2026.10.28" },
+    { name = "psutil", specifier = ">=6.1,<8" },
     { name = "pydantic", specifier = ">=2.9,<3" },
     { name = "pydantic-settings", specifier = ">=2.6,<3" },
     { name = "pyyaml", specifier = ">=6.0,<7" },
@@ -929,7 +928,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bench = [{ name = "psutil", specifier = ">=6.1" }]
+bench = []
 dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "ruff", specifier = ">=0.9" },

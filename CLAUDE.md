@@ -47,7 +47,7 @@ vendor/          copias de paquetes de terceros (MCP)
 - Ciclo: spec del sprint → rama corta → tests → evals + demo → OK de Renzo → merge a `main`.
 - Un sprint a la vez, sin trabajo en paralelo sobre el siguiente: no se avanza hasta que Renzo apruebe el actual ("OK demo") y esté mergeado a `main`.
 - Commits con Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`).
-- Definición de terminado: tests verdes, evals sin regresión **con y sin internet**, README y CHANGELOG al día, demo aprobada por Renzo.
+- Definición de terminado: tests verdes, evals sin regresión en la nube, README y CHANGELOG al día, demo aprobada por Renzo. Hasta el último sprint de la versión (`docs/sprints/XX-modelo-local.md`), la calidad del modelo local no se mide: basta comprobar que responde sin internet. Reflexión y diario sí corren en local.
 - Código e identificadores en inglés; documentación, prompts de Tama y mensajes al usuario en español.
 - No escribir documentos de "certificación". Los números salen de tests y evals.
 

@@ -387,13 +387,16 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    # Claude queda fuera por defecto: cuida el cupo mensual de la API.
-    parser.add_argument("--capas", nargs="+", default=["nube", "local"])
+    # Por defecto solo la nube: Claude cuida su cupo y el modelo local se mide en el último sprint.
+    parser.add_argument("--capas", nargs="+", default=["nube"])
+    parser.add_argument("--local-completo", action="store_true", help="mide también la capa local")
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
     parser.add_argument("--historial", action="store_true", help="solo historial médico")
     args = parser.parse_args()
+    if args.local_completo:
+        args.capas = [*args.capas, "local"]
 
     out = EVALS_DIR / "memoria-results.json"
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}

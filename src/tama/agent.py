@@ -10,8 +10,10 @@ from typing import Any, Protocol
 
 from tama.cascade import Answered, Cascade, Switch
 from tama.providers import Error, Message, Text, ToolCall
+from tama.selector import OPENER, ToolFocus, opener_spec, select
 
 MAX_STEPS = 5
+ALL_TOOLS = 1000
 MAX_RESULT_IN_HISTORY = 300
 REJECTED = (
     "CANCELADO: Renzo respondió que NO. La acción NO se ejecutó y todo sigue exactamente igual. "
@@ -79,14 +81,21 @@ def compact(trace: list[Message]) -> list[Message]:
 
 
 def prepare(
-    tools: ToolBox | None, messages: list[Message], max_tools: int = 10
+    tools: ToolBox | None,
+    messages: list[Message],
+    max_tools: int = 10,
+    focus: ToolFocus | None = None,
 ) -> tuple[list[Message], list[dict[str, Any]] | None]:
     """Mensajes y herramientas tal como llegarán al modelo en este turno.
 
     La precarga usa lo mismo: Ollama solo reaprovecha lo ya procesado si el prefijo es idéntico.
     """
-    visible, down = tools.available_tools(max_tools) if tools else ([], [])
-    return with_tool_status(messages, down), [t.as_provider_tool() for t in visible] or None
+    available, down = tools.available_tools(ALL_TOOLS) if tools else ([], [])
+    visible, hidden = select(available, max_tools, focus)
+    specs = [t.as_provider_tool() for t in visible]
+    if hidden:
+        specs.append(opener_spec(available, visible))
+    return with_tool_status(messages, down), specs or None
 
 
 def run_turn(
@@ -96,9 +105,16 @@ def run_turn(
     confirm: Confirm,
     max_tools: int = 10,
     max_steps: int = MAX_STEPS,
+    focus: ToolFocus | None = None,
 ) -> Iterator[AgentEvent]:
-    """Corre un turno completo. `messages` no se modifica: el bucle trabaja sobre una copia."""
-    work, tool_specs = prepare(tools, messages, max_tools)
+    """Corre un turno completo. `messages` no se modifica: el bucle trabaja sobre una copia.
+
+    `focus` guarda entre turnos qué herramientas usó o abrió el modelo.
+    """
+    focus = focus if focus is not None else ToolFocus()
+    now = ToolFocus(set(focus.groups), set(focus.used))
+    turn = ToolFocus()
+    work, tool_specs = prepare(tools, messages, max_tools, now)
     start = len(work)
 
     for step in range(max_steps + 1):
@@ -122,6 +138,7 @@ def run_turn(
                 yield event
                 return
         if not calls:
+            focus.groups, focus.used = turn.groups, turn.used
             yield FinalAnswer("".join(text), tuple(compact(work[start:])))
             return
 
@@ -137,7 +154,22 @@ def run_turn(
             }
         )
         for call_id, call in zip(ids, calls, strict=True):
+            if call.name == OPENER:
+                group = str(call.arguments.get("grupo", ""))
+                now.groups.add(group)
+                turn.groups.add(group)
+                _, tool_specs = prepare(tools, messages, max_tools, now)
+                work.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": call_id,
+                        "tool_name": OPENER,
+                        "content": f"Listo: ya tienes a la vista el grupo {group}.",
+                    }
+                )
+                continue
             info = tools.find(call.name) if tools else None
+            turn.used.add(call.name)
             yield ToolUse(call.name, call.arguments, info.server if info else None)
             if info is not None and info.destructive and not confirm(call, info):
                 result = ToolResult(call.name, False, REJECTED, skipped=True)

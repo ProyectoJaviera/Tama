@@ -77,3 +77,15 @@ def test_chat_sends_tools():
     assert sent["tools"] == tools
     assert sent["stream"] is False
     assert result["message"]["content"] == "ok"
+
+
+def test_stream_raw_sends_the_json_format():
+    seen = {}
+
+    def handler(request):
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, text='{"message": {"content": "{}"}, "done": true}\n')
+
+    client = OllamaClient(transport=httpx.MockTransport(handler))
+    list(client.stream_raw("m", [], format={"type": "object"}))
+    assert seen["format"] == {"type": "object"}

@@ -120,6 +120,12 @@ Tama recuerda entre sesiones, sin base de datos vectorial:
 
 `memoria/` y `data/` tienen datos personales: nunca van a un repositorio público. En Docker viven
 en los volúmenes `tama-memoria` y `tama-data`.
+- `/objetivos` lista los objetivos y `/objetivos borrar <objetivo>` borra uno (con confirmación).
+- `/diario` escribe el diario de hoy y `/diario AAAA-MM-DD` muestra el de esa fecha, en
+  `memoria/diario/`.
+- Tras 20 minutos sin actividad, si hay RAM libre, Tama reflexiona con el modelo local y sin red:
+  fusiona duplicados, marca lo reemplazado (nunca lo que ya ocurrió) y deja hasta 2 sugerencias. Si
+  duda, te pregunta. Se cancela apenas escribes.
 
 ## Instalación sin internet (en otra máquina)
 
@@ -174,7 +180,10 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
-| `TAMA_TOOLS_MAX` | `18` | Máximo de herramientas visibles por turno |
+| `TAMA_TOOLS_MAX` | `16` | Máximo de herramientas visibles por turno |
+| `TAMA_REFLECTION` | `true` | Reflexión en inactividad |
+| `TAMA_REFLECTION_IDLE_MIN` | `20` | Minutos sin actividad antes de reflexionar |
+| `TAMA_REFLECTION_MIN_FREE_GB` | `6` | RAM libre mínima para reflexionar |
 | `TAMA_MCP_ENABLED` | `true` | Activa los servidores MCP |
 
 La lista completa, con comentarios, está en `.env.example`.
