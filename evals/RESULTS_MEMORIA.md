@@ -6,7 +6,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 | Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
 |---|---:|---:|---:|---:|---:|---:|
-| nube | 9/10 | 3/3 | 9 | 1 | 0 | 2161 |
+| nube | 9/10 | 3/3 | 11 | 1 | 1 | 2161 |
 | claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
 | local | 8/10 | 3/3 | 14 | 0 | 0 | 2892 |
 | local (sin red) | 7/10 | 3/3 | 10 | 0 | 0 | 2721 |
@@ -30,7 +30,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 ## Fallos
 
-- `nube` · ¿Qué hierba no me gusta?: No tengo ninguna anotación sobre una hierba que no te guste. Solo recuerdo que prefieres el té verde antes que el café p
+- `nube` · ¿Cuál es mi proyecto de este trimestre?: Tu proyecto es el Proyecto Faro, en el cual estás trabajando junto a tu colega Tomás.
 - `nube` · duplicada: mama de renzo / renzo
 - `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
 - `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 

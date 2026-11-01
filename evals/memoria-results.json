@@ -5,16 +5,18 @@
     "fecha": "2026-11-01",
     "hechos": 9,
     "total_hechos": 10,
-    "guardados": 10,
+    "guardados": 9,
     "negativos": 3,
     "total_negativos": 3,
     "tokens_prompt_max": 2161,
     "calidad": {
-      "entidades": 9,
+      "entidades": 11,
       "duplicadas": [
         "mama de renzo / renzo"
       ],
-      "mal_nombradas": []
+      "mal_nombradas": [
+        "lectura de cien anos de soledad"
+      ]
     },
     "detalle": [
       {
@@ -50,8 +52,8 @@
       },
       {
         "pregunta": "¿Qué hierba no me gusta?",
-        "ok": false,
-        "respuesta": "No tengo ninguna anotación sobre una hierba que no te guste. Solo recuerdo que prefieres el té verde antes que el café por las tardes.",
+        "ok": true,
+        "respuesta": "No soportas el cilantro, me dijiste que lo odias.",
         "herramientas": [
           "search_nodes"
         ],
@@ -71,8 +73,8 @@
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
-        "ok": true,
-        "respuesta": "Tu proyecto para este trimestre es construir un reloj con Arduino.",
+        "ok": false,
+        "respuesta": "Tu proyecto es el Proyecto Faro, en el cual estás trabajando junto a tu colega Tomás.",
         "herramientas": [
           "search_nodes"
         ],
@@ -102,7 +104,7 @@
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
         "ok": true,
-        "respuesta": "Estás aprendiendo portugués, y me contaste que lo haces por las tardes.",
+        "respuesta": "Estás aprendiendo portugués en las tardes.",
         "herramientas": [
           "search_nodes"
         ],
@@ -112,7 +114,7 @@
       {
         "pregunta": "¿Qué prefiero tomar en las tardes?",
         "ok": true,
-        "respuesta": "Prefieres tomar té verde antes que café por las tardes.",
+        "respuesta": "Prefieres tomar té verde antes que café en las tardes.",
         "herramientas": [
           "search_nodes"
         ],
@@ -122,7 +124,7 @@
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],
@@ -132,7 +134,7 @@
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, cuéntame y lo recuerdo para la próxima.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],
@@ -142,7 +144,7 @@
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo y lo recuerdo.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],
