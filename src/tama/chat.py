@@ -63,6 +63,8 @@ def run_turn(
             )
         elif isinstance(event, Answered):
             answered = event
+        elif isinstance(event, agent.ToolResult) and not event.ok and not event.skipped:
+            brain.store.log("error", f"{event.name}: {short(event.text, 300)}")
         elif isinstance(event, Error):
             brain.store.log("error", event.message)
             messages.pop()

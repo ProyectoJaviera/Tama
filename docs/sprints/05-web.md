@@ -31,7 +31,7 @@ Renzo conversa con Tama desde el navegador en vez de la CLI, y desde ahí ve y c
 
 ## Pasos de la demo
 1. Desde `Tama-s5`, con Ollama abierto: `uv run tama web`, y abre http://127.0.0.1:8765 en Chrome o Edge. La consola muestra la dirección de inmediato y, unos segundos después, "Tama lista."; mientras tanto, la página dice que está iniciando.
-2. Conversa y revisa la línea gris; abre una llamada a herramienta plegada.
+2. Conversa y revisa la línea gris; abre una llamada a herramienta plegada. Escribe `/` para ver los comandos.
 3. Pídele borrar una nota: debe aparecer el diálogo Sí/No con texto legible.
 4. En Memoria, edita tu perfil, busca una ficha y corrige un dato: debe quedar su "antes: …".
 5. En Objetivos, crea uno, agrega un avance, páusalo y descártalo.

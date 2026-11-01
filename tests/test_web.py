@@ -101,8 +101,35 @@ def test_commands_run_without_the_model(web, tmp_path):
     assert "linea_de_tiempo" in timeline and "salud" in timeline
     assert "Capas" in client.post("/chat", data={"text": "/estado"}).json()["reply"]
     assert "No hay diario" in client.post("/chat", data={"text": "/diario"}).json()["reply"]
-    assert "Comandos" in client.post("/chat", data={"text": "/nada"}).json()["reply"]
+    assert "Comandos" in client.post("/chat", data={"text": "/ayuda"}).json()["reply"]
+    assert "/memoria" in client.post("/chat", data={"text": "/memorio"}).json()["reply"]
+    assert "/estado" in client.post("/chat", data={"text": "/estadoo"}).json()["reply"]
     assert brain.store.rows("user_msg") == []
+
+
+def test_forget_command_asks_before_deleting(web, tmp_path):
+    client, brain = web()
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": ["Reunión con cliente"]}]
+    )
+    brain.tools.call = lambda name, args: ToolOutcome(True, getattr(memoria, name)(**args))
+    found = client.post("/chat", data={"text": "/olvidar reunion cliente"}).json()
+    assert "Reunión con cliente" in found["reply"] and found["confirm"]
+    assert "No se borró" in client.post("/chat/olvidar", data={"respuesta": "no"}).json()["reply"]
+    assert memoria.list_cards()
+    client.post("/chat", data={"text": "/olvidar reunion cliente"})
+    client.post("/chat/olvidar", data={"respuesta": "si"})
+    assert memoria.list_cards() == []
+
+
+def test_tool_errors_are_logged(web):
+    tool = [ToolCall("delete_note", {}, "c1"), Done(1, 1)], [Text("listo"), Done(1, 1)]
+    client, brain = web(*tool)
+    brain.tools.call = lambda name, args: ToolOutcome(False, "falló")
+    brain.tools.info = ToolInfo("notas", "delete_note", "Borra", {})
+    turn = client.post("/chat", data={"text": "x"}).json()["turn"]
+    events(client, turn)
+    assert any("delete_note" in r["content"] for r in brain.store.rows("error"))
 
 
 def test_history_is_shown_escaped(web):

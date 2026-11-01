@@ -6,9 +6,12 @@
   {% endfor %}
 </div>
 <form id="chat-form" class="row">
-  <input id="chat-text" name="text" autocomplete="off" autofocus placeholder="Escríbele a Tama, o /ayuda para ver los comandos" aria-label="Mensaje">
+  <input id="chat-text" name="text" list="comandos" autocomplete="off" autofocus placeholder="Escríbele a Tama, o /ayuda para ver los comandos" aria-label="Mensaje">
   <button type="submit">Enviar</button>
 </form>
+<datalist id="comandos">
+  {% for name, what in commands.items() %}<option value="{{ name }}">{{ what }}</option>{% endfor %}
+</datalist>
 <dialog id="confirm">
   <p id="confirm-text"></p>
   <form method="dialog" class="row">

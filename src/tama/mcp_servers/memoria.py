@@ -126,7 +126,10 @@ CREATE TABLE reviewed_entities (
     reviewed_at TEXT NOT NULL
 );
 """
-MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS]
+CORRECTION_REASON = """
+ALTER TABLE observations ADD COLUMN reason TEXT;
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS, CORRECTION_REASON]
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 NO_GOALS = "No hay objetivos en ese estado."
@@ -783,14 +786,18 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 @server.tool(
     description=(
         "Reemplaza un dato que ya no es cierto (otro plan, otra ciudad). Un dato nuevo que no "
-        "contradice nada va en create_entities, y las metas en manage_goals. Antes "
-        "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
-        "antiguos, en todas las entidades), nueva (un solo hecho vigente) y entidades (TODAS las "
-        "que menciona, p. ej. Renzo, su esposa y Halloween)."
+        "contradice nada va en create_entities, y las metas en manage_goals. Antes busca el tema "
+        "con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos antiguos), nueva (un "
+        "solo hecho vigente), entidades (lista con TODAS las que menciona) y error=true si el dato "
+        "antiguo nunca fue cierto (Renzo aclara que no pasó)."
     )
 )
 def update_observation(
-    ids: list[str], nueva: str, entidades: Any = None, source: int | None = None
+    ids: list[str],
+    nueva: str,
+    entidades: Any = None,
+    error: bool = False,
+    source: int | None = None,
 ) -> str:
     # El modelo a veces manda {} cuando no tiene entidades que agregar.
     if entidades and not isinstance(entidades, list):
@@ -816,15 +823,20 @@ def update_observation(
             )
         linked = linked_entities(db, numbers)
         linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
-        # Corregir marca lo antiguo como estado, salvo lo que ya ocurrió: eso se acumula.
-        states = [r["id"] for r in found if not already_happened(db, r)]
+        # Lo de salud se acumula como historia, salvo que el dato fuera un error.
+        states = [
+            r["id"]
+            for r in found
+            if error or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
+        ]
         replaced = ",".join("?" * len(states))
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
         add_obs(db, linked, [nueva], source, kind="estado")
         new_id = same_fact(db, resolve_dates(nueva.strip())[0])
         db.execute(
-            f"UPDATE observations SET kind = 'estado', superseded_by = ? WHERE id IN ({replaced})",
-            [new_id, *states],
+            f"UPDATE observations SET kind = 'estado', superseded_by = ?, reason = ?"
+            f" WHERE id IN ({replaced})",
+            [new_id, "corregido" if error else None, *states],
         )
         for entity_id in linked:
             reindex(db, entity_id)
@@ -916,7 +928,7 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
     with connect() as db:
         rows = db.execute(
             "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at,"
-            " (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
+            " o.reason, (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
             " FROM observations o ORDER BY o.occurred_at, o.id"
         ).fetchall()
@@ -935,6 +947,9 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         state = "vigente" if row["valid"] else "ya no vigente"
         if row["superseded_by"]:
             state = f"reemplazado por o{row['superseded_by']}"
+        if row["reason"] == "corregido":
+            right = by_id[row["superseded_by"]]["content"]
+            state = f"corregido, no fue así: {right}"
         lines.append(f"{row['occurred_at']} [o{row['id']}] {row['content']} ({state})")
     return "\n".join(lines)
 

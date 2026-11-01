@@ -27,8 +27,18 @@
     });
   }
 
-  function answer(value) {
+  let pendingForget = false;
+
+  async function answer(value) {
     dialog.close();
+    if (pendingForget) {
+      pendingForget = false;
+      const response = await post("/chat/olvidar", { respuesta: value });
+      add("command", (await response.json()).reply);
+      button.disabled = false;
+      input.focus();
+      return;
+    }
     post("/chat/" + turnId + "/confirmar", { respuesta: value });
   }
   document.getElementById("confirm-yes").onclick = () => answer("si");
@@ -104,6 +114,12 @@
     const result = await response.json();
     if (result.reply !== undefined) {
       add("command", result.reply);
+      if (result.confirm) {
+        pendingForget = true;
+        question.textContent = result.confirm;
+        dialog.showModal();
+        return;
+      }
       button.disabled = false;
       input.focus();
       return;

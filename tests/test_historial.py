@@ -100,6 +100,20 @@ def test_fact_of_an_event_entity_can_be_replaced():
     assert valid("Irá de Shrek") == 0
 
 
+def test_wrong_event_is_corrected_and_shown_as_such():
+    memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.update_observation([first_id()], "No lo operaron: la rodilla sanó sola", error=True)
+    assert valid("Fue operado de la rodilla") == 0
+    text = memoria.linea_de_tiempo("rodilla")
+    assert "corregido, no fue así: No lo operaron" in text
+
+
+def test_plan_with_a_past_date_can_be_replaced():
+    memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek el 3 de marzo de 2020")])
+    memoria.update_observation([first_id()], "Irá de piratas")
+    assert valid("Irá de Shrek el 3 de marzo de 2020") == 0
+
+
 def test_new_facts_are_events_by_default():
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     with memoria.connect() as db:

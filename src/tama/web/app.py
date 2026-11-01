@@ -105,6 +105,7 @@ class Session:
         self.max_tools = settings.tools_max
         self.timeout_s = settings.web_confirm_timeout_s
         self.turns: dict[str, Turn] = {}
+        self.pending_forget: dict | None = None
         self.brain = brain
         self._busy = threading.Lock()
 
@@ -167,19 +168,37 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
-        return page(request, "chat.html", history=brain.store.recent_messages())
+        return page(
+            request,
+            "chat.html",
+            history=brain.store.recent_messages(),
+            commands=commands.COMMANDS,
+        )
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
     def send(text: str = Form(...)) -> dict[str, str]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
+        if text.lower().startswith("/olvidar"):
+            preview, arguments = commands.forget_preview(brain, text[len("/olvidar") :].strip())
+            if arguments is None:
+                return {"reply": preview}
+            session.pending_forget = arguments
+            return {"reply": preview, "confirm": "¿Lo olvido para siempre?"}
         if text.startswith("/"):
             return {"reply": commands.run(brain, text, settings.memory_dir)}
         turn_id = session.start(text)
         if turn_id is None:
             raise HTTPException(status_code=409, detail="Tama aún está respondiendo")
         return {"turn": turn_id}
+
+    @app.post("/chat/olvidar", dependencies=[Depends(check_csrf)])
+    def forget(respuesta: str = Form("no")) -> dict[str, str]:
+        arguments, session.pending_forget = session.pending_forget, None
+        if respuesta != "si" or arguments is None:
+            return {"reply": "No se borró nada."}
+        return {"reply": brain.tools.call("forget_memory", arguments).text}
 
     @app.get("/chat/{turn_id}/eventos")
     def stream(turn_id: str) -> StreamingResponse:
