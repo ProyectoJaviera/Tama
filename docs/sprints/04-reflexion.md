@@ -1,6 +1,6 @@
 # Sprint 4: Reflexión, diario y objetivos
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-01)
 
 ## Objetivo
 La memoria de Tama se mantiene ordenada sola y empieza a mirar hacia adelante: reflexiona en los ratos de inactividad, escribe un diario y sigue los objetivos de Renzo.
@@ -43,3 +43,18 @@ Interfaz web (S5), notificaciones push (ntfy, fase de ubicuidad) y voz.
 - El diario de un día de prueba es fiel a events.db (el juez verifica que no invente nada).
 - La reflexión no corre mientras Renzo escribe y no carga un segundo modelo.
 - Demo de Renzo y, después, una semana de uso real sin duplicados ni datos inventados en el grafo (se revisa con /memoria y el export).
+
+## Cierre
+Evals en la nube y sin Claude; reflexión y diario en local, por decisión de Renzo.
+
+- Memoria: 9/10 hechos, 3/3 sin inventar. Herramientas: 23/23. Objetivos: 4 de 4 pasos.
+- Corrección de datos: 4 de 4 corridas. Historial médico: completo y en orden. Conversación: 19/20.
+- Prompt en la nube: 2.099 tokens.
+- Reflexión en local: 4/5 duplicados, 0 fusiones incorrectas, 3/3 contradicciones, ningún dato perdido.
+- Diario: 5/5/5. Prueba rápida sin red: 5/5.
+
+Pendiente:
+
+- La calidad del modelo local se mide en `XX-modelo-local.md`, incluido el prompt local y las 15 herramientas a la vista.
+- Tama no debe prometer avisos que todavía no puede dar por su cuenta.
+- La reflexión solo registra cuando cambia algo: conviene dejar constancia de cada pasada.
