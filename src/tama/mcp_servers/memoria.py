@@ -475,7 +475,7 @@ def is_health(db: sqlite3.Connection, entities: set[int], text: str) -> bool:
     if any(word in normalize(text) for word in HEALTH_WORDS):
         return True
     marks = ",".join("?" * len(entities))
-    query = f"SELECT 1 FROM entities WHERE id IN ({marks}) AND type IN ('salud', 'evento')"
+    query = f"SELECT 1 FROM entities WHERE id IN ({marks}) AND type = 'salud'"
     return db.execute(query, list(entities)).fetchone() is not None
 
 

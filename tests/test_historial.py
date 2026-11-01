@@ -94,6 +94,12 @@ def test_observations_sent_as_plain_text_stay_whole():
     assert valid("Toma té verde") == 1 and valid("Vive en Talca") == 1
 
 
+def test_fact_of_an_event_entity_can_be_replaced():
+    memoria.create_entities([entity("Halloween", "evento", "Irá de Shrek")])
+    memoria.update_observation([first_id()], "Irá de piratas")
+    assert valid("Irá de Shrek") == 0
+
+
 def test_new_facts_are_events_by_default():
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     with memoria.connect() as db:
