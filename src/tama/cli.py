@@ -8,10 +8,11 @@ import sys
 import threading
 from datetime import date
 
-from tama import agent, history
+from tama import agent, chat, history
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
+from tama.chat import confirm_question, short
 from tama.config import Settings, get_settings
 from tama.mcp_servers.memoria import NO_SUGGESTION
 from tama.memory import session_prompt
@@ -63,25 +64,6 @@ def printable(text: str) -> str:
     return UNPRINTABLE.sub("", text) if sys.platform == "win32" else text
 
 
-def confirm_question(call: ToolCall) -> str:
-    """La pregunta en palabras de Renzo, sin el JSON de la herramienta."""
-    args = call.arguments
-    if call.name == "delete_observations":
-        items = [o for d in args.get("deletions", []) for o in d.get("observations", [])]
-        return "¿Borro de la memoria: " + ", ".join(f"«{short(i)}»" for i in items) + "?"
-    if call.name == "delete_note":
-        return f"¿Borro la nota {args.get('note_id')}?"
-    if call.name == "update_note":
-        return f"¿Cambio la nota {args.get('note_id')}?"
-    if call.name == "overwrite_file":
-        return f"¿Reemplazo todo el contenido de {args.get('path')}?"
-    if call.name == "discard_goal":
-        return f"¿Descarto el objetivo «{short(args.get('objetivo', ''))}»?"
-    if call.name == "proponer_cambio_perfil":
-        return f"¿Agrego a tu perfil: «{short(args.get('cambio', ''))}»?"
-    return f"¿Confirmas {call.name}?"
-
-
 def ask_yes(question: str) -> bool:
     try:
         return input(f"{question} (s/n) ").strip().lower() in {"s", "si", "sí"}
@@ -94,33 +76,18 @@ def confirm(call: ToolCall, info) -> bool:
     return ask_yes(confirm_question(call))
 
 
-def short(value: object, limit: int = 60) -> str:
-    text = str(value).replace("\n", " ")
-    return text if len(text) <= limit else text[: limit - 3] + "..."
-
-
 def reply(
-    brain: Brain, messages: list[Message], max_tokens: int, max_tools: int = 10
+    brain: Brain, messages: list[Message], text: str, max_tokens: int, max_tools: int = 10
 ) -> agent.FinalAnswer | None:
-    """Responde un turno en streaming (con herramientas), lo registra y devuelve el cierre."""
+    """Muestra un turno en streaming (con herramientas) y devuelve el cierre."""
     answered: Answered | None = None
-    for event in agent.run_turn(
-        brain.cascade,
-        brain.tools,
-        history.trim(messages, max_tokens),
-        confirm,
-        max_tools,
-        focus=brain.focus,
-    ):
+    for event in chat.run_turn(brain, messages, text, max_tokens, max_tools, confirm):
         if isinstance(event, Text):
             print(printable(event.text), end="", flush=True)
         elif isinstance(event, Switch):
             if event.partial:
                 print()
             print(dim(f"· {event.frm} no respondió ({event.reason}); seguí en {event.to}"))
-            brain.store.log(
-                "provider_switch", f"{event.frm} → {event.to}: {event.reason}", event.to
-            )
         elif isinstance(event, agent.ToolUse):
             args = ", ".join(f"{k}={short(v, 30)}" for k, v in event.arguments.items())
             print(dim(f"· {event.server or '?'}.{event.name}({args})"))
@@ -134,28 +101,12 @@ def reply(
         elif isinstance(event, agent.FinalAnswer):
             print()
             if answered is not None:
-                ttft = f"{answered.ttft_s:.1f} s" if answered.ttft_s is not None else "-"
-                where = f"· {answered.provider} ({answered.model})"
-                speed = f" · {answered.tokens_per_s:.0f} tok/s" if answered.tokens_per_s else ""
-                print(dim(f"{where} · primer token {ttft} · total {answered.total_s:.1f} s{speed}"))
+                print(dim(f"· {chat.speed_line(answered)}"))
                 if answered.skipped:
-                    skipped = "; ".join(answered.skipped)
-                    print(dim(f"· sin usar: {skipped}"))
-                    brain.store.log("provider_switch", skipped, answered.provider)
-                brain.store.log(
-                    "assistant_msg",
-                    event.text,
-                    answered.provider,
-                    answered.model,
-                    answered.input_tokens,
-                    answered.output_tokens,
-                    round(answered.ttft_s * 1000) if answered.ttft_s is not None else None,
-                    round(answered.total_s * 1000),
-                )
+                    print(dim(f"· sin usar: {'; '.join(answered.skipped)}"))
             return event
         elif isinstance(event, Error):
             print(f"\nNo pude responder: {event.message}", file=sys.stderr)
-            brain.store.log("error", event.message)
             return None
     return None
 
@@ -168,6 +119,9 @@ def show_memory(brain: Brain, args: str = "") -> None:
     if args.startswith("historial"):
         tema = args[len("historial") :].strip()
         print(dim(brain.tools.call("linea_de_tiempo", {"tema": tema}).text))
+        return
+    if args:
+        print(dim(brain.tools.call("open_nodes", {"names": [args]}).text))
         return
     print(dim(brain.tools.call("search_nodes", {"query": ""}).text))
 
@@ -295,17 +249,7 @@ def print_tools(brain: Brain) -> None:
 def turn(
     brain: Brain, messages: list[Message], text: str, max_tokens: int, max_tools: int = 10
 ) -> bool:
-    messages.append({"role": "user", "content": text})
-    event_id = brain.store.log("user_msg", text)
-    if brain.tools is not None:
-        brain.tools.current_event = event_id
-    final = reply(brain, messages, max_tokens, max_tools)
-    if final is None:
-        messages.pop()
-        return False
-    messages.extend(final.trace)
-    messages.append({"role": "assistant", "content": final.text})
-    return True
+    return reply(brain, messages, text, max_tokens, max_tools) is not None
 
 
 def chat_loop(

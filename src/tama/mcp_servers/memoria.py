@@ -137,6 +137,7 @@ MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
 MAX_HISTORY = 3
+MAX_DETAIL = 200
 SOON_DAYS = 60
 # Lo de salud nunca se reemplaza: es la historia médica de Renzo.
 HEALTH_TOPICS = ("salud", "medic", "enferm", "doctor", "clinic")
@@ -490,7 +491,9 @@ def stems(text: str) -> set[str]:
     return {w[:6] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
 
 
-def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "") -> list[str]:
+def recent_observations(
+    db: sqlite3.Connection, entity_id: int, query: str = "", limit: int = MAX_OBSERVATIONS
+) -> list[str]:
     """Hechos vigentes: primero los que coinciden con la búsqueda, luego los más nuevos."""
     rows = db.execute(
         "SELECT o.id, o.content, o.created_at FROM observations o"
@@ -500,7 +503,7 @@ def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "")
     ).fetchall()
     wanted = stems(query)
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
-    chosen = (matching + [r for r in rows if r not in matching])[:MAX_OBSERVATIONS]
+    chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
         f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])}){earlier_versions(db, r['id'])}"
         for r in chosen
@@ -533,9 +536,11 @@ def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
     return [f"{r['a']} {r['t']} {r['b']}" for r in rows]
 
 
-def describe(db: sqlite3.Connection, row: sqlite3.Row, query: str = "") -> str:
+def describe(
+    db: sqlite3.Connection, row: sqlite3.Row, query: str = "", limit: int = MAX_OBSERVATIONS
+) -> str:
     lines = [f"{row['name']} ({row['type']})"]
-    lines += [f"- {o}" for o in recent_observations(db, row["id"], query)]
+    lines += [f"- {o}" for o in recent_observations(db, row["id"], query, limit)]
     lines += [f"- relación: {r}" for r in relations_of(db, row["id"])]
     return "\n".join(lines)
 
@@ -586,8 +591,8 @@ def fts_query(text: str) -> str:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan, evento, salud, objeto, gusto) y observations (frases que se entiendan solas, con "
-        "las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."
+        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
+        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -718,7 +723,7 @@ def open_nodes(names: list[str]) -> str:
         found = [row for row in (find_entity(db, n) for n in names) if row]
         if not found:
             return "No hay nada anotado sobre eso."
-        return "\n\n".join(describe(db, r) for r in found)
+        return "\n\n".join(describe(db, r, limit=MAX_DETAIL) for r in found)
 
 
 @server.tool(

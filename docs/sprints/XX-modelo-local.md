@@ -1,6 +1,6 @@
 # Último sprint de la versión: modelo local
 
-Estado: pendiente. Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Número definitivo por asignar.
+Estado: pendiente. Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Va después del S6 y antes de la pausa de uso real.
 
 ## Objetivo
 Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10400F, 32 GB, sin GPU), un modelo cargado a la vez y sin internet.

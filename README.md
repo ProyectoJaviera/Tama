@@ -180,7 +180,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
-| `TAMA_TOOLS_MAX` | `16` | Máximo de herramientas visibles por turno |
+| `TAMA_TOOLS_MAX` | `17` | Máximo de herramientas visibles por turno |
+| `TAMA_WEB_PORT` | `8765` | Puerto de `tama web`, solo en localhost |
 | `TAMA_REFLECTION` | `true` | Reflexión en inactividad |
 | `TAMA_REFLECTION_IDLE_MIN` | `20` | Minutos sin actividad antes de reflexionar |
 | `TAMA_REFLECTION_MIN_FREE_GB` | `6` | RAM libre mínima para reflexionar |

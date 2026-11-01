@@ -204,6 +204,18 @@ class Brain:
         self.tools = Tools()
 
 
+def test_memoria_with_a_name_shows_the_whole_card():
+    brain = Brain()
+    cli.show_memory(brain, "Renzo")
+    assert brain.tools.calls == [("open_nodes", {"names": ["Renzo"]})]
+
+
+def test_open_nodes_shows_all_facts():
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Ana", "persona", *facts)])
+    assert memoria.open_nodes(["Ana"]).count("Dato número") == 8
+
+
 def test_memoria_historial_command():
     brain = Brain()
     cli.show_memory(brain, "historial salud")

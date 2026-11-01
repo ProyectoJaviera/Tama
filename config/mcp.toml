@@ -21,7 +21,7 @@ herramientas = [
     "manage_goals", "discard_goal", "list_suggestions",
 ]
 siempre = ["search_nodes", "create_entities"]
-base = ["update_observation", "linea_de_tiempo", "manage_goals"]
+base = ["update_observation", "linea_de_tiempo", "manage_goals", "list_suggestions"]
 
 [servidores.notas]
 comando = ["python", "-m", "tama.mcp_servers.notas"]
