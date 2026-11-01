@@ -346,7 +346,7 @@ def main() -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("eval", choices=["reflexion", "diario", "objetivos", "cancelacion"])
-    parser.add_argument("--capas", nargs="+", default=["nube", "claude", "local"])
+    parser.add_argument("--capas", nargs="+", default=["nube"])
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
 
