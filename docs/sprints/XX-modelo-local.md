@@ -19,6 +19,7 @@ Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10
 11. Rendimiento: primer token, tokens por segundo, RAM y tiempo de carga en CPU.
 
 ## Reglas
+- Hasta este sprint, las evals de cierre van solo en la nube, con reflexión y diario en local y `python -m evals.smoke` sin red. Aquí se usa `--local-completo`.
 - Los modelos se descargan solo con aprobación de Renzo y al instalar, nunca en ejecución.
 - Las evals no usan la capa de Claude.
 - El resultado queda en un ADR, junto a `docs/adr/0001-modelo-local.md`.

@@ -251,9 +251,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     # Por defecto solo la nube: Claude cuida su cupo y el modelo local se mide en el último sprint.
     parser.add_argument("--capas", nargs="+", default=["nube"])
+    parser.add_argument("--local-completo", action="store_true", help="mide también la capa local")
     parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
+    if args.local_completo:
+        args.capas = [*args.capas, "local"]
 
     out = EVALS_DIR / "herramientas-results.json"
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
