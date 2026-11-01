@@ -6,17 +6,17 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 | Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
 |---|---:|---:|---:|---:|---:|---:|
-| nube | 9/10 | 3/3 | 9 | 1 | 0 | 2081 |
+| nube | 9/10 | 3/3 | 9 | 1 | 0 | 2086 |
 | claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
-| local | 8/10 | 3/3 | 13 | 0 | 0 | 2880 |
-| local (sin red) | 8/10 | 3/3 | 9 | 0 | 0 | 2693 |
+| local | 8/10 | 3/3 | 14 | 0 | 0 | 2892 |
+| local (sin red) | 7/10 | 3/3 | 10 | 0 | 0 | 2721 |
 
 ## Historial médico
 
 | Capa | Completo | En orden |
 |---|---|---|
 | nube | ok | ok |
-| local | FALLA | FALLA |
+| local | ok | ok |
 | local (sin red) | ok | ok |
 
 ## Corrección de un dato
@@ -25,14 +25,15 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 |---|---|---|---|---|---|
 | nube | ok | ok | ok | ok | ok |
 | claude | ok | ok | FALLA | ok | FALLA |
-| local | ok | FALLA | ok | FALLA | FALLA |
-| local (sin red) | ok | FALLA | ok | FALLA | ok |
+| local | ok | FALLA | ok | FALLA | ok |
+| local (sin red) | ok | FALLA | ok | FALLA | FALLA |
 
 ## Fallos
 
-- `nube` · ¿Qué hierba no me gusta?: No tengo registro de ninguna hierba que no te guste. Solo recuerdo que prefieres el té verde sobre el café en las tardes
+- `nube` · ¿Qué hierba no me gusta?: No tengo registro de ninguna hierba que no te guste. Solo recuerdo que prefieres el té verde antes que el café en las ta
 - `nube` · duplicada: mama de renzo / renzo
-- `local` · ¿Qué hierba no me gusta?: No tengo datos sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿O te refieres a algo diferente?
-- `local` · ¿Cuál es mi proyecto de este trimestre?: Tama: No tengo el listado completo de proyectos de este trimestre. Si me dices el nombre de un proyecto o un tema, puedo
-- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo información sobre tus gustos en hierbas. ¿Puedes decirme más? Por ejemplo, ¿cuál es la hierba que no te gusta y
-- `local (sin red)` · ¿Cómo se llama el proyecto en que trabajo con Tomás?: No tengo el nombre del proyecto en que Renzo trabaja con Tomás. Puedo buscarlo si me lo pides.
+- `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
+- `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 
+- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre tus gustos en hierbas. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba en cocina o
+- `local (sin red)` · ¿Qué libro estoy leyendo?: No tengo información sobre qué libro estás leyendo. Si lo tienes en mente, cuéntamelo y te lo anoto.
+- `local (sin red)` · ¿Cuál es mi proyecto de este trimestre?: No tengo datos sobre los proyectos de este trimestre de Renzo. Si me dices más, puedo ayudarte a organizarlo.
