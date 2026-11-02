@@ -8,7 +8,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from tama import chat, cli
 from tama.cascade import Answered, Cascade, Layer
 from tama.events import EventStore
-from tama.mcp_servers import memoria
+from tama.mcp_servers import memoria, notas
 from tama.providers import Done, Text, ToolCall
 from tests.fakes import FakeConnectivity
 
@@ -381,6 +381,12 @@ def test_olvidar_only_messages(monkeypatch):
 )
 def test_confirmation_is_readable(name, args, expected):
     assert cli.confirm_question(ToolCall(name, args, "c")) == expected
+
+
+def test_confirmation_names_the_note(tmp_path):
+    notas.create_note("Lista de compras", "Pan")
+    question = cli.confirm_question(ToolCall("delete_note", {"note_id": 1}, "c"))
+    assert question == "¿Borro la nota «Lista de compras»?"
 
 
 def test_emojis_are_removed():

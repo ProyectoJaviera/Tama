@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from tama import agent, history
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
+from tama.mcp_servers import notas
 from tama.providers import Error, Message, ToolCall
 
 EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
@@ -24,6 +25,12 @@ def short(value: object, limit: int = 60) -> str:
     return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
+def note_name(note_id: object) -> str:
+    """El título de la nota: su número no le dice nada a Renzo."""
+    title = notas.title_of(note_id)
+    return f"«{short(title)}»" if title else str(note_id)
+
+
 def confirm_question(call: ToolCall) -> str:
     """La pregunta en palabras de Renzo, sin el JSON de la herramienta."""
     args = call.arguments
@@ -31,9 +38,9 @@ def confirm_question(call: ToolCall) -> str:
         items = [o for d in args.get("deletions", []) for o in d.get("observations", [])]
         return "¿Borro de la memoria: " + ", ".join(f"«{short(i)}»" for i in items) + "?"
     if call.name == "delete_note":
-        return f"¿Borro la nota {args.get('note_id')}?"
+        return f"¿Borro la nota {note_name(args.get('note_id'))}?"
     if call.name == "update_note":
-        return f"¿Cambio la nota {args.get('note_id')}?"
+        return f"¿Cambio la nota {note_name(args.get('note_id'))}?"
     if call.name == "overwrite_file":
         return f"¿Reemplazo todo el contenido de {args.get('path')}?"
     if call.name == "discard_goal":
