@@ -1,11 +1,13 @@
 # Tama en un contenedor; Ollama corre nativo en el host (Windows, Linux o macOS).
 #   docker compose build              # una vez, con internet
 #   docker compose run --rm tama "hola"
-#   docker compose up -d && docker attach tama   # chat interactivo
+#   docker compose up -d                 # web en http://127.0.0.1:8765
+#   docker compose --profile ntfy up -d  # además, avisos al celular por el WiFi
 
 services:
   tama:
     build: .
+    command: ["web"]
     image: tama:0.1.0
     container_name: tama
     # Claves y ajustes desde .env (opcional: sin él, Tama responde solo en local).
@@ -40,6 +42,18 @@ services:
       start_period: 10s
       retries: 3
 
+  # Avisos al celular sin depender de internet: el teléfono se suscribe por el mismo WiFi.
+  ntfy:
+    profiles: ["ntfy"]
+    image: binwiederhier/ntfy:v2.11.0
+    command: ["serve"]
+    ports:
+      - "${TAMA_NTFY_PORT:-8090}:80"
+    volumes:
+      - tama-ntfy:/var/cache/ntfy
+    restart: unless-stopped
+
 volumes:
+  tama-ntfy:
   tama-data:
   tama-memoria:

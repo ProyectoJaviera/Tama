@@ -309,3 +309,29 @@ def test_failed_start_is_shown(capsys):
     starting.thread.join(5)
     response = TestClient(starting, base_url="http://127.0.0.1").get("/")
     assert "sin Ollama &lt;b&gt;" in response.text
+
+
+def test_notices_panel_and_actions(web):
+    client, _ = web()
+    now = memoria.local_now()
+    notice = memoria.save_notice(now, "recordatorio", "r:1", "<b>Pan</b>", "pedido")
+    text = client.get("/avisos").text
+    assert "&lt;b&gt;Pan" in text and "<b>Pan" not in text
+    assert client.get("/avisos/pendientes").json() == {"pendientes": 1}
+    client.post(f"/avisos/{notice['id']}/listo")
+    assert client.get("/avisos/pendientes").json() == {"pendientes": 0}
+    assert client.post(f"/avisos/{notice['id']}/nada").status_code == 404
+
+
+def test_reminder_commands_in_chat(web):
+    client, _ = web()
+    assert "No hay" in client.post("/chat", data={"text": "/recordatorios"}).json()["reply"]
+    assert "agendado" in client.post("/chat", data={"text": "/resumen"}).json()["reply"]
+    assert "Silencio" in client.post("/chat", data={"text": "/silencio 1"}).json()["reply"]
+    assert "activos" in client.post("/chat", data={"text": "/silencio no"}).json()["reply"]
+
+
+def test_rename_card_from_the_panel(web):
+    client, _ = web()
+    card = seed()
+    assert "Anita" in client.post(f"/memoria/ficha/{card}/renombrar", data={"nombre": "Anita"}).text

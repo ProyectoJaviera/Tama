@@ -19,9 +19,13 @@ herramientas = [
     "search_nodes", "create_entities", "add_observations", "linea_de_tiempo",
     "update_observation", "delete_observations", "recent_events", "proponer_cambio_perfil",
     "manage_goals", "discard_goal", "list_suggestions",
+    "crear_recordatorio", "list_reminders", "update_reminder", "cancel_reminder", "rename_entity",
 ]
 siempre = ["search_nodes", "create_entities"]
-base = ["update_observation", "linea_de_tiempo", "manage_goals", "list_suggestions"]
+base = [
+    "update_observation", "linea_de_tiempo", "manage_goals", "list_suggestions",
+    "crear_recordatorio",
+]
 
 [servidores.notas]
 comando = ["python", "-m", "tama.mcp_servers.notas"]

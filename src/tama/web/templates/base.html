@@ -15,8 +15,11 @@
     <a href="/objetivos">Objetivos</a>
     <a href="/diario">Diario</a>
     <a href="/estado">Estado</a>
+    <a href="/avisos" id="campana" aria-label="Avisos">Avisos <span id="avisos-n"></span></a>
   </header>
   <main>{% block body %}{% endblock %}</main>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="/static/avisos.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

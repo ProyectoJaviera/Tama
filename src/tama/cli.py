@@ -20,6 +20,7 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
+COMMANDS_ONLY = {"/recordatorios", "/avisos", "/silencio", "/resumen", "/ayuda", "/estado"}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -249,6 +250,10 @@ def chat_loop(
     if brain.reflector is not None:
         brain.reflector.close_days()
         brain.reflector.start()
+    inbox: list[dict] = []
+    if brain.proactive is not None:
+        brain.proactive.listeners.append(inbox.append)
+        brain.proactive.start()
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(
@@ -257,6 +262,9 @@ def chat_loop(
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)
     while True:
+        # Entre turnos: nunca se interrumpe a Renzo mientras escribe.
+        while inbox:
+            print(dim(f"· Aviso: {inbox.pop(0)['text']}"))
         try:
             text = input("> ").strip()
         except EOFError:
@@ -264,6 +272,8 @@ def chat_loop(
             return
         if brain.reflector is not None:
             brain.reflector.activity()
+        if brain.proactive is not None:
+            brain.proactive.activity()
         if text.lower() in EXIT_COMMANDS:
             return
         if text.lower() == "/proveedor":
@@ -284,10 +294,15 @@ def chat_loop(
         if text.lower().startswith("/diario"):
             show_diary(brain, text[len("/diario") :].strip())
             continue
+        if text.lower().split(" ")[0] in COMMANDS_ONLY:
+            print(dim(commands.run(brain, text, brain.memory_dir)))
+            continue
         if text:
             turn(brain, messages, text, max_tokens, max_tools)
         if brain.reflector is not None:
             brain.reflector.activity()
+        if brain.proactive is not None:
+            brain.proactive.activity()
 
 
 def main(

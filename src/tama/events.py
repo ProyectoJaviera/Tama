@@ -60,6 +60,33 @@ MIGRATIONS = [
         INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
     END;
     """,
+    # Igual que la anterior: un tipo nuevo exige rehacer la tabla.
+    """
+    CREATE TABLE events_new (
+        id INTEGER PRIMARY KEY,
+        ts TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (
+            type IN ('user_msg', 'assistant_msg', 'provider_switch', 'error', 'reflection',
+                     'proactive')
+        ),
+        provider TEXT,
+        model TEXT,
+        tokens_in INTEGER,
+        tokens_out INTEGER,
+        ttft_ms INTEGER,
+        total_ms INTEGER,
+        content TEXT
+    );
+    INSERT INTO events_new SELECT * FROM events;
+    DROP TABLE events;
+    ALTER TABLE events_new RENAME TO events;
+    CREATE INDEX events_provider_ts ON events (provider, ts);
+    CREATE TRIGGER events_ai AFTER INSERT ON events
+        WHEN new.type IN ('user_msg', 'assistant_msg') AND new.content IS NOT NULL
+    BEGIN
+        INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
+    END;
+    """,
 ]
 
 

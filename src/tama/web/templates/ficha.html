@@ -15,6 +15,10 @@
   <p class="muted">Sin datos vigentes.</p>
   {% endfor %}
   {% if not card.owner %}
+  <form class="row" hx-post="/memoria/ficha/{{ card.id }}/renombrar" hx-target="#ficha">
+    <input name="nombre" value="{{ card.name }}" aria-label="Nombre de la ficha">
+    <button type="submit" class="plain">Renombrar</button>
+  </form>
   <form class="row" hx-post="/memoria/ficha/{{ card.id }}/fusionar" hx-target="#ficha"
     hx-confirm="¿Fusiono la ficha elegida en {{ card.name }}?">
     <select name="con" aria-label="Fusionar con">

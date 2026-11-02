@@ -1,0 +1,18 @@
+<h2>Recordatorios</h2>
+<pre class="timeline">{{ reminders }}</pre>
+<h2>Avisos</h2>
+{% for n in notices %}
+<div class="card">
+  <div class="muted">{{ n.shown_at[:16]|replace("T", " ") }} · {{ n.kind }} · {{ n.state }}{% if n.value %} · {{ n.value }}{% endif %}</div>
+  <div>{{ n.text }}</div>
+  <div class="row">
+    <button class="plain" hx-post="/avisos/{{ n.id }}/listo" hx-target="#avisos">Listo</button>
+    <button class="plain" hx-post="/avisos/{{ n.id }}/posponer" hx-target="#avisos">Posponer 1 h</button>
+    <button class="plain" hx-post="/avisos/{{ n.id }}/silenciar" hx-target="#avisos" hx-confirm="¿No te lo recuerdo más?">No me recuerdes esto</button>
+    <button class="plain" hx-post="/avisos/{{ n.id }}/util" hx-target="#avisos">Útil</button>
+    <button class="plain" hx-post="/avisos/{{ n.id }}/molesto" hx-target="#avisos">Molesto</button>
+  </div>
+</div>
+{% else %}
+<p class="muted">Todavía no hay avisos.</p>
+{% endfor %}

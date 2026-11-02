@@ -15,6 +15,7 @@ from difflib import SequenceMatcher, get_close_matches
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -130,7 +131,31 @@ CREATE TABLE reviewed_entities (
 CORRECTION_REASON = """
 ALTER TABLE observations ADD COLUMN reason TEXT;
 """
-MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS, CORRECTION_REASON]
+PROACTIVE = """
+CREATE TABLE reminders (
+    id INTEGER PRIMARY KEY,
+    text TEXT NOT NULL,
+    due_at TEXT NOT NULL,
+    urgent INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pendiente',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE notices (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL,
+    key TEXT NOT NULL,
+    text TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    shown_at TEXT NOT NULL,
+    state TEXT NOT NULL DEFAULT 'mostrado',
+    snooze_until TEXT,
+    value TEXT,
+    repeats INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE silenced (key TEXT PRIMARY KEY);
+CREATE TABLE silence_until (until_at TEXT NOT NULL);
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS, CORRECTION_REASON, PROACTIVE]
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 NO_GOALS = "No hay objetivos en ese estado."
@@ -146,6 +171,12 @@ MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
 MAX_HISTORY = 3
+GOAL_SOON_DAYS = 7
+WEEKDAYS = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
+RELATIVE_TIME = re.compile(
+    r"\ben (?:un|una|(\d+|dos|tres|cuatro|cinco|seis|siete)) ?(min\w*|hora\w*|dia\w*|semana\w*)"
+)
+HOUR = re.compile(r"\ba las? (\d{1,2})(?:[:.](\d{2}))?(?: ?(am|pm|de la tarde|de la noche))?")
 MAX_DETAIL = 200
 SOON_DAYS = 60
 # Lo de salud nunca se reemplaza: es la historia médica de Renzo.
@@ -1769,6 +1800,353 @@ def pending_list() -> list[str]:
             "SELECT text FROM suggestions WHERE mentioned_at IS NULL ORDER BY id"
         ).fetchall()
     return [r["text"] for r in rows]
+
+
+# --- Motor proactivo. El modelo crea y cambia recordatorios; el resto es de tama.proactive. ---
+
+
+def local_now() -> datetime:
+    return datetime.now(ZoneInfo(os.environ.get("TAMA_TIMEZONE", "America/Santiago")))
+
+
+def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
+    """Fecha y hora de un recordatorio: "en 2 minutos", "mañana a las 9", "el viernes a las 10"."""
+    now = now or local_now()
+    plain = normalize(text)
+    try:
+        moment = datetime.fromisoformat(text.strip())
+        return moment if moment.tzinfo else moment.replace(tzinfo=now.tzinfo)
+    except ValueError:
+        pass
+    relative = RELATIVE_TIME.search(plain)
+    if relative:
+        amount = relative.group(1) or "1"
+        count = int(amount) if amount.isdigit() else NUMBERS[amount]
+        unit = relative.group(2)
+        units = {"min": "minutes", "hor": "hours", "dia": "days", "sem": "weeks"}
+        return now + timedelta(**{units[unit[:3]]: count})
+    clock = HOUR.search(plain)
+    hour, minute = (int(clock.group(1)), int(clock.group(2) or 0)) if clock else (9, 0)
+    if clock and clock.group(3) in ("pm", "de la tarde", "de la noche") and hour < 12:
+        hour += 12
+    day = now.date()
+    for number, name in enumerate(WEEKDAYS):
+        if re.search(rf"\b{name}\b", plain):
+            day += timedelta(days=(number - day.weekday() - 1) % 7 + 1)
+            break
+    else:
+        _, found = resolve_dates(plain.replace("manana", "mañana"), day)
+        if found:
+            day = date.fromisoformat(found)
+        elif not clock:
+            return None
+    moment = now.replace(
+        year=day.year, month=day.month, day=day.day, hour=hour, minute=minute, second=0
+    )
+    moment = moment.replace(microsecond=0)
+    return moment + timedelta(days=1) if moment <= now else moment
+
+
+@server.tool(
+    description=(
+        "Agenda un recordatorio: Tama avisará sola en ese momento. Lleva texto y cuando (como lo "
+        "dijo Renzo: 'en 2 minutos', 'mañana a las 9', 'el viernes a las 18'). urgente=true solo "
+        "si Renzo lo pide: avisa también de noche."
+    )
+)
+def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:
+    moment = resolve_when(cuando)
+    if moment is None:
+        raise ToolError(f"No entendí la fecha «{cuando}». Pídele a Renzo el día y la hora.")
+    with connect() as db:
+        number = db.execute(
+            "INSERT INTO reminders (text, due_at, urgent, created_at) VALUES (?, ?, ?, ?)",
+            (texto.strip(), moment.isoformat(timespec="seconds"), int(urgente), now()),
+        ).lastrowid
+    return f"Recordatorio #{number} para el {moment.strftime('%Y-%m-%d %H:%M')}: {texto.strip()}"
+
+
+@server.tool(
+    description="Muestra los recordatorios pendientes.",
+    annotations=ToolAnnotations(read_only_hint=True),
+)
+def list_reminders() -> str:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT * FROM reminders WHERE status = 'pendiente' ORDER BY due_at"
+        ).fetchall()
+    if not rows:
+        return "No hay recordatorios pendientes."
+    return "\n".join(
+        f"#{r['id']} {r['due_at'][:16].replace('T', ' ')}: {r['text']}"
+        + (" (urgente)" if r["urgent"] else "")
+        for r in rows
+    )
+
+
+@server.tool(description="Cambia el texto o la fecha de un recordatorio, indicado por su número.")
+def update_reminder(numero: int, texto: str = "", cuando: str = "") -> str:
+    moment = resolve_when(cuando) if cuando else None
+    if cuando and moment is None:
+        raise ToolError(f"No entendí la fecha «{cuando}».")
+    with connect() as db:
+        row = db.execute(
+            "SELECT * FROM reminders WHERE id = ? AND status = 'pendiente'", (numero,)
+        ).fetchone()
+        if row is None:
+            raise ToolError(f"No hay un recordatorio pendiente #{numero}.")
+        db.execute(
+            "UPDATE reminders SET text = ?, due_at = ? WHERE id = ?",
+            (
+                texto.strip() or row["text"],
+                moment.isoformat(timespec="seconds") if moment else row["due_at"],
+                numero,
+            ),
+        )
+    return f"Recordatorio #{numero} actualizado."
+
+
+@server.tool(
+    description="Cancela un recordatorio, indicado por su número.",
+    annotations=ToolAnnotations(destructive_hint=True),
+)
+def cancel_reminder(numero: int) -> str:
+    with connect() as db:
+        changed = db.execute(
+            "UPDATE reminders SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'",
+            (numero,),
+        ).rowcount
+    return f"Recordatorio #{numero} cancelado." if changed else "No encontré ese recordatorio."
+
+
+@server.tool(
+    description=(
+        "Cambia el nombre de una ficha cuando Renzo corrige cómo se llama algo (Rocky es Toby). "
+        "El nombre anterior queda como alias."
+    )
+)
+def rename_entity(actual: str, nuevo: str) -> str:
+    return (
+        "Listo." if rename_card(actual, nuevo) else "No encontré esa ficha o el nombre ya existe."
+    )
+
+
+def rename_card(current: str, new: str) -> bool:
+    with connect() as db:
+        row = find_entity(db, current)
+        norm = normalize(new)
+        taken = find_entity(db, new)
+        if row is None or not norm or row["norm"] == OWNER:
+            return False
+        if taken is not None and taken["id"] != row["id"]:
+            return False
+        db.execute("DELETE FROM aliases WHERE norm = ?", (norm,))
+        db.execute(
+            "INSERT OR IGNORE INTO aliases (norm, entity_id) VALUES (?, ?)",
+            (row["norm"], row["id"]),
+        )
+        db.execute(
+            "UPDATE entities SET name = ?, norm = ? WHERE id = ?", (new.strip(), norm, row["id"])
+        )
+        reindex(db, row["id"])
+    return True
+
+
+def due_reminders(moment: datetime) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT * FROM reminders WHERE status = 'pendiente'").fetchall()
+    return [dict(r) for r in rows if datetime.fromisoformat(r["due_at"]) <= moment]
+
+
+def finish_reminder(reminder_id: int) -> None:
+    with connect() as db:
+        db.execute("UPDATE reminders SET status = 'avisado' WHERE id = ?", (reminder_id,))
+
+
+def reminders_on(day: date) -> list[str]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT text, due_at FROM reminders WHERE status = 'pendiente' AND due_at LIKE ?"
+            " ORDER BY due_at",
+            (f"{day.isoformat()}%",),
+        ).fetchall()
+    return [f"{r['due_at'][11:16]} {r['text']}" for r in rows]
+
+
+def stale_goals(day: date, stale_days: int) -> list[dict[str, Any]]:
+    """Objetivos activos sin movimiento hace `stale_days` días o más."""
+    with connect() as db:
+        rows = db.execute("SELECT * FROM goals WHERE status = 'activo' ORDER BY id").fetchall()
+    found = []
+    for row in rows:
+        days = (day - datetime.fromisoformat(row["updated_at"]).date()).days
+        if days >= stale_days:
+            found.append({"id": row["id"], "title": row["title"], "days": days})
+    return found
+
+
+def goal_notes(day: date, stale_days: int) -> list[str]:
+    """Objetivos con fecha cercana o sin avance, para el resumen matutino."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT title, target_date FROM goals WHERE status = 'activo' AND target_date != ''"
+            " ORDER BY target_date"
+        ).fetchall()
+    notes = []
+    for row in rows:
+        left = (date.fromisoformat(row["target_date"]) - day).days
+        if 0 <= left <= GOAL_SOON_DAYS:
+            notes.append(f"Objetivo: {row['title']}, quedan {left} días")
+    notes += [f"Objetivo sin avance: {g['title']}" for g in stale_goals(day, stale_days)]
+    return notes
+
+
+def save_notice(
+    moment: datetime, kind: str, key: str, text: str, reason: str, notice_id: int | None = None
+) -> dict[str, Any]:
+    with connect() as db:
+        stamp = moment.isoformat(timespec="seconds")
+        if notice_id is None:
+            notice_id = db.execute(
+                "INSERT INTO notices (kind, key, text, reason, shown_at) VALUES (?, ?, ?, ?, ?)",
+                (kind, key, text, reason, stamp),
+            ).lastrowid
+        else:
+            db.execute(
+                "UPDATE notices SET state = 'mostrado', shown_at = ?, snooze_until = NULL,"
+                " repeats = repeats + 1 WHERE id = ?",
+                (stamp, notice_id),
+            )
+        row = db.execute("SELECT * FROM notices WHERE id = ?", (notice_id,)).fetchone()
+        return dict(row)
+
+
+def list_notices(limit: int = 30) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT * FROM notices ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def notice_count() -> int:
+    with connect() as db:
+        query = "SELECT COUNT(*) FROM notices WHERE state = 'mostrado'"
+        return db.execute(query).fetchone()[0]
+
+
+def notice_today(kind: str, day: date) -> bool:
+    with connect() as db:
+        row = db.execute(
+            "SELECT 1 FROM notices WHERE kind = ? AND shown_at LIKE ?",
+            (kind, f"{day.isoformat()}%"),
+        ).fetchone()
+    return row is not None
+
+
+def unrequested_today(day: date) -> int:
+    with connect() as db:
+        return db.execute(
+            "SELECT COUNT(*) FROM notices WHERE kind != 'recordatorio' AND shown_at LIKE ?",
+            (f"{day.isoformat()}%",),
+        ).fetchone()[0]
+
+
+def asked_since(key: str, moment: datetime) -> bool:
+    with connect() as db:
+        row = db.execute(
+            "SELECT 1 FROM notices WHERE key = ? AND shown_at >= ?",
+            (key, moment.isoformat(timespec="seconds")),
+        ).fetchone()
+    return row is not None
+
+
+def age_notices(moment: datetime) -> None:
+    """Lo que se mostró hace tiempo sin respuesta cuenta como ignorado."""
+    with connect() as db:
+        db.execute(
+            "UPDATE notices SET state = 'ignorado' WHERE state = 'mostrado' AND shown_at < ?",
+            (moment.isoformat(timespec="seconds"),),
+        )
+
+
+def ignored_once() -> list[dict[str, Any]]:
+    """Recordatorios ignorados que aún no se repiten: la repetición es una sola."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT * FROM notices WHERE state = 'ignorado' AND repeats = 0"
+            " AND kind = 'recordatorio'"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def snoozed_notices(moment: datetime) -> list[dict[str, Any]]:
+    with connect() as db:
+        rows = db.execute("SELECT * FROM notices WHERE state = 'pospuesto'").fetchall()
+    return [dict(r) for r in rows if datetime.fromisoformat(r["snooze_until"]) <= moment]
+
+
+def snooze_notice(notice_id: int, until: datetime) -> None:
+    with connect() as db:
+        db.execute(
+            "UPDATE notices SET state = 'pospuesto', snooze_until = ? WHERE id = ?",
+            (until.isoformat(timespec="seconds"), notice_id),
+        )
+
+
+def close_notice(notice_id: int) -> None:
+    with connect() as db:
+        db.execute("UPDATE notices SET state = 'listo' WHERE id = ?", (notice_id,))
+
+
+def silence_notice(notice_id: int) -> None:
+    with connect() as db:
+        row = db.execute("SELECT key FROM notices WHERE id = ?", (notice_id,)).fetchone()
+        if row:
+            db.execute("INSERT OR IGNORE INTO silenced (key) VALUES (?)", (row["key"],))
+            db.execute("UPDATE notices SET state = 'silenciado' WHERE id = ?", (notice_id,))
+
+
+def is_silenced(key: str) -> bool:
+    with connect() as db:
+        return db.execute("SELECT 1 FROM silenced WHERE key = ?", (key,)).fetchone() is not None
+
+
+def rate_notice(notice_id: int, value: str) -> None:
+    with connect() as db:
+        db.execute("UPDATE notices SET value = ? WHERE id = ?", (value, notice_id))
+
+
+def weekly_report(day: date) -> dict[str, int]:
+    """Bitácora de valor de los últimos 7 días."""
+    since = (day - timedelta(days=7)).isoformat()
+    with connect() as db:
+        rows = db.execute(
+            "SELECT state, value FROM notices WHERE shown_at >= ?", (since,)
+        ).fetchall()
+    return {
+        "avisos": len(rows),
+        "útiles": sum(r["value"] == "util" for r in rows),
+        "molestos": sum(r["value"] == "molesto" for r in rows),
+        "ignorados": sum(r["state"] == "ignorado" for r in rows),
+    }
+
+
+def mute_until(moment: datetime | None) -> None:
+    with connect() as db:
+        db.execute("DELETE FROM silence_until")
+        if moment is not None:
+            stamp = moment.isoformat(timespec="seconds")
+            db.execute("INSERT INTO silence_until (until_at) VALUES (?)", (stamp,))
+
+
+def muted_until(moment: datetime) -> bool:
+    with connect() as db:
+        row = db.execute("SELECT until_at FROM silence_until").fetchone()
+    return row is not None and datetime.fromisoformat(row["until_at"]) > moment
+
+
+def take_suggestion() -> str | None:
+    text = next_suggestion()
+    return None if text == NO_SUGGESTION else text
 
 
 def export_graph(target: Path) -> int:

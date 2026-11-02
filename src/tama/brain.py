@@ -12,6 +12,7 @@ from tama.mcp_hub import McpHub, load_config, server_env
 from tama.memory import recall_context, session_prompt
 from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
+from tama.proactive import Engine, Rules
 from tama.providers.claude import ClaudeProvider
 from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
 from tama.reflection import Reflector, Thinker, close_days, enough_ram, reflect
@@ -29,6 +30,7 @@ class Brain:
     tools: McpHub | None = None
     focus: ToolFocus = field(default_factory=ToolFocus)
     reflector: Reflector | None = None
+    proactive: Engine | None = None
     thinker: Thinker | None = None
     memory_dir: Path = Path("memoria")
     _stop: threading.Event = field(default_factory=threading.Event)
@@ -48,6 +50,8 @@ class Brain:
     def close(self) -> None:
         if self.reflector is not None:
             self.reflector.close()
+        if self.proactive is not None:
+            self.proactive.close()
         self._stop.set()
         if self.tools is not None:
             self.tools.close()
@@ -133,7 +137,27 @@ def build(
         brain.thinker = thinker(settings, local, threading.Event())
     if tools is not None and settings.reflection:
         brain.reflector = build_reflector(settings, local)
+    if tools is not None and settings.proactive:
+        brain.proactive = build_proactive(settings)
     return brain
+
+
+def build_proactive(settings: Settings) -> Engine:
+    os.environ["TAMA_DATA_DIR"] = str(settings.data_dir.resolve())
+    os.environ["TAMA_TIMEZONE"] = settings.timezone
+    rules = Rules(
+        settings.quiet_start,
+        settings.quiet_end,
+        settings.daily_cap,
+        settings.morning_hour,
+        settings.stale_goal_days,
+    )
+    return Engine(
+        EventStore(settings.events_db),
+        rules,
+        ntfy_url=settings.ntfy_url,
+        ntfy_topic=settings.ntfy_topic,
+    )
 
 
 def thinker(settings: Settings, client: OllamaClient, cancel: threading.Event) -> Thinker:

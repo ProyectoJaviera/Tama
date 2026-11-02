@@ -28,6 +28,19 @@ Tama avisa, recuerda y sugiere por iniciativa propia en buen momento, sin molest
 4. Comandos /recordatorios, /avisos, /silencio y /resumen (dispara el resumen matutino a mano), y panel Avisos en la web.
 5. Bitácora de valor: marcar útil, molesto o ignorado; /avisos resumen semanal.
 
+## Pasos de la demo
+1. Desde `Tama-s6`, con Ollama abierto: `uv run tama web`, y abre http://127.0.0.1:8765.
+2. Escribe "recuérdame en 2 minutos sacar la ropa" y espera sin escribir: debe aparecer el aviso y el número en Avisos.
+3. En Avisos, prueba Posponer, Listo, Útil y No me recuerdes esto.
+4. Escribe `/resumen`, `/recordatorios` y `/avisos resumen`.
+5. Pídele cancelar un recordatorio: debe confirmar.
+6. Renombra una ficha desde Memoria (Rocky → Toby), o díselo a Tama.
+7. Opcional: ntfy en el celular, según el README.
+
+## Notas de implementación
+- El resumen matutino no usa el modelo: arma sus líneas con lo guardado, así que no puede inventar.
+- Los recordatorios entienden fechas con reglas fijas; si no entienden, le piden a Tama que pregunte.
+
 ## Fuera de alcance
 Voz, remoto/PWA y clima o noticias.
 

@@ -29,6 +29,7 @@ from tama.config import Settings
 from tama.mcp_servers import memoria
 from tama.memory import MAX_PROFILE_CHARS, session_prompt
 from tama.ollama import OllamaError
+from tama.proactive import act_on
 from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
@@ -271,6 +272,13 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         memoria.forget_memory([], [fact])
         return show_card(request, entity_id)
 
+    @app.post("/memoria/ficha/{entity_id}/renombrar", dependencies=[Depends(check_csrf)])
+    def rename(request: Request, entity_id: int, nombre: str = Form(...)) -> HTMLResponse:
+        found = memoria.card(entity_id)
+        if found is None or not memoria.rename_card(found["name"], nombre):
+            raise HTTPException(status_code=409, detail="No se pudo renombrar")
+        return show_card(request, entity_id)
+
     @app.post("/memoria/ficha/{entity_id}/fusionar", dependencies=[Depends(check_csrf)])
     def merge(request: Request, entity_id: int, con: int = Form(...)) -> HTMLResponse:
         cards = {c["id"]: c["name"] for c in memoria.list_cards()}
@@ -327,6 +335,64 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     def discard(request: Request, goal: int) -> HTMLResponse:
         memoria.discard_goal(str(goal))
         return goals_list(request)
+
+    # --- avisos ----------------------------------------------------------------------------
+
+    watchers: list[queue.Queue] = []
+    if brain.proactive is not None:
+        brain.proactive.busy = lambda: session._busy.locked()
+
+        def broadcast(notice: dict) -> None:
+            for watcher in list(watchers):
+                watcher.put(notice)
+
+        brain.proactive.listeners.append(broadcast)
+
+    def watch() -> Iterator[str]:
+        watcher: queue.Queue = queue.Queue()
+        watchers.append(watcher)
+        try:
+            while True:
+                try:
+                    notice = watcher.get(timeout=15)
+                except queue.Empty:
+                    yield ": sigue activo\n\n"
+                    continue
+                yield f"data: {json.dumps(notice, ensure_ascii=False, default=str)}\n\n"
+        finally:
+            watchers.remove(watcher)
+
+    @app.get("/avisos/eventos")
+    def notice_stream() -> StreamingResponse:
+        return StreamingResponse(watch(), media_type="text/event-stream")
+
+    def notices_list(request: Request) -> HTMLResponse:
+        return page(
+            request,
+            "avisos_lista.html",
+            notices=memoria.list_notices(),
+            reminders=memoria.list_reminders(),
+        )
+
+    @app.get("/avisos", response_class=HTMLResponse)
+    def notices(request: Request) -> HTMLResponse:
+        return page(
+            request,
+            "avisos.html",
+            notices=memoria.list_notices(),
+            reminders=memoria.list_reminders(),
+        )
+
+    @app.get("/avisos/pendientes")
+    def pending_notices() -> dict[str, int]:
+        return {"pendientes": memoria.notice_count()}
+
+    @app.post("/avisos/{notice}/{action}", dependencies=[Depends(check_csrf)])
+    def act(request: Request, notice: int, action: str) -> HTMLResponse:
+        if action not in ("listo", "posponer", "silenciar", "util", "molesto"):
+            raise HTTPException(status_code=404)
+        act_on(notice, action, memoria.local_now())
+        return notices_list(request)
 
     # --- diario y estado -------------------------------------------------------------------
 
@@ -415,6 +481,8 @@ def serve(settings: Settings) -> int:
         if brain.reflector is not None:
             brain.reflector.close_days()
             brain.reflector.start()
+        if brain.proactive is not None:
+            brain.proactive.start()
         print("Tama lista.", flush=True)
         return app
 
