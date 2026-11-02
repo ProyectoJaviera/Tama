@@ -17,8 +17,16 @@
     <a href="/estado">Estado</a>
     <a href="/avisos" id="campana" aria-label="Avisos">Avisos <span id="avisos-n"></span></a>
   </header>
+  <div id="banner" hidden aria-live="assertive"></div>
   <main>{% block body %}{% endblock %}</main>
   <div id="toasts" aria-live="polite"></div>
+  <dialog id="ask">
+    <p id="ask-text"></p>
+    <div class="row">
+      <button id="ask-yes" type="button">Sí</button>
+      <button id="ask-no" type="button" class="plain">No</button>
+    </div>
+  </dialog>
   <script src="/static/avisos.js"></script>
   {% block scripts %}{% endblock %}
 </body>

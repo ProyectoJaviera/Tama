@@ -27,13 +27,13 @@
     });
   }
 
-  let pendingForget = false;
+  let pendingCommand = false;
 
   async function answer(value) {
     dialog.close();
-    if (pendingForget) {
-      pendingForget = false;
-      const response = await post("/chat/olvidar", { respuesta: value });
+    if (pendingCommand) {
+      pendingCommand = false;
+      const response = await post("/chat/comando/confirmar", { respuesta: value });
       add("command", (await response.json()).reply);
       button.disabled = false;
       input.focus();
@@ -115,7 +115,7 @@
     if (result.reply !== undefined) {
       add("command", result.reply);
       if (result.confirm) {
-        pendingForget = true;
+        pendingCommand = true;
         question.textContent = result.confirm;
         dialog.showModal();
         return;

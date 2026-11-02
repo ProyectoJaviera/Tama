@@ -275,3 +275,46 @@ def test_renzo_cannot_be_renamed():
 def test_cancel_is_destructive():
     tools = {t.name: t for t in memoria.server._tool_manager.list_tools()}
     assert tools["cancel_reminder"].annotations.destructive_hint
+
+
+def test_urgent_passes_while_renzo_talks():
+    item = engine()
+    remind(WEDNESDAY - timedelta(minutes=1), text="Normal")
+    remind(WEDNESDAY - timedelta(minutes=1), urgent=True, text="Urgente")
+    item.activity()
+    item.tick()
+    assert [n["text"] for n in item.seen] == ["Urgente"]
+
+
+def test_reminder_in_quiet_hours_says_when(monkeypatch):
+    monkeypatch.setattr(memoria, "local_now", lambda: night())
+    text = remind(night() + timedelta(minutes=2))
+    assert "no molestar" in text and "mañana 08:00" in text
+    assert "no molestar" not in remind(night() + timedelta(minutes=2), urgent=True)
+
+
+def test_reminder_state_is_the_same_everywhere(monkeypatch):
+    monkeypatch.setattr(memoria, "local_now", lambda: WEDNESDAY)
+    item = engine()
+    remind(WEDNESDAY - timedelta(minutes=1))
+    remind(WEDNESDAY + timedelta(hours=2), text="Llamar a Ana")
+    item.tick()
+    notice = next(n for n in item.seen if n["kind"] == "recordatorio")
+    act_on(notice["id"], "listo", WEDNESDAY)
+    lines = memoria.list_reminders()
+    assert "hoy 09:59 · Sacar la basura · listo" in lines
+    assert "hoy 12:00 · Llamar a Ana · pendiente" in lines
+    assert memoria.reminders_on(WEDNESDAY.date()) == [
+        "09:59 Sacar la basura (listo)",
+        "12:00 Llamar a Ana (pendiente)",
+    ]
+
+
+def test_snoozed_reminder_shows_until_when(monkeypatch):
+    monkeypatch.setattr(memoria, "local_now", lambda: WEDNESDAY)
+    item = engine()
+    remind(WEDNESDAY - timedelta(minutes=1))
+    item.tick()
+    notice = next(n for n in item.seen if n["kind"] == "recordatorio")
+    act_on(notice["id"], "posponer", WEDNESDAY)
+    assert "pospuesto hasta las 11:00" in memoria.list_reminders()

@@ -9,6 +9,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Sprint 6: motor proactivo con recordatorios, resumen matutino y seguimiento de objetivos, Silencio
   Operativo, campana en la web, avisos en la CLI y ntfy autoalojado opcional. Comandos
   `/recordatorios`, `/avisos`, `/silencio` y `/resumen`. Se pueden renombrar fichas.
+  Tras la demo: franja fija, sonido y notificación del navegador para los recordatorios; los
+  urgentes pasan también mientras conversas; Tama dice la hora real si cae en no molestar; estado
+  de cada recordatorio en `/recordatorios`, `/resumen` y el panel; botones aplicados marcados;
+  comandos guardados en el chat; `/cancelar <n>` con confirmación y alias `/recordatorio`, `/cancela`.
 - Sprint 5: interfaz web local con `tama web` (FastAPI, HTMX y Jinja2, sin nada desde internet):
   chat por SSE, confirmación Sí/No, paneles de perfil, memoria, objetivos, diario y estado. El turno
   se comparte con la CLI en `tama/chat.py`. `/memoria <ficha>` muestra todos sus datos.

@@ -29,17 +29,28 @@ Tama avisa, recuerda y sugiere por iniciativa propia en buen momento, sin molest
 5. Bitácora de valor: marcar útil, molesto o ignorado; /avisos resumen semanal.
 
 ## Pasos de la demo
-1. Desde `Tama-s6`, con Ollama abierto: `uv run tama web`, y abre http://127.0.0.1:8765.
-2. Escribe "recuérdame en 2 minutos sacar la ropa" y espera sin escribir: debe aparecer el aviso y el número en Avisos.
-3. En Avisos, prueba Posponer, Listo, Útil y No me recuerdes esto.
-4. Escribe `/resumen`, `/recordatorios` y `/avisos resumen`.
-5. Pídele cancelar un recordatorio: debe confirmar.
-6. Renombra una ficha desde Memoria (Rocky → Toby), o díselo a Tama.
-7. Opcional: ntfy en el celular, según el README.
+1. Desde `Tama-s6`, con Ollama abierto: `uv run tama web`, y abre http://127.0.0.1:8765. Haz un clic
+   en la página y acepta las notificaciones si Chrome las pide.
+2. Después de las 8:00, escribe "recuérdame en 2 minutos sacar la ropa" y espera. Debe sonar, salir
+   la franja de arriba, la línea en el chat y la notificación de Windows.
+3. Un urgente, a cualquier hora: "aviso urgente en 1 minuto: apagar el horno". La franja queda fija
+   en todas las pestañas hasta que marques Listo o Posponer.
+4. Antes de las 8:00, un recordatorio normal: Tama debe decir que avisará a las 8:00.
+5. En Avisos, prueba Posponer, Listo, Útil y No me recuerdes esto: el botón aplicado queda marcado.
+6. Escribe `/resumen` y `/recordatorios`, cambia de pestaña y vuelve: siguen en el chat, con hora y
+   estado.
+7. `/cancelar <número>`, o pídeselo a Tama: en ambos casos confirma antes.
+8. Opcional: ntfy en el celular, según el README.
+
+Avisos de recordatorio: suenan, quedan en la franja y en el chat, y salen como notificación del
+navegador. Si la pestaña de Tama está cerrada, solo llegan por ntfy.
 
 ## Notas de implementación
 - El resumen matutino no usa el modelo: arma sus líneas con lo guardado, así que no puede inventar.
 - Los recordatorios entienden fechas con reglas fijas; si no entienden, le piden a Tama que pregunte.
+- Un recordatorio que cae en no molestar sale al terminar ese horario, y la herramienta le devuelve
+  a Tama la hora real para que la diga. Los urgentes pasan siempre, también mientras conversas.
+- `/recordatorios`, `/resumen` y el panel Avisos muestran el mismo estado de cada recordatorio.
 
 ## Fuera de alcance
 Voz, remoto/PWA y clima o noticias.

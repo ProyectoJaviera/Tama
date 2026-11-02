@@ -36,10 +36,7 @@ class Rules:
 
 
 def is_quiet(now: datetime, rules: Rules) -> bool:
-    """No molestar: el tramo puede cruzar la medianoche."""
-    if rules.quiet_start > rules.quiet_end:
-        return now.hour >= rules.quiet_start or now.hour < rules.quiet_end
-    return rules.quiet_start <= now.hour < rules.quiet_end
+    return memoria.in_quiet_window(now, rules.quiet_start, rules.quiet_end)
 
 
 def morning_summary(now: datetime, stale_days: int = 14) -> str:
@@ -86,6 +83,8 @@ class Engine:
     def tick(self) -> None:
         now = self.clock()
         if self._occupied(now):
+            # Mientras Renzo conversa solo pasan los urgentes.
+            self._reminders(now, hold=True)
             return
         muted = memoria.muted_until(now)
         quiet = is_quiet(now, self.rules) or muted
@@ -98,9 +97,9 @@ class Engine:
         self._repeat_ignored(now)
         self._unrequested(now)
 
-    def _reminders(self, now: datetime, quiet: bool) -> None:
+    def _reminders(self, now: datetime, hold: bool) -> None:
         for reminder in memoria.due_reminders(now):
-            if quiet and not reminder["urgent"]:
+            if hold and not reminder["urgent"]:
                 continue
             reason = "urgente" if reminder["urgent"] else "pedido por Renzo"
             self.deliver("recordatorio", f"recordatorio:{reminder['id']}", reminder["text"], reason)

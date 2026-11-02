@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block body %}
 <div id="log">
-  {% for type, text in history %}
-  <div class="{{ 'user' if type == 'user_msg' else 'assistant' }}">{{ text }}</div>
+  {% for kind, text in history %}
+  <div class="{{ kind }}">{{ text }}</div>
   {% endfor %}
 </div>
 <form id="chat-form" class="row">

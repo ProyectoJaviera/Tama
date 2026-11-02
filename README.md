@@ -76,8 +76,10 @@ perfil, memoria y objetivos. Solo escucha en esta máquina y no pide nada a inte
 
 Tama recuerda y sugiere por su cuenta, sin molestar: nada de 22:00 a 8:00 (salvo urgentes), hasta 3
 avisos no pedidos al día y nunca mientras conversas. Pídele "recuérdame en 2 minutos..." o usa
-`/recordatorios`, `/avisos`, `/avisos resumen`, `/silencio [horas|no]` y `/resumen`. En la web están
-en la pestaña Avisos.
+`/recordatorios`, `/cancelar <n>`, `/avisos`, `/avisos resumen`, `/silencio [horas|no]` y `/resumen`.
+Si un recordatorio cae en no molestar, Tama te dice a qué hora avisará. En la web, un recordatorio
+suena, sale como notificación del navegador y queda en una franja fija hasta que lo marques en la
+pestaña Avisos o en la misma franja.
 
 Para recibirlos en el celular por el mismo WiFi, sin internet: `docker compose --profile ntfy up -d`,
 define `TAMA_NTFY_URL=http://<IP del PC>:8090` y un `TAMA_NTFY_TOPIC` largo y aleatorio, y suscríbete

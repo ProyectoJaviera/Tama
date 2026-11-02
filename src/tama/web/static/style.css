@@ -7,6 +7,7 @@
   --accent: #2f6b5e;
   --mine: #e4efe9;
   --bad: #a33a2a;
+  --warn: #a8660b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,6 +20,7 @@
     --accent: #7cc0ad;
     --mine: #2c3a34;
     --bad: #e58a78;
+    --warn: #e0b45c;
   }
 }
 
@@ -151,4 +153,46 @@ dialog::backdrop { background: rgb(0 0 0 / 45%); }
   border-radius: 8px;
   text-decoration: none;
   white-space: pre-wrap;
+}
+
+.notice {
+  padding: 8px 12px;
+  border-left: 3px solid var(--warn);
+  background: var(--panel);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+#banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 2px solid var(--warn);
+}
+
+.banner-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0; }
+.banner-row span { flex: 1; min-width: 180px; font-weight: 600; }
+.banner-row.urgent span, .card.urgent .notice-text { color: var(--bad); }
+.card.urgent { border-color: var(--bad); }
+.notice-text { margin: 6px 0; font-weight: 600; }
+
+.badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+
+.badge.state-mostrado, .badge.state-ignorado { color: var(--warn); border-color: var(--warn); }
+.badge.state-listo { color: var(--accent); border-color: var(--accent); }
+
+button.plain.on, button.plain.on:disabled {
+  opacity: 1;
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+  cursor: default;
 }

@@ -1809,6 +1809,35 @@ def local_now() -> datetime:
     return datetime.now(ZoneInfo(os.environ.get("TAMA_TIMEZONE", "America/Santiago")))
 
 
+def quiet_hours() -> tuple[int, int]:
+    """El horario de no molestar; Tama lo pasa al servidor de memoria al iniciarlo."""
+    start = os.environ.get("TAMA_QUIET_START", "22")
+    end = os.environ.get("TAMA_QUIET_END", "8")
+    return int(start), int(end)
+
+
+def in_quiet_window(moment: datetime, start: int, end: int) -> bool:
+    """No molestar: el tramo puede cruzar la medianoche."""
+    if start > end:
+        return moment.hour >= start or moment.hour < end
+    return start <= moment.hour < end
+
+
+def delivery_time(moment: datetime, urgent: bool) -> datetime:
+    """Cuándo sale de verdad un recordatorio: si cae en no molestar, al terminar ese horario."""
+    start, end = quiet_hours()
+    if urgent or not in_quiet_window(moment, start, end):
+        return moment
+    release = moment.replace(hour=end, minute=0, second=0, microsecond=0)
+    return release if release > moment else release + timedelta(days=1)
+
+
+def day_label(moment: datetime) -> str:
+    days = (moment.date() - local_now().date()).days
+    names = {0: "hoy", 1: "mañana", -1: "ayer"}
+    return f"{names.get(days, moment.strftime('%Y-%m-%d'))} {moment.strftime('%H:%M')}"
+
+
 def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
     """Fecha y hora de un recordatorio: "en 2 minutos", "mañana a las 9", "el viernes a las 10"."""
     now = now or local_now()
@@ -1855,7 +1884,7 @@ def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
     description=(
         "Agenda un recordatorio: Tama avisará sola en ese momento. Lleva texto y cuando (como lo "
         "dijo Renzo: 'en 2 minutos', 'mañana a las 9', 'el viernes a las 18'). urgente=true solo "
-        "si Renzo lo pide: avisa también de noche."
+        "si Renzo lo pide: avisa también de noche. Dile a Renzo la hora en que avisará."
     )
 )
 def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:
@@ -1867,25 +1896,77 @@ def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:
             "INSERT INTO reminders (text, due_at, urgent, created_at) VALUES (?, ?, ?, ?)",
             (texto.strip(), moment.isoformat(timespec="seconds"), int(urgente), now()),
         ).lastrowid
-    return f"Recordatorio #{number} para el {moment.strftime('%Y-%m-%d %H:%M')}: {texto.strip()}"
+    sent = delivery_time(moment, urgente)
+    if sent == moment:
+        return f"Recordatorio #{number}: avisaré {day_label(moment)}. {texto.strip()}."
+    start, end = quiet_hours()
+    return (
+        f"Recordatorio #{number}: avisaré {day_label(sent)}, no {day_label(moment)}, porque es"
+        f" horario de no molestar ({start}:00 a {end}:00). {texto.strip()}. Dile a Renzo esa"
+        " hora y que, si lo quiere antes, puede pedirlo urgente."
+    )
+
+
+NOTICE_STATES = {
+    "mostrado": "avisado",
+    "ignorado": "avisado, sin respuesta",
+    "listo": "listo",
+    "pospuesto": "pospuesto",
+    "silenciado": "no se repite",
+}
+
+
+def reminder_rows(day: date) -> list[dict[str, Any]]:
+    """Los pendientes y todos los de `day`, con el estado de su aviso."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT r.*, n.state AS notice_state, n.snooze_until FROM reminders r"
+            " LEFT JOIN notices n ON n.key = 'recordatorio:' || r.id"
+            " WHERE r.status = 'pendiente' OR substr(r.due_at, 1, 10) = ? ORDER BY r.due_at",
+            (day.isoformat(),),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def reminder_state(row: dict[str, Any]) -> str:
+    """El mismo estado en /recordatorios, /resumen y el panel Avisos."""
+    if row["status"] == "pendiente":
+        due = datetime.fromisoformat(row["due_at"])
+        sent = delivery_time(due, bool(row["urgent"]))
+        return "pendiente" if sent == due else f"pendiente, avisaré {day_label(sent)}"
+    if row["status"] != "avisado":
+        return row["status"]
+    state = NOTICE_STATES.get(row["notice_state"], "avisado")
+    if row["notice_state"] == "pospuesto" and row["snooze_until"]:
+        state += f" hasta las {row['snooze_until'][11:16]}"
+    return state
+
+
+def reminder_line(row: dict[str, Any]) -> str:
+    urgent = " (urgente)" if row["urgent"] else ""
+    when = day_label(datetime.fromisoformat(row["due_at"]))
+    return f"#{row['id']} {when} · {row['text']}{urgent} · {reminder_state(row)}"
 
 
 @server.tool(
-    description="Muestra los recordatorios pendientes.",
+    description="Muestra los recordatorios pendientes y los de hoy, con su estado.",
     annotations=ToolAnnotations(read_only_hint=True),
 )
 def list_reminders() -> str:
-    with connect() as db:
-        rows = db.execute(
-            "SELECT * FROM reminders WHERE status = 'pendiente' ORDER BY due_at"
-        ).fetchall()
+    rows = reminder_rows(local_now().date())
     if not rows:
-        return "No hay recordatorios pendientes."
-    return "\n".join(
-        f"#{r['id']} {r['due_at'][:16].replace('T', ' ')}: {r['text']}"
-        + (" (urgente)" if r["urgent"] else "")
-        for r in rows
-    )
+        return "No hay recordatorios pendientes ni para hoy."
+    return "\n".join(reminder_line(r) for r in rows)
+
+
+def pending_reminder(number: int) -> dict[str, Any] | None:
+    with connect() as db:
+        row = db.execute(
+            "SELECT r.*, NULL AS notice_state, NULL AS snooze_until FROM reminders r"
+            " WHERE id = ? AND status = 'pendiente'",
+            (number,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 @server.tool(description="Cambia el texto o la fecha de un recordatorio, indicado por su número.")
@@ -1968,13 +2049,11 @@ def finish_reminder(reminder_id: int) -> None:
 
 
 def reminders_on(day: date) -> list[str]:
-    with connect() as db:
-        rows = db.execute(
-            "SELECT text, due_at FROM reminders WHERE status = 'pendiente' AND due_at LIKE ?"
-            " ORDER BY due_at",
-            (f"{day.isoformat()}%",),
-        ).fetchall()
-    return [f"{r['due_at'][11:16]} {r['text']}" for r in rows]
+    return [
+        f"{r['due_at'][11:16]} {r['text']} ({reminder_state(r)})"
+        for r in reminder_rows(day)
+        if r["due_at"].startswith(day.isoformat()) and r["status"] != "cancelado"
+    ]
 
 
 def stale_goals(day: date, stale_days: int) -> list[dict[str, Any]]:
@@ -2026,9 +2105,24 @@ def save_notice(
 
 
 def list_notices(limit: int = 30) -> list[dict[str, Any]]:
+    """Los últimos avisos; los de un recordatorio traen su hora y si era urgente."""
     with connect() as db:
-        rows = db.execute("SELECT * FROM notices ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+        rows = db.execute(
+            "SELECT n.*, r.due_at, r.urgent FROM notices n"
+            " LEFT JOIN reminders r ON n.key = 'recordatorio:' || r.id"
+            " ORDER BY n.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
     return [dict(r) for r in rows]
+
+
+def open_reminders() -> list[dict[str, Any]]:
+    """Recordatorios ya avisados que Renzo no ha respondido: quedan a la vista."""
+    return [
+        n
+        for n in list_notices(100)
+        if n["kind"] == "recordatorio" and n["state"] in ("mostrado", "ignorado")
+    ]
 
 
 def notice_count() -> int:

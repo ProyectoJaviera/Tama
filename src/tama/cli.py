@@ -13,6 +13,7 @@ from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.chat import confirm_question, short
 from tama.config import Settings, get_settings
+from tama.mcp_servers import memoria
 from tama.mcp_servers.memoria import NO_SUGGESTION
 from tama.memory import session_prompt
 from tama.ollama import OllamaClient, OllamaError
@@ -21,6 +22,18 @@ from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
 COMMANDS_ONLY = {"/recordatorios", "/avisos", "/silencio", "/resumen", "/ayuda", "/estado"}
+
+
+def cancel(args: str) -> None:
+    """`/cancelar <n>`: muestra el recordatorio y lo cancela solo con un sí."""
+    preview, number = commands.cancel_preview(args)
+    print(dim(f"  {preview}"))
+    if number is None:
+        return
+    if not ask_yes("¿Lo cancelo?"):
+        print(dim("  no se canceló"))
+        return
+    print(dim(f"  {memoria.cancel_reminder(number)}"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -274,6 +287,8 @@ def chat_loop(
             brain.reflector.activity()
         if brain.proactive is not None:
             brain.proactive.activity()
+        if text.startswith("/"):
+            text = commands.canonical(text)
         if text.lower() in EXIT_COMMANDS:
             return
         if text.lower() == "/proveedor":
@@ -287,6 +302,9 @@ def chat_loop(
             continue
         if text.lower().startswith("/olvidar"):
             forget(brain, text[len("/olvidar") :].strip())
+            continue
+        if text.startswith("/cancelar"):
+            cancel(text[len("/cancelar") :].strip())
             continue
         if text.lower().startswith("/objetivos"):
             show_goals(brain, text[len("/objetivos") :].strip())

@@ -316,7 +316,9 @@ def _tool_info(config: ServerConfig, tool: Any) -> ToolInfo:
     )
 
 
-def server_env(data_dir: Path, workdir: Path, memory_dir: Path | None = None) -> dict[str, str]:
+def server_env(
+    data_dir: Path, workdir: Path, memory_dir: Path | None = None, **extra: str
+) -> dict[str, str]:
     """Entorno mínimo para los subprocesos (sin la variable SSLKEYLOGFILE de Avast)."""
     keep = ("PATH", "SYSTEMROOT", "TEMP", "TMP", "USERPROFILE", "HOME", "LOCALAPPDATA", "APPDATA")
     env = {k: v for k, v in os.environ.items() if k.upper() in keep}
@@ -328,4 +330,5 @@ def server_env(data_dir: Path, workdir: Path, memory_dir: Path | None = None) ->
     )
     if memory_dir is not None:
         env["TAMA_MEMORY_DIR"] = str(memory_dir.resolve())
+    env.update(extra)
     return env

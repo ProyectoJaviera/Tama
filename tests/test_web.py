@@ -115,10 +115,13 @@ def test_forget_command_asks_before_deleting(web, tmp_path):
     brain.tools.call = lambda name, args: ToolOutcome(True, getattr(memoria, name)(**args))
     found = client.post("/chat", data={"text": "/olvidar reunion cliente"}).json()
     assert "Reunión con cliente" in found["reply"] and found["confirm"]
-    assert "No se borró" in client.post("/chat/olvidar", data={"respuesta": "no"}).json()["reply"]
+    assert (
+        "No se borró"
+        in client.post("/chat/comando/confirmar", data={"respuesta": "no"}).json()["reply"]
+    )
     assert memoria.list_cards()
     client.post("/chat", data={"text": "/olvidar reunion cliente"})
-    client.post("/chat/olvidar", data={"respuesta": "si"})
+    client.post("/chat/comando/confirmar", data={"respuesta": "si"})
     assert memoria.list_cards() == []
 
 
@@ -335,3 +338,43 @@ def test_rename_card_from_the_panel(web):
     client, _ = web()
     card = seed()
     assert "Anita" in client.post(f"/memoria/ficha/{card}/renombrar", data={"nombre": "Anita"}).text
+
+
+def test_command_replies_stay_in_the_chat(web):
+    client, _ = web()
+    client.post("/chat", data={"text": "/resumen"})
+    page = client.get("/").text
+    assert "/resumen" in page and "Hoy no tienes nada agendado." in page
+
+
+def test_cancel_command_asks_first(web):
+    client, _ = web()
+    number = re.search(r"#(\d+)", memoria.crear_recordatorio("Pan", "en 2 horas")).group(1)
+    shown = client.post("/chat", data={"text": f"/cancela {number}"}).json()
+    assert "Pan" in shown["reply"] and shown["confirm"]
+    no = client.post("/chat/comando/confirmar", data={"respuesta": "no"}).json()
+    assert "No se canceló" in no["reply"]
+    client.post("/chat", data={"text": f"/cancelar {number}"})
+    client.post("/chat/comando/confirmar", data={"respuesta": "si"})
+    assert "cancelado" in client.post("/chat", data={"text": "/recordatorio"}).json()["reply"]
+
+
+def test_cancel_without_number_explains(web):
+    client, _ = web()
+    assert "Uso" in client.post("/chat", data={"text": "/cancelar pan"}).json()["reply"]
+
+
+def test_applied_notice_buttons_are_marked(web):
+    client, _ = web()
+    notice = memoria.save_notice(memoria.local_now(), "recordatorio", "r:1", "Pan", "pedido")
+    text = client.post(f"/avisos/{notice['id']}/util").text
+    assert "✓ Útil" in text and 'aria-pressed="true"' in text
+    assert "sin responder" in text
+
+
+def test_open_reminders_feed_the_banner(web):
+    client, _ = web()
+    notice = memoria.save_notice(memoria.local_now(), "recordatorio", "r:1", "Pan", "pedido")
+    assert [n["text"] for n in client.get("/avisos/abiertos").json()] == ["Pan"]
+    client.post(f"/avisos/{notice['id']}/listo")
+    assert client.get("/avisos/abiertos").json() == []

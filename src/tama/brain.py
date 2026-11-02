@@ -145,6 +145,8 @@ def build(
 def build_proactive(settings: Settings) -> Engine:
     os.environ["TAMA_DATA_DIR"] = str(settings.data_dir.resolve())
     os.environ["TAMA_TIMEZONE"] = settings.timezone
+    os.environ["TAMA_QUIET_START"] = str(settings.quiet_start)
+    os.environ["TAMA_QUIET_END"] = str(settings.quiet_end)
     rules = Rules(
         settings.quiet_start,
         settings.quiet_end,
@@ -194,7 +196,14 @@ def build_tools(settings: Settings, connectivity: Connectivity, breaker) -> McpH
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     hub = McpHub(
         load_config(settings.mcp_config),
-        server_env(settings.data_dir, settings.workdir, settings.memory_dir),
+        server_env(
+            settings.data_dir,
+            settings.workdir,
+            settings.memory_dir,
+            TAMA_TIMEZONE=settings.timezone,
+            TAMA_QUIET_START=str(settings.quiet_start),
+            TAMA_QUIET_END=str(settings.quiet_end),
+        ),
         online=connectivity.online,
         start_timeout_s=settings.tool_start_timeout_s,
         call_timeout_s=settings.tool_timeout_s,
