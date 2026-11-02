@@ -1,6 +1,6 @@
 # Sprint 5: Interfaz web local
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-01)
 
 ## Objetivo
 Renzo conversa con Tama desde el navegador en vez de la CLI, y desde ahí ve y corrige perfil, memoria y objetivos. Todo local y sin depender de internet.
@@ -48,3 +48,17 @@ Proactivo y ntfy (S6), voz (S7), PWA y remoto (S8 y S9).
 - CI en verde y ningún pedido a internet.
 - Docker solo en localhost.
 - Demo de Renzo usando la web en lugar de la CLI.
+
+## Cierre
+Evals en la nube y sin Claude; reflexión en local; prueba rápida sin red.
+
+- Memoria: 9/10, 3/3 sin inventar. Herramientas: 23/23. Objetivos, corrección de datos e historial médico: bien.
+- Rectificación en otra sesión: 12/12 en 4 corridas, y 4/4 sobre una copia de la memoria real. En una corrida de regresión el modelo no guardó el dato inicial.
+- Conversación: 20/20. Prompt: 2.188 tokens.
+- Reflexión: 4/5 duplicados, 0 fusiones incorrectas, 3/3 contradicciones. Prueba sin red: 5/5.
+- Edge real sin pedidos a internet. Docker: la web responde publicada solo en 127.0.0.1.
+
+Pendiente:
+
+- Una ficha conserva su nombre antiguo tras corregir el dato (Rocky, cuyo dato ya dice Toby).
+- La calidad del modelo local se mide en `XX-modelo-local.md`, incluido que use `update_observation` para datos nuevos.
