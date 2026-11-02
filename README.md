@@ -76,7 +76,7 @@ perfil, memoria y objetivos. Solo escucha en esta máquina y no pide nada a inte
 
 Tama recuerda y sugiere por su cuenta, sin molestar: nada de 22:00 a 8:00 (salvo urgentes), hasta 3
 avisos no pedidos al día y nunca mientras conversas. Pídele "recuérdame en 2 minutos..." o usa
-`/recordatorios`, `/cancelar <n>`, `/avisos`, `/avisos resumen`, `/silencio [horas|no]` y `/resumen`.
+`/recordatorios`, `/cancelar <texto o número>`, `/avisos`, `/avisos resumen`, `/silencio [horas|no]` y `/resumen`.
 Si un recordatorio cae en no molestar, Tama te dice a qué hora avisará. En la web, un recordatorio
 suena, sale como notificación del navegador y queda en una franja fija hasta que lo marques en la
 pestaña Avisos o en la misma franja.

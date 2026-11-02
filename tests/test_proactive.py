@@ -318,3 +318,79 @@ def test_snoozed_reminder_shows_until_when(monkeypatch):
     notice = next(n for n in item.seen if n["kind"] == "recordatorio")
     act_on(notice["id"], "posponer", WEDNESDAY)
     assert "pospuesto hasta las 11:00" in memoria.list_reminders()
+
+
+@pytest.fixture
+def chores(monkeypatch):
+    monkeypatch.setattr(memoria, "local_now", lambda: WEDNESDAY)
+    item = engine()
+    remind(WEDNESDAY - timedelta(minutes=5), text="Sacar la ropa")
+    item.tick()
+    done = next(n for n in item.seen if n["kind"] == "recordatorio")
+    act_on(done["id"], "listo", WEDNESDAY)
+    remind(WEDNESDAY + timedelta(hours=2), text="Sacar la basura")
+    remind(WEDNESDAY + timedelta(hours=3), text="Llamar a la mamá")
+    return item
+
+
+def test_cancel_by_text_finds_one(chores):
+    found, _ = memoria.find_to_cancel("recordatorio de sacar la basura")
+    assert [r["text"] for r in found] == ["Sacar la basura"]
+    assert memoria.cancel_question(found[0]) == (
+        "¿Cancelo el recordatorio «Sacar la basura» de hoy a las 12:00?"
+    )
+
+
+def test_cancel_by_text_ignores_accents_and_case(chores):
+    found, _ = memoria.find_to_cancel("LLAMAR A LA MAMA")
+    assert [r["text"] for r in found] == ["Llamar a la mamá"]
+
+
+def test_cancel_by_text_with_several_asks_which(chores):
+    remind(WEDNESDAY + timedelta(hours=4), text="Sacar la basura reciclable")
+    found, message = memoria.find_to_cancel("basura")
+    assert len(found) == 2 and "cuál" in message
+    found, _ = memoria.find_to_cancel("sacar la basura")
+    assert [r["text"] for r in found] == ["Sacar la basura"]
+
+
+def test_cancel_done_reminder_says_so(chores):
+    found, message = memoria.find_to_cancel("sacar la ropa")
+    assert found == []
+    assert "ya se avisó y está marcado como listo" in message
+
+
+def test_cancel_done_reminder_by_number_says_so(chores):
+    found, message = memoria.find_to_cancel("1")
+    assert found == [] and "marcado como listo" in message
+
+
+def test_cancel_without_match_lists_pending(chores):
+    found, message = memoria.find_to_cancel("regar las plantas")
+    assert found == [] and "No encontré" in message and "Sacar la basura" in message
+
+
+def test_cancel_tool_by_text(chores):
+    assert "cancelado" in memoria.cancel_reminder(texto="la basura")
+    with pytest.raises(memoria.ToolError, match="ya estaba cancelado"):
+        memoria.cancel_reminder(texto="la basura")
+
+
+def test_missed_summary_goes_out_before_noon_only():
+    late = Clock(datetime(2026, 11, 4, 19, 59, tzinfo=ZONE))
+    item = engine(late)
+    item.tick()
+    assert all(n["kind"] != "resumen" for n in item.seen)
+    item.clock = Clock(datetime(2026, 11, 5, 11, 30, tzinfo=ZONE))
+    item.tick()
+    assert [n["kind"] for n in item.seen].count("resumen") == 1
+
+
+def test_model_cancel_shows_the_real_reminder(chores):
+    from tama.chat import confirm_question
+    from tama.providers import ToolCall
+
+    call = ToolCall("cancel_reminder", {"texto": "la basura"})
+    assert (
+        confirm_question(call) == "¿Cancelo el recordatorio «Sacar la basura» de hoy a las 12:00?"
+    )

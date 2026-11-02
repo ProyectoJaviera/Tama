@@ -98,6 +98,26 @@
     });
   }
 
+  // Varias opciones (por ejemplo, qué recordatorio cancelar): un botón por cada una.
+  function addChoices(choices) {
+    const row = document.createElement("div");
+    row.className = "row choices";
+    for (const choice of choices) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "plain";
+      option.textContent = choice.label;
+      option.onclick = () => {
+        row.remove();
+        input.value = choice.command;
+        form.requestSubmit();
+      };
+      row.appendChild(option);
+    }
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
@@ -114,6 +134,7 @@
     const result = await response.json();
     if (result.reply !== undefined) {
       add("command", result.reply);
+      if (result.choices) addChoices(result.choices);
       if (result.confirm) {
         pendingCommand = true;
         question.textContent = result.confirm;

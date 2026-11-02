@@ -349,19 +349,29 @@ def test_command_replies_stay_in_the_chat(web):
 
 def test_cancel_command_asks_first(web):
     client, _ = web()
-    number = re.search(r"#(\d+)", memoria.crear_recordatorio("Pan", "en 2 horas")).group(1)
-    shown = client.post("/chat", data={"text": f"/cancela {number}"}).json()
-    assert "Pan" in shown["reply"] and shown["confirm"]
+    memoria.crear_recordatorio("Sacar la ropa", "en 2 horas")
+    shown = client.post("/chat", data={"text": "/cancela recordatorio de sacar la ropa"}).json()
+    assert "«Sacar la ropa»" in shown["reply"] and shown["confirm"] == shown["reply"]
     no = client.post("/chat/comando/confirmar", data={"respuesta": "no"}).json()
     assert "No se canceló" in no["reply"]
-    client.post("/chat", data={"text": f"/cancelar {number}"})
+    client.post("/chat", data={"text": "/cancelar sacar la ropa"})
     client.post("/chat/comando/confirmar", data={"respuesta": "si"})
     assert "cancelado" in client.post("/chat", data={"text": "/recordatorio"}).json()["reply"]
+    again = client.post("/chat", data={"text": "/cancelar sacar la ropa"}).json()
+    assert "ya estaba cancelado" in again["reply"] and "confirm" not in again
 
 
-def test_cancel_without_number_explains(web):
+def test_cancel_with_several_offers_choices(web):
     client, _ = web()
-    assert "Uso" in client.post("/chat", data={"text": "/cancelar pan"}).json()["reply"]
+    memoria.crear_recordatorio("Sacar la basura", "en 2 horas")
+    memoria.crear_recordatorio("Sacar la basura reciclable", "en 3 horas")
+    shown = client.post("/chat", data={"text": "/cancelar basura"}).json()
+    assert [c["command"] for c in shown["choices"]] == ["/cancelar 1", "/cancelar 2"]
+
+
+def test_cancel_without_text_explains(web):
+    client, _ = web()
+    assert "Uso" in client.post("/chat", data={"text": "/cancelar"}).json()["reply"]
 
 
 def test_applied_notice_buttons_are_marked(web):

@@ -33,6 +33,8 @@ class Rules:
     daily_cap: int = 3
     morning_hour: int = 8
     stale_days: int = 14
+    # Si Tama estuvo apagada en la mañana, el resumen sale al iniciar solo antes de esta hora.
+    summary_until: int = 12
 
 
 def is_quiet(now: datetime, rules: Rules) -> bool:
@@ -116,7 +118,7 @@ class Engine:
     def _unrequested(self, now: datetime) -> None:
         if (
             self._room(now)
-            and now.hour >= self.rules.morning_hour
+            and self.rules.morning_hour <= now.hour < self.rules.summary_until
             and not memoria.notice_today("resumen", now.date())
         ):
             text = morning_summary(now, self.rules.stale_days)
@@ -165,7 +167,11 @@ class Engine:
     def start(self, every_s: float = 20.0) -> None:
         def loop() -> None:
             while not self._stop.wait(every_s):
-                self.tick()
+                try:
+                    self.tick()
+                except Exception:
+                    # Un error en una pasada no puede apagar los avisos para siempre.
+                    log.exception("falló una pasada del motor proactivo")
 
         threading.Thread(target=loop, name="tama-proactivo", daemon=True).start()
 

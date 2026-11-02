@@ -25,15 +25,25 @@ COMMANDS_ONLY = {"/recordatorios", "/avisos", "/silencio", "/resumen", "/ayuda",
 
 
 def cancel(args: str) -> None:
-    """`/cancelar <n>`: muestra el recordatorio y lo cancela solo con un sí."""
-    preview, number = commands.cancel_preview(args)
-    print(dim(f"  {preview}"))
-    if number is None:
+    """`/cancelar <texto o n>`: muestra el recordatorio y lo cancela solo con un sí."""
+    preview, found = commands.cancel_preview(args)
+    if len(found) > 1:
+        print(dim(f"  {preview}"))
+        try:
+            args = input("¿Cuál? (número, o Enter para no cancelar) ").strip()
+        except EOFError:
+            args = ""
+        if not args.lstrip("#").isdigit():
+            print(dim("  no se canceló"))
+            return
+        preview, found = commands.cancel_preview(args)
+    if len(found) != 1:
+        print(dim(f"  {preview}"))
         return
-    if not ask_yes("¿Lo cancelo?"):
+    if not ask_yes(preview):
         print(dim("  no se canceló"))
         return
-    print(dim(f"  {memoria.cancel_reminder(number)}"))
+    print(dim(f"  {memoria.cancel_one(found[0]['id'])}"))
 
 
 def build_parser() -> argparse.ArgumentParser:

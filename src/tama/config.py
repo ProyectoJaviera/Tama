@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     quiet_end: int = 8
     daily_cap: int = 3
     morning_hour: int = 8
+    summary_until_hour: int = 12
     stale_goal_days: int = 14
     ntfy_url: str = ""
     ntfy_topic: str = ""

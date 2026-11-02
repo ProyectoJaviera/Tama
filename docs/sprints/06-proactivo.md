@@ -39,7 +39,8 @@ Tama avisa, recuerda y sugiere por iniciativa propia en buen momento, sin molest
 5. En Avisos, prueba Posponer, Listo, Útil y No me recuerdes esto: el botón aplicado queda marcado.
 6. Escribe `/resumen` y `/recordatorios`, cambia de pestaña y vuelve: siguen en el chat, con hora y
    estado.
-7. `/cancelar <número>`, o pídeselo a Tama: en ambos casos confirma antes.
+7. `/cancelar sacar la ropa` (o el número), o pídeselo a Tama: en ambos casos muestra cuál y
+   confirma antes. Si ya se avisó, lo dice.
 8. Opcional: ntfy en el celular, según el README.
 
 Avisos de recordatorio: suenan, quedan en la franja y en el chat, y salen como notificación del

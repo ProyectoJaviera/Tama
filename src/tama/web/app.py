@@ -193,7 +193,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 shown.append(("user" if kind == "user_msg" else "assistant", content))
         return shown
 
-    def answer_command(text: str, reply: str, **extra: str) -> dict[str, str]:
+    def answer_command(text: str, reply: str, **extra: str) -> dict[str, Any]:
         """Responde un comando y lo guarda, para que siga en el chat al volver."""
         item = {"texto": text, "respuesta": reply}
         brain.store.log("command", json.dumps(item, ensure_ascii=False))
@@ -204,7 +204,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(text: str = Form(...)) -> dict[str, str]:
+    def send(text: str = Form(...)) -> dict[str, Any]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
@@ -217,11 +217,17 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 session.pending = ("olvidar", arguments)
                 return answer_command(text, preview, confirm="¿Lo olvido para siempre?")
             if command.startswith("/cancelar"):
-                preview, number = commands.cancel_preview(command[9:].strip())
-                if number is None:
-                    return answer_command(text, preview)
-                session.pending = ("cancelar", number)
-                return answer_command(text, preview, confirm="¿Cancelo este recordatorio?")
+                preview, found = commands.cancel_preview(command[9:].strip())
+                if len(found) == 1:
+                    session.pending = ("cancelar", found[0]["id"])
+                    return answer_command(text, preview, confirm=preview)
+                reply = answer_command(text, preview)
+                if found:
+                    reply["choices"] = [
+                        {"label": memoria.reminder_line(r), "command": f"/cancelar {r['id']}"}
+                        for r in found
+                    ]
+                return reply
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
         turn_id = session.start(text)
         if turn_id is None:
@@ -239,7 +245,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         elif kind == "olvidar":
             reply = brain.tools.call("forget_memory", data).text
         else:
-            reply = memoria.cancel_reminder(data)
+            reply = memoria.cancel_one(data)
         return answer_command("", reply)
 
     @app.get("/chat/{turn_id}/eventos")

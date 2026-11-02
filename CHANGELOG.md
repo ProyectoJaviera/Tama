@@ -12,7 +12,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   Tras la demo: franja fija, sonido y notificación del navegador para los recordatorios; los
   urgentes pasan también mientras conversas; Tama dice la hora real si cae en no molestar; estado
   de cada recordatorio en `/recordatorios`, `/resumen` y el panel; botones aplicados marcados;
-  comandos guardados en el chat; `/cancelar <n>` con confirmación y alias `/recordatorio`, `/cancela`.
+  comandos guardados en el chat; `/cancelar` por texto o número, con confirmación, y alias
+  `/recordatorio`, `/cancela`. El resumen matutino perdido solo sale al iniciar antes de las 12:00.
 - Sprint 5: interfaz web local con `tama web` (FastAPI, HTMX y Jinja2, sin nada desde internet):
   chat por SSE, confirmación Sí/No, paneles de perfil, memoria, objetivos, diario y estado. El turno
   se comparte con la CLI en `tama/chat.py`. `/memoria <ficha>` muestra todos sus datos.

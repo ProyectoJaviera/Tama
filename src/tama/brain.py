@@ -153,6 +153,7 @@ def build_proactive(settings: Settings) -> Engine:
         settings.daily_cap,
         settings.morning_hour,
         settings.stale_goal_days,
+        settings.summary_until_hour,
     )
     return Engine(
         EventStore(settings.events_db),

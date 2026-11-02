@@ -18,7 +18,7 @@ COMMANDS = {
     "/diario": "el diario de hoy, o de una fecha AAAA-MM-DD",
     "/olvidar": "borra lo que recuerde sobre un tema",
     "/recordatorios": "los pendientes y los de hoy, con su estado",
-    "/cancelar": "cancela un recordatorio por su número, con confirmación",
+    "/cancelar": "cancela un recordatorio por su texto o número, con confirmación",
     "/avisos": "últimos avisos; con `resumen`, el balance semanal",
     "/silencio": "pausa los avisos por N horas (por defecto 2); `no` los reactiva",
     "/resumen": "el resumen de hoy",
@@ -122,14 +122,14 @@ def closest(name: str) -> str:
     return f"No conozco {name}. {HELP}"
 
 
-def cancel_preview(args: str) -> tuple[str, int | None]:
-    """Lo que `/cancelar` cancelaría, y su número si Renzo dice que sí."""
-    if not args.lstrip("#").isdigit():
-        return "Uso: /cancelar <número>. Los números salen en /recordatorios.", None
-    found = memoria.pending_reminder(int(args.lstrip("#")))
-    if found is None:
-        return f"No hay un recordatorio pendiente #{args.lstrip('#')}.", None
-    return memoria.reminder_line(found), found["id"]
+def cancel_preview(args: str) -> tuple[str, list[dict]]:
+    """Qué cancelaría `/cancelar`: la pregunta si es uno solo, o la explicación y las opciones."""
+    if not args:
+        return "Uso: /cancelar <qué dice el recordatorio>, por ejemplo /cancelar sacar la ropa.", []
+    found, message = memoria.find_to_cancel(args)
+    if len(found) == 1:
+        return memoria.cancel_question(found[0]), found
+    return message, found
 
 
 def forget_preview(brain: Brain, query: str) -> tuple[str, dict | None]:

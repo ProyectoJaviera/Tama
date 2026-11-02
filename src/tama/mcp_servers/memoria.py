@@ -1959,16 +1959,6 @@ def list_reminders() -> str:
     return "\n".join(reminder_line(r) for r in rows)
 
 
-def pending_reminder(number: int) -> dict[str, Any] | None:
-    with connect() as db:
-        row = db.execute(
-            "SELECT r.*, NULL AS notice_state, NULL AS snooze_until FROM reminders r"
-            " WHERE id = ? AND status = 'pendiente'",
-            (number,),
-        ).fetchone()
-    return dict(row) if row else None
-
-
 @server.tool(description="Cambia el texto o la fecha de un recordatorio, indicado por su número.")
 def update_reminder(numero: int, texto: str = "", cuando: str = "") -> str:
     moment = resolve_when(cuando) if cuando else None
@@ -1991,17 +1981,128 @@ def update_reminder(numero: int, texto: str = "", cuando: str = "") -> str:
     return f"Recordatorio #{numero} actualizado."
 
 
-@server.tool(
-    description="Cancela un recordatorio, indicado por su número.",
-    annotations=ToolAnnotations(destructive_hint=True),
-)
-def cancel_reminder(numero: int) -> str:
+# Palabras que no dicen cuál recordatorio es: "el recordatorio de sacar la ropa" es "sacar ropa".
+FILLER_WORDS = {
+    "recordatorio", "recordatorios", "aviso", "cancela", "cancelar", "cancelame", "borra",
+    "el", "la", "los", "las", "lo", "de", "del", "que", "me", "mi", "a", "al", "un", "una",
+    "para", "por", "en", "y", "hoy", "manana",
+}  # fmt: skip
+MATCH_MIN = 0.6
+
+
+def content_words(text: str) -> list[str]:
+    return [w for w in re.findall(r"\w+", normalize(text)) if w not in FILLER_WORDS]
+
+
+def text_match(query: str, text: str) -> float:
+    """Qué parte de las palabras de `query` aparece en `text`, tolerando erratas."""
+    wanted, found = content_words(query), content_words(text)
+    if not wanted:
+        return 0.0
+    hits = sum(any(SequenceMatcher(None, w, f).ratio() >= 0.8 for f in found) for w in wanted)
+    return hits / len(wanted)
+
+
+def recent_reminders(days: int = 7) -> list[dict[str, Any]]:
+    since = (local_now().date() - timedelta(days=days)).isoformat()
+    with connect() as db:
+        rows = db.execute(
+            "SELECT r.*, n.state AS notice_state, n.snooze_until FROM reminders r"
+            " LEFT JOIN notices n ON n.key = 'recordatorio:' || r.id"
+            " WHERE r.status = 'pendiente' OR r.due_at >= ? ORDER BY r.due_at",
+            (since,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def when_words(row: dict[str, Any]) -> str:
+    day, _, hour = day_label(datetime.fromisoformat(row["due_at"])).partition(" ")
+    return f"{day if day in ('hoy', 'mañana', 'ayer') else 'el ' + day} a las {hour}"
+
+
+def why_not_cancel(row: dict[str, Any]) -> str:
+    """Un recordatorio que ya no está pendiente: decir en qué quedó, no que no existe."""
+    name = f"El recordatorio «{row['text']}» ({when_words(row)})"
+    if row["status"] == "cancelado":
+        return f"{name} ya estaba cancelado."
+    state = reminder_state(row)
+    if state == "avisado":
+        return f"{name} ya se avisó; no hay nada que cancelar."
+    return f"{name} ya se avisó y está marcado como {state}; no hay nada que cancelar."
+
+
+def find_to_cancel(query: str) -> tuple[list[dict[str, Any]], str]:
+    """Los pendientes que calzan con un número o un texto, y qué decir si no es uno solo."""
+    rows = recent_reminders()
+    pending = [r for r in rows if r["status"] == "pendiente"]
+    wanted = query.strip().lstrip("#")
+    if wanted.isdigit():
+        found = [r for r in rows if r["id"] == int(wanted)]
+        if not found:
+            with connect() as db:
+                row = db.execute(
+                    "SELECT r.*, NULL AS notice_state, NULL AS snooze_until FROM reminders r"
+                    " WHERE id = ?",
+                    (int(wanted),),
+                ).fetchone()
+            found = [dict(row)] if row else []
+        if not found:
+            return [], f"No hay un recordatorio #{wanted}. " + pending_text(pending)
+        if found[0]["status"] != "pendiente":
+            return [], why_not_cancel(found[0])
+        return found, ""
+    scored = [(text_match(wanted, r["text"]), r) for r in rows]
+    best = max((score for score, _ in scored), default=0.0)
+    if best < MATCH_MIN:
+        return [], f"No encontré un recordatorio que diga «{wanted}». " + pending_text(pending)
+    top = [r for score, r in scored if score == best]
+    # "sacar la basura" es ese y no "sacar la basura reciclable": lo exacto gana.
+    exact = [r for r in top if text_match(r["text"], wanted) == 1.0]
+    if len(exact) == 1:
+        top = exact
+    open_ones = [r for r in top if r["status"] == "pendiente"]
+    if not open_ones:
+        return [], why_not_cancel(top[-1])
+    if len(open_ones) > 1:
+        lines = "\n".join(reminder_line(r) for r in open_ones)
+        return open_ones, f"Hay varios que calzan; ¿cuál cancelo?\n{lines}"
+    return open_ones, ""
+
+
+def pending_text(pending: list[dict[str, Any]]) -> str:
+    if not pending:
+        return "No hay recordatorios pendientes."
+    return "Pendientes:\n" + "\n".join(reminder_line(r) for r in pending)
+
+
+def cancel_question(row: dict[str, Any]) -> str:
+    return f"¿Cancelo el recordatorio «{row['text']}» de {when_words(row)}?"
+
+
+def cancel_one(number: int) -> str:
     with connect() as db:
         changed = db.execute(
             "UPDATE reminders SET status = 'cancelado' WHERE id = ? AND status = 'pendiente'",
-            (numero,),
+            (number,),
         ).rowcount
-    return f"Recordatorio #{numero} cancelado." if changed else "No encontré ese recordatorio."
+    if not changed:
+        return "Ese recordatorio ya no estaba pendiente."
+    return f"Recordatorio #{number} cancelado."
+
+
+@server.tool(
+    description=(
+        "Cancela un recordatorio pendiente. Pasa en texto lo que Renzo dijo de él ('sacar la "
+        "ropa'), o numero si lo sabes. Si hay varios parecidos, devuelve la lista para "
+        "preguntarle cuál."
+    ),
+    annotations=ToolAnnotations(destructive_hint=True),
+)
+def cancel_reminder(texto: str = "", numero: int = 0) -> str:
+    found, message = find_to_cancel(str(numero) if numero else texto)
+    if len(found) != 1:
+        raise ToolError(message)
+    return cancel_one(found[0]["id"])
 
 
 @server.tool(

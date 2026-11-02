@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from tama import agent, history
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
-from tama.mcp_servers import notas
+from tama.mcp_servers import memoria, notas
 from tama.providers import Error, Message, ToolCall
 
 EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
@@ -33,6 +33,18 @@ def note_question(verb: str, note_id: object) -> str:
     return f"¿{verb} la nota «{short(note, 80)}»?"
 
 
+def reminder_question(args: dict) -> str:
+    """Muestra el recordatorio real; si no es uno solo, la herramienta lo dirá después."""
+    wanted = str(args.get("numero") or args.get("texto") or "")
+    try:
+        found, _ = memoria.find_to_cancel(wanted)
+    except Exception:
+        found = []
+    if len(found) == 1:
+        return memoria.cancel_question(found[0])
+    return f"¿Cancelo el recordatorio «{short(wanted)}»?"
+
+
 def confirm_question(call: ToolCall) -> str:
     """La pregunta en palabras de Renzo, sin el JSON de la herramienta."""
     args = call.arguments
@@ -48,7 +60,7 @@ def confirm_question(call: ToolCall) -> str:
     if call.name == "discard_goal":
         return f"¿Descarto el objetivo «{short(args.get('objetivo', ''))}»?"
     if call.name == "cancel_reminder":
-        return f"¿Cancelo el recordatorio #{args.get('numero')}?"
+        return reminder_question(args)
     if call.name == "proponer_cambio_perfil":
         return f"¿Agrego a tu perfil: «{short(args.get('cambio', ''))}»?"
     return f"¿Confirmas {call.name}?"
