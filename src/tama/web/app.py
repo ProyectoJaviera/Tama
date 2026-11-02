@@ -4,6 +4,7 @@ Un solo usuario y una sola conversación. El turno corre en un hilo con el motor
 eventos llegan al navegador por una cola, y las confirmaciones esperan la respuesta de Renzo.
 """
 
+import hashlib
 import json
 import os
 import queue
@@ -29,10 +30,22 @@ from tama.config import Settings
 from tama.mcp_servers import memoria
 from tama.memory import MAX_PROFILE_CHARS, session_prompt
 from tama.ollama import OllamaError
+from tama.proactive import act_on
 from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 HERE = Path(__file__).parent
+# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
+STATIC_VERSION = hashlib.sha256(
+    b"".join(p.read_bytes() for p in sorted((HERE / "static").iterdir()) if p.is_file())
+).hexdigest()[:10]
+NOTICE_LABELS = {
+    "mostrado": "sin responder",
+    "ignorado": "sin respuesta",
+    "listo": "listo",
+    "pospuesto": "pospuesto",
+    "silenciado": "no se repite",
+}
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 END = object()
 
@@ -105,7 +118,8 @@ class Session:
         self.max_tools = settings.tools_max
         self.timeout_s = settings.web_confirm_timeout_s
         self.turns: dict[str, Turn] = {}
-        self.pending_forget: dict | None = None
+        # Lo que espera un Sí de Renzo: ("olvidar", datos) o ("cancelar", número).
+        self.pending: tuple[str, Any] | None = None
         self.brain = brain
         self._busy = threading.Lock()
 
@@ -125,6 +139,8 @@ class Session:
     def finish(self) -> None:
         if self.brain.reflector is not None:
             self.brain.reflector.activity()
+        if self.brain.proactive is not None:
+            self.brain.proactive.activity()
         self._busy.release()
 
 
@@ -164,41 +180,92 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             raise HTTPException(status_code=403, detail="Falta el token CSRF")
 
     def page(request: Request, name: str, **context: Any) -> HTMLResponse:
-        return templates.TemplateResponse(request, name, {"csrf": csrf, **context})
+        context = {"csrf": csrf, "v": STATIC_VERSION, **context}
+        return templates.TemplateResponse(request, name, context)
+
+    def chat_history() -> list[tuple[str, str]]:
+        """La conversación, con los comandos y los avisos, tal como se vio."""
+        types = ("user_msg", "assistant_msg", "command", "proactive")
+        shown: list[tuple[str, str]] = []
+        for kind, content in brain.store.recent_messages(40, types):
+            if kind == "command":
+                item = json.loads(content)
+                if item["texto"]:
+                    shown.append(("user", item["texto"]))
+                shown.append(("command", item["respuesta"]))
+                # Los botones vuelven solo para los recordatorios que siguen pendientes.
+                still = [
+                    c
+                    for c in item.get("opciones", [])
+                    if memoria.is_pending(int(c["command"].rsplit(" ", 1)[1]))
+                ]
+                if still:
+                    shown.append(("choices", still))
+            elif kind == "proactive":
+                shown.append(("notice", f"Aviso · {content}"))
+            else:
+                shown.append(("user" if kind == "user_msg" else "assistant", content))
+        return shown
+
+    def answer_command(
+        text: str, reply: str, confirm: str = "", choices: list | None = None
+    ) -> dict[str, Any]:
+        """Responde un comando y lo guarda, con sus opciones, para que siga en el chat al volver."""
+        item = {"texto": text, "respuesta": reply, "opciones": choices or []}
+        brain.store.log("command", json.dumps(item, ensure_ascii=False))
+        answer: dict[str, Any] = {"reply": reply}
+        if confirm:
+            answer["confirm"] = confirm
+        if choices:
+            answer["choices"] = choices
+        return answer
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
-        return page(
-            request,
-            "chat.html",
-            history=brain.store.recent_messages(),
-            commands=commands.COMMANDS,
-        )
+        return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(text: str = Form(...)) -> dict[str, str]:
+    def send(text: str = Form(...)) -> dict[str, Any]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
-        if text.lower().startswith("/olvidar"):
-            preview, arguments = commands.forget_preview(brain, text[len("/olvidar") :].strip())
-            if arguments is None:
-                return {"reply": preview}
-            session.pending_forget = arguments
-            return {"reply": preview, "confirm": "¿Lo olvido para siempre?"}
         if text.startswith("/"):
-            return {"reply": commands.run(brain, text, settings.memory_dir)}
+            command = commands.canonical(text)
+            if command.startswith("/olvidar"):
+                preview, arguments = commands.forget_preview(brain, command[8:].strip())
+                if arguments is None:
+                    return answer_command(text, preview)
+                session.pending = ("olvidar", arguments)
+                return answer_command(text, preview, confirm="¿Lo olvido para siempre?")
+            if command.startswith("/cancelar"):
+                preview, found = commands.cancel_preview(command[9:].strip())
+                if len(found) == 1:
+                    session.pending = ("cancelar", found[0]["id"])
+                    return answer_command(text, preview, confirm=preview)
+                choices = [
+                    {"label": memoria.reminder_line(r), "command": f"/cancelar {r['id']}"}
+                    for r in found
+                ]
+                return answer_command(text, preview, choices=choices)
+            return answer_command(text, commands.run(brain, command, settings.memory_dir))
         turn_id = session.start(text)
         if turn_id is None:
             raise HTTPException(status_code=409, detail="Tama aún está respondiendo")
         return {"turn": turn_id}
 
-    @app.post("/chat/olvidar", dependencies=[Depends(check_csrf)])
-    def forget(respuesta: str = Form("no")) -> dict[str, str]:
-        arguments, session.pending_forget = session.pending_forget, None
-        if respuesta != "si" or arguments is None:
-            return {"reply": "No se borró nada."}
-        return {"reply": brain.tools.call("forget_memory", arguments).text}
+    @app.post("/chat/comando/confirmar", dependencies=[Depends(check_csrf)])
+    def confirm_command(respuesta: str = Form("no")) -> dict[str, str]:
+        pending, session.pending = session.pending, None
+        if pending is None:
+            return answer_command("", "No había nada por confirmar.")
+        kind, data = pending
+        if respuesta != "si":
+            reply = "No se borró nada." if kind == "olvidar" else "No se canceló."
+        elif kind == "olvidar":
+            reply = brain.tools.call("forget_memory", data).text
+        else:
+            reply = memoria.cancel_one(data)
+        return answer_command("", reply)
 
     @app.get("/chat/{turn_id}/eventos")
     def stream(turn_id: str) -> StreamingResponse:
@@ -271,6 +338,13 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         memoria.forget_memory([], [fact])
         return show_card(request, entity_id)
 
+    @app.post("/memoria/ficha/{entity_id}/renombrar", dependencies=[Depends(check_csrf)])
+    def rename(request: Request, entity_id: int, nombre: str = Form(...)) -> HTMLResponse:
+        found = memoria.card(entity_id)
+        if found is None or not memoria.rename_card(found["name"], nombre):
+            raise HTTPException(status_code=409, detail="No se pudo renombrar")
+        return show_card(request, entity_id)
+
     @app.post("/memoria/ficha/{entity_id}/fusionar", dependencies=[Depends(check_csrf)])
     def merge(request: Request, entity_id: int, con: int = Form(...)) -> HTMLResponse:
         cards = {c["id"]: c["name"] for c in memoria.list_cards()}
@@ -327,6 +401,68 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     def discard(request: Request, goal: int) -> HTMLResponse:
         memoria.discard_goal(str(goal))
         return goals_list(request)
+
+    # --- avisos ----------------------------------------------------------------------------
+
+    watchers: list[queue.Queue] = []
+    if brain.proactive is not None:
+        brain.proactive.busy = lambda: session._busy.locked()
+
+        def broadcast(notice: dict) -> None:
+            for watcher in list(watchers):
+                watcher.put(notice)
+
+        brain.proactive.listeners.append(broadcast)
+
+    def watch() -> Iterator[str]:
+        watcher: queue.Queue = queue.Queue()
+        watchers.append(watcher)
+        try:
+            while True:
+                try:
+                    notice = watcher.get(timeout=15)
+                except queue.Empty:
+                    yield ": sigue activo\n\n"
+                    continue
+                yield f"data: {json.dumps(notice, ensure_ascii=False, default=str)}\n\n"
+        finally:
+            watchers.remove(watcher)
+
+    @app.get("/avisos/eventos")
+    def notice_stream() -> StreamingResponse:
+        return StreamingResponse(watch(), media_type="text/event-stream")
+
+    def notices_page(request: Request, name: str) -> HTMLResponse:
+        return page(
+            request,
+            name,
+            notices=memoria.list_notices(),
+            reminders=memoria.list_reminders(),
+            states=NOTICE_LABELS,
+        )
+
+    @app.get("/avisos", response_class=HTMLResponse)
+    def notices(request: Request) -> HTMLResponse:
+        return notices_page(request, "avisos.html")
+
+    @app.get("/avisos/pendientes")
+    def pending_notices() -> dict[str, int]:
+        return {"pendientes": memoria.notice_count()}
+
+    @app.get("/avisos/abiertos")
+    def open_notices() -> list[dict[str, Any]]:
+        """Recordatorios avisados sin respuesta: la franja fija de todas las pestañas."""
+        return [
+            {"id": n["id"], "text": n["text"], "urgent": bool(n["urgent"])}
+            for n in memoria.open_reminders()
+        ]
+
+    @app.post("/avisos/{notice}/{action}", dependencies=[Depends(check_csrf)])
+    def act(request: Request, notice: int, action: str) -> HTMLResponse:
+        if action not in ("listo", "posponer", "silenciar", "util", "molesto"):
+            raise HTTPException(status_code=404)
+        act_on(notice, action, memoria.local_now())
+        return notices_page(request, "avisos_lista.html")
 
     # --- diario y estado -------------------------------------------------------------------
 
@@ -415,6 +551,8 @@ def serve(settings: Settings) -> int:
         if brain.reflector is not None:
             brain.reflector.close_days()
             brain.reflector.start()
+        if brain.proactive is not None:
+            brain.proactive.start()
         print("Tama lista.", flush=True)
         return app
 

@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 {% block body %}
 <div id="log">
-  {% for type, text in history %}
-  <div class="{{ 'user' if type == 'user_msg' else 'assistant' }}">{{ text }}</div>
+  {% for kind, text in history %}
+  {% if kind == "choices" %}
+  <div class="row choices">{% for c in text %}<button type="button" class="plain" data-command="{{ c.command }}">{{ c.label }}</button>{% endfor %}</div>
+  {% else %}
+  <div class="{{ kind }}">{{ text }}</div>
+  {% endif %}
   {% endfor %}
 </div>
 <form id="chat-form" class="row">
@@ -20,4 +24,4 @@
   </form>
 </dialog>
 {% endblock %}
-{% block scripts %}<script src="/static/app.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/app.js?v={{ v }}"></script>{% endblock %}

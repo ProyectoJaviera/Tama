@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tama</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/htmx.min.js" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}">
+  <script src="/static/htmx.min.js?v={{ v }}" defer></script>
 </head>
 <body data-csrf="{{ csrf }}" hx-headers='{"X-CSRF-Token": "{{ csrf }}"}'>
   <header>
@@ -15,8 +15,19 @@
     <a href="/objetivos">Objetivos</a>
     <a href="/diario">Diario</a>
     <a href="/estado">Estado</a>
+    <a href="/avisos" id="campana" aria-label="Avisos">Avisos <span id="avisos-n"></span></a>
   </header>
+  <div id="banner" hidden aria-live="assertive"></div>
   <main>{% block body %}{% endblock %}</main>
+  <div id="toasts" aria-live="polite"></div>
+  <dialog id="ask">
+    <p id="ask-text"></p>
+    <div class="row">
+      <button id="ask-yes" type="button">Sí</button>
+      <button id="ask-no" type="button" class="plain">No</button>
+    </div>
+  </dialog>
+  <script src="/static/avisos.js?v={{ v }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

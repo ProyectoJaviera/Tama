@@ -13,6 +13,7 @@ from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.chat import confirm_question, short
 from tama.config import Settings, get_settings
+from tama.mcp_servers import memoria
 from tama.mcp_servers.memoria import NO_SUGGESTION
 from tama.memory import session_prompt
 from tama.ollama import OllamaClient, OllamaError
@@ -20,6 +21,29 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
+COMMANDS_ONLY = {"/recordatorios", "/avisos", "/silencio", "/resumen", "/ayuda", "/estado"}
+
+
+def cancel(args: str) -> None:
+    """`/cancelar <texto o n>`: muestra el recordatorio y lo cancela solo con un sí."""
+    preview, found = commands.cancel_preview(args)
+    if len(found) > 1:
+        print(dim(f"  {preview}"))
+        try:
+            args = input("¿Cuál? (número, o Enter para no cancelar) ").strip()
+        except EOFError:
+            args = ""
+        if not args.lstrip("#").isdigit():
+            print(dim("  no se canceló"))
+            return
+        preview, found = commands.cancel_preview(args)
+    if len(found) != 1:
+        print(dim(f"  {preview}"))
+        return
+    if not ask_yes(preview):
+        print(dim("  no se canceló"))
+        return
+    print(dim(f"  {memoria.cancel_one(found[0]['id'])}"))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -249,6 +273,10 @@ def chat_loop(
     if brain.reflector is not None:
         brain.reflector.close_days()
         brain.reflector.start()
+    inbox: list[dict] = []
+    if brain.proactive is not None:
+        brain.proactive.listeners.append(inbox.append)
+        brain.proactive.start()
     if brain.warmer is not None:
         # La precarga debe usar el mismo prefijo que el próximo turno: conversación y herramientas.
         brain.warmer.context = lambda: agent.prepare(
@@ -257,6 +285,9 @@ def chat_loop(
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)
     while True:
+        # Entre turnos: nunca se interrumpe a Renzo mientras escribe.
+        while inbox:
+            print(dim(f"· Aviso: {inbox.pop(0)['text']}"))
         try:
             text = input("> ").strip()
         except EOFError:
@@ -264,6 +295,10 @@ def chat_loop(
             return
         if brain.reflector is not None:
             brain.reflector.activity()
+        if brain.proactive is not None:
+            brain.proactive.activity()
+        if text.startswith("/"):
+            text = commands.canonical(text)
         if text.lower() in EXIT_COMMANDS:
             return
         if text.lower() == "/proveedor":
@@ -278,16 +313,24 @@ def chat_loop(
         if text.lower().startswith("/olvidar"):
             forget(brain, text[len("/olvidar") :].strip())
             continue
+        if text.startswith("/cancelar"):
+            cancel(text[len("/cancelar") :].strip())
+            continue
         if text.lower().startswith("/objetivos"):
             show_goals(brain, text[len("/objetivos") :].strip())
             continue
         if text.lower().startswith("/diario"):
             show_diary(brain, text[len("/diario") :].strip())
             continue
+        if text.lower().split(" ")[0] in COMMANDS_ONLY:
+            print(dim(commands.run(brain, text, brain.memory_dir)))
+            continue
         if text:
             turn(brain, messages, text, max_tokens, max_tools)
         if brain.reflector is not None:
             brain.reflector.activity()
+        if brain.proactive is not None:
+            brain.proactive.activity()
 
 
 def main(

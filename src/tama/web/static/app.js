@@ -27,13 +27,13 @@
     });
   }
 
-  let pendingForget = false;
+  let pendingCommand = false;
 
   async function answer(value) {
     dialog.close();
-    if (pendingForget) {
-      pendingForget = false;
-      const response = await post("/chat/olvidar", { respuesta: value });
+    if (pendingCommand) {
+      pendingCommand = false;
+      const response = await post("/chat/comando/confirmar", { respuesta: value });
       add("command", (await response.json()).reply);
       button.disabled = false;
       input.focus();
@@ -98,6 +98,31 @@
     });
   }
 
+  // Varias opciones (por ejemplo, qué recordatorio cancelar): un botón por cada una. También
+  // sirven los que vuelven del historial al recargar.
+  function addChoices(choices) {
+    const row = document.createElement("div");
+    row.className = "row choices";
+    for (const choice of choices) {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "plain";
+      option.dataset.command = choice.command;
+      option.textContent = choice.label;
+      row.appendChild(option);
+    }
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  log.addEventListener("click", (event) => {
+    const option = event.target.closest(".choices button");
+    if (!option || button.disabled) return;
+    option.parentElement.remove();
+    input.value = option.dataset.command;
+    form.requestSubmit();
+  });
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
@@ -114,8 +139,9 @@
     const result = await response.json();
     if (result.reply !== undefined) {
       add("command", result.reply);
+      if (result.choices) addChoices(result.choices);
       if (result.confirm) {
-        pendingForget = true;
+        pendingCommand = true;
         question.textContent = result.confirm;
         dialog.showModal();
         return;

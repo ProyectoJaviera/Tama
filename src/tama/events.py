@@ -60,6 +60,60 @@ MIGRATIONS = [
         INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
     END;
     """,
+    # Igual que la anterior: un tipo nuevo exige rehacer la tabla.
+    """
+    CREATE TABLE events_new (
+        id INTEGER PRIMARY KEY,
+        ts TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (
+            type IN ('user_msg', 'assistant_msg', 'provider_switch', 'error', 'reflection',
+                     'proactive')
+        ),
+        provider TEXT,
+        model TEXT,
+        tokens_in INTEGER,
+        tokens_out INTEGER,
+        ttft_ms INTEGER,
+        total_ms INTEGER,
+        content TEXT
+    );
+    INSERT INTO events_new SELECT * FROM events;
+    DROP TABLE events;
+    ALTER TABLE events_new RENAME TO events;
+    CREATE INDEX events_provider_ts ON events (provider, ts);
+    CREATE TRIGGER events_ai AFTER INSERT ON events
+        WHEN new.type IN ('user_msg', 'assistant_msg') AND new.content IS NOT NULL
+    BEGIN
+        INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
+    END;
+    """,
+    # Comandos del chat web, para volver a mostrarlos: otra vez se rehace la tabla.
+    """
+    CREATE TABLE events_new (
+        id INTEGER PRIMARY KEY,
+        ts TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (
+            type IN ('user_msg', 'assistant_msg', 'provider_switch', 'error', 'reflection',
+                     'proactive', 'command')
+        ),
+        provider TEXT,
+        model TEXT,
+        tokens_in INTEGER,
+        tokens_out INTEGER,
+        ttft_ms INTEGER,
+        total_ms INTEGER,
+        content TEXT
+    );
+    INSERT INTO events_new SELECT * FROM events;
+    DROP TABLE events;
+    ALTER TABLE events_new RENAME TO events;
+    CREATE INDEX events_provider_ts ON events (provider, ts);
+    CREATE TRIGGER events_ai AFTER INSERT ON events
+        WHEN new.type IN ('user_msg', 'assistant_msg') AND new.content IS NOT NULL
+    BEGIN
+        INSERT INTO events_fts(rowid, content) VALUES (new.id, new.content);
+    END;
+    """,
 ]
 
 
@@ -147,12 +201,14 @@ class EventStore:
         ).fetchall()
         return sorted({datetime.fromisoformat(r[0]).astimezone().date() for r in rows})
 
-    def recent_messages(self, limit: int = 30) -> list[tuple[str, str]]:
+    def recent_messages(
+        self, limit: int = 30, types: tuple[str, ...] = ("user_msg", "assistant_msg")
+    ) -> list[tuple[str, str]]:
         """Últimos mensajes de la conversación, del más antiguo al más nuevo."""
+        marks = ", ".join("?" * len(types))
         rows = self._db.execute(
-            "SELECT type, content FROM events WHERE type IN ('user_msg', 'assistant_msg')"
-            " ORDER BY id DESC LIMIT ?",
-            (limit,),
+            f"SELECT type, content FROM events WHERE type IN ({marks}) ORDER BY id DESC LIMIT ?",
+            (*types, limit),
         ).fetchall()
         return [(r[0], r[1] or "") for r in reversed(rows)]
 

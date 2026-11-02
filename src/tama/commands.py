@@ -1,12 +1,13 @@
 """Comandos con barra: los usan la CLI y el chat web, sin pasar por el modelo."""
 
 import json
-from datetime import date
+from datetime import date, timedelta
 from difflib import get_close_matches
 from pathlib import Path
 
 from tama.brain import Brain
 from tama.mcp_servers import memoria
+from tama.proactive import morning_summary
 from tama.reflection import diary_path
 
 NO_MEMORY = "Sin memoria: los servidores MCP no están activos."
@@ -16,12 +17,24 @@ COMMANDS = {
     "/objetivos": "todos los objetivos",
     "/diario": "el diario de hoy, o de una fecha AAAA-MM-DD",
     "/olvidar": "borra lo que recuerde sobre un tema",
+    "/recordatorios": "los pendientes y los de hoy, con su estado",
+    "/cancelar": "cancela un recordatorio por su texto o número, con confirmación",
+    "/avisos": "últimos avisos; con `resumen`, el balance semanal",
+    "/silencio": "pausa los avisos por N horas (por defecto 2); `no` los reactiva",
+    "/resumen": "el resumen de hoy",
     "/herramientas": "estado de las herramientas",
     "/proveedor": "capas, herramientas y sugerencias",
     "/estado": "lo mismo que /proveedor",
     "/ayuda": "esta lista",
 }
 HELP = "Comandos:\n" + "\n".join(f"{name}: {what}" for name, what in COMMANDS.items())
+ALIASES = {"/recordatorio": "/recordatorios", "/cancela": "/cancelar"}
+
+
+def canonical(text: str) -> str:
+    """El comando con su nombre oficial: /cancela 2 es /cancelar 2."""
+    name, space, args = text.strip().partition(" ")
+    return ALIASES.get(name.lower(), name.lower()) + space + args.strip()
 
 
 def memory_text(brain: Brain, args: str = "") -> str:
@@ -71,10 +84,34 @@ def diary_text(memory_dir: Path, args: str) -> str:
 def status_text(brain: Brain) -> str:
     pending = memoria.pending_list()
     suggestions = "\n".join(f"- {s}" for s in pending) or "Ninguna."
-    return (
+    text = (
         f"Capas:\n{layers_text(brain)}\n\nHerramientas:\n{tools_text(brain)}\n\n"
         f"Sugerencias pendientes:\n{suggestions}"
     )
+    if brain.proactive is not None and brain.proactive.ntfy_error:
+        text += f"\n\nntfy no responde: {brain.proactive.ntfy_error}"
+    return text
+
+
+def notices_text(args: str) -> str:
+    today = memoria.local_now().date()
+    if args.startswith("resumen"):
+        report = memoria.weekly_report(today)
+        return "Últimos 7 días: " + ", ".join(f"{v} {k}" for k, v in report.items())
+    lines = [
+        f"{n['shown_at'][:16].replace('T', ' ')} {n['kind']} ({n['state']}): {n['text']}"
+        for n in memoria.list_notices(10)
+    ]
+    return "\n".join(lines) or "Todavía no hay avisos."
+
+
+def silence_text(args: str) -> str:
+    if args == "no":
+        memoria.mute_until(None)
+        return "Avisos activos de nuevo."
+    hours = int(args) if args.isdigit() else 2
+    memoria.mute_until(memoria.local_now() + timedelta(hours=hours))
+    return f"Silencio por {hours} horas: solo pasan los urgentes."
 
 
 def closest(name: str) -> str:
@@ -83,6 +120,16 @@ def closest(name: str) -> str:
     if found:
         return f"No conozco {name}. ¿Quisiste decir {found[0]}? Con /ayuda ves la lista."
     return f"No conozco {name}. {HELP}"
+
+
+def cancel_preview(args: str) -> tuple[str, list[dict]]:
+    """Qué cancelaría `/cancelar`: la pregunta si es uno solo, o la explicación y las opciones."""
+    if not args:
+        return "Uso: /cancelar <qué dice el recordatorio>, por ejemplo /cancelar sacar la ropa.", []
+    found, message = memoria.find_to_cancel(args)
+    if len(found) == 1:
+        return memoria.cancel_question(found[0]), found
+    return message, found
 
 
 def forget_preview(brain: Brain, query: str) -> tuple[str, dict | None]:
@@ -112,9 +159,7 @@ def forget_preview(brain: Brain, query: str) -> tuple[str, dict | None]:
 
 def run(brain: Brain, text: str, memory_dir: Path) -> str:
     """Responde un comando que no necesita confirmación."""
-    name, _, args = text.strip().partition(" ")
-    args = args.strip()
-    name = name.lower()
+    name, _, args = canonical(text).partition(" ")
     if name == "/memoria":
         return memory_text(brain, args)
     if name == "/objetivos":
@@ -125,6 +170,14 @@ def run(brain: Brain, text: str, memory_dir: Path) -> str:
         return status_text(brain)
     if name == "/herramientas":
         return tools_text(brain)
+    if name == "/recordatorios":
+        return memoria.list_reminders()
+    if name == "/avisos":
+        return notices_text(args)
+    if name == "/silencio":
+        return silence_text(args)
+    if name == "/resumen":
+        return morning_summary(memoria.local_now())
     if name == "/ayuda":
         return HELP
     return closest(name)

@@ -119,3 +119,21 @@ def test_goal_panel_uses_no_outside_requests(site, page):
     page.wait_for_selector("input[value='Correr 10K']")
     assert memoria.goals_by_status()["activo"][0]["title"] == "Correr 10K"
     assert page.outside == []
+
+
+def test_cancel_offers_buttons_that_ask_first(site, page):
+    url, _ = site
+    memoria.crear_recordatorio("Sacar la basura", "en 2 horas")
+    memoria.crear_recordatorio("Sacar la basura reciclable", "en 3 horas")
+    page.goto(url)
+    say(page, "/cancelar basura")
+    page.wait_for_selector(".choices button >> nth=1")
+    assert page.locator(".choices button").count() == 2
+    page.reload()
+    page.click(".choices button:has-text('reciclable')")
+    page.wait_for_selector("#confirm[open]")
+    assert "«Sacar la basura reciclable»" in page.inner_text("#confirm-text")
+    page.click("#confirm-yes")
+    page.wait_for_selector(".command:has-text('cancelado')")
+    assert "cancelado" in memoria.list_reminders()
+    assert page.outside == []

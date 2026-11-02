@@ -1,0 +1,23 @@
+<h2>Recordatorios</h2>
+<pre class="timeline">{{ reminders }}</pre>
+<h2>Avisos</h2>
+{% for n in notices %}
+{% set done = {"listo": n.state == "listo", "posponer": n.state == "pospuesto", "silenciar": n.state == "silenciado", "util": n.value == "util", "molesto": n.value == "molesto"} %}
+<div class="card{% if n.urgent %} urgent{% endif %}">
+  <div class="row">
+    <span class="badge state-{{ n.state }}">{{ states.get(n.state, n.state) }}{% if n.state == "pospuesto" and n.snooze_until %} hasta las {{ n.snooze_until[11:16] }}{% endif %}</span>
+    {% if n.value %}<span class="badge">{{ "útil" if n.value == "util" else "molesto" }}</span>{% endif %}
+    <span class="muted">{{ n.kind }}{% if n.urgent %} urgente{% endif %}{% if n.due_at %} para las {{ n.due_at[11:16] }}{% endif %} · avisado {{ n.shown_at[:16]|replace("T", " ") }}</span>
+  </div>
+  <div class="notice-text">{{ n.text }}</div>
+  <div class="row">
+    {% for action, label in [("listo", "Listo"), ("posponer", "Posponer 1 h"), ("silenciar", "No me recuerdes esto"), ("util", "Útil"), ("molesto", "Molesto")] %}
+    <button class="plain{% if done[action] %} on{% endif %}" hx-post="/avisos/{{ n.id }}/{{ action }}" hx-target="#avisos"
+      aria-pressed="{{ 'true' if done[action] else 'false' }}"{% if done[action] %} disabled{% endif %}
+      {% if action == "silenciar" %}hx-confirm="¿No te lo recuerdo más?"{% endif %}>{% if done[action] %}✓ {% endif %}{{ label }}</button>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<p class="muted">Todavía no hay avisos.</p>
+{% endfor %}
