@@ -2,13 +2,13 @@
   "nube": {
     "capa": "nube",
     "sin_red": false,
-    "fecha": "2026-11-01",
+    "fecha": "2026-11-02",
     "hechos": 9,
     "total_hechos": 10,
     "guardados": 9,
     "negativos": 3,
     "total_negativos": 3,
-    "tokens_prompt_max": 2333,
+    "tokens_prompt_max": 2344,
     "calidad": {
       "entidades": 11,
       "duplicadas": [
@@ -25,7 +25,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2330
+        "tokens_prompt": 2341
       },
       {
         "pregunta": "¿Qué estoy plantando en el balcón?",
@@ -35,7 +35,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2331
+        "tokens_prompt": 2342
       },
       {
         "pregunta": "¿Cómo se llama mi perro?",
@@ -45,7 +45,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2328
+        "tokens_prompt": 2339
       },
       {
         "pregunta": "¿Qué hierba no me gusta?",
@@ -55,7 +55,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2329
+        "tokens_prompt": 2340
       },
       {
         "pregunta": "¿Qué libro estoy leyendo?",
@@ -66,17 +66,17 @@
           "search_notes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2327
+        "tokens_prompt": 2338
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
         "ok": false,
-        "respuesta": "Tienes el proyecto Faro, en el que trabajas junto a tu colega Tomás. También tienes el de la huerta en el balcón con tomates cherry.",
+        "respuesta": "Tengo anotado que estás trabajando en el proyecto Faro con tu colega Tomás. También mencionaste que empezaste a aprender portugués y que estás armando una huerta en el balcón.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2330
+        "tokens_prompt": 2341
       },
       {
         "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
@@ -86,7 +86,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2331
+        "tokens_prompt": 2342
       },
       {
         "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
@@ -96,7 +96,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2333
+        "tokens_prompt": 2344
       },
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
@@ -106,37 +106,37 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2328
+        "tokens_prompt": 2339
       },
       {
         "pregunta": "¿Qué prefiero tomar en las tardes?",
         "ok": true,
-        "respuesta": "Prefieres tomar té verde antes que café en las tardes.",
+        "respuesta": "Prefieres tomar té verde antes que café por las tardes.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2330
+        "tokens_prompt": 2341
       },
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado, Renzo. No recuerdo que me hayas mencionado el nombre de tu dentista.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes decir ahora y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2329
+        "tokens_prompt": 2340
       },
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo y lo recuerdo para la próxima.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2329
+        "tokens_prompt": 2340
       },
       {
         "pregunta": "¿Cuál es mi color favorito?",
@@ -146,7 +146,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2328
+        "tokens_prompt": 2339
       }
     ]
   },
