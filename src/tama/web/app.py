@@ -126,6 +126,8 @@ class Session:
     def finish(self) -> None:
         if self.brain.reflector is not None:
             self.brain.reflector.activity()
+        if self.brain.proactive is not None:
+            self.brain.proactive.activity()
         self._busy.release()
 
 
