@@ -196,3 +196,5 @@ button.plain.on, button.plain.on:disabled {
   border-color: var(--accent);
   cursor: default;
 }
+
+.choices button { text-align: left; }

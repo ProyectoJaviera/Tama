@@ -1896,13 +1896,20 @@ def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:
             "INSERT INTO reminders (text, due_at, urgent, created_at) VALUES (?, ?, ?, ?)",
             (texto.strip(), moment.isoformat(timespec="seconds"), int(urgente), now()),
         ).lastrowid
-    sent = delivery_time(moment, urgente)
+    return scheduled_text(number, texto.strip(), moment, urgente)
+
+
+def scheduled_text(number: int, text: str, moment: datetime, urgent: bool) -> str:
+    """Lo que devuelven crear y cambiar: la hora exacta en que Tama avisará, para decirla."""
+    sent = delivery_time(moment, urgent)
     if sent == moment:
-        return f"Recordatorio #{number}: avisaré {day_label(moment)}. {texto.strip()}."
+        return (
+            f"Recordatorio #{number}: avisaré {day_label(moment)}. {text}. Dile esa hora a Renzo."
+        )
     start, end = quiet_hours()
     return (
         f"Recordatorio #{number}: avisaré {day_label(sent)}, no {day_label(moment)}, porque es"
-        f" horario de no molestar ({start}:00 a {end}:00). {texto.strip()}. Dile a Renzo esa"
+        f" horario de no molestar ({start}:00 a {end}:00). {text}. Dile a Renzo esa"
         " hora y que, si lo quiere antes, puede pedirlo urgente."
     )
 
@@ -1970,15 +1977,13 @@ def update_reminder(numero: int, texto: str = "", cuando: str = "") -> str:
         ).fetchone()
         if row is None:
             raise ToolError(f"No hay un recordatorio pendiente #{numero}.")
+        text = texto.strip() or row["text"]
+        moment = moment or datetime.fromisoformat(row["due_at"])
         db.execute(
             "UPDATE reminders SET text = ?, due_at = ? WHERE id = ?",
-            (
-                texto.strip() or row["text"],
-                moment.isoformat(timespec="seconds") if moment else row["due_at"],
-                numero,
-            ),
+            (text, moment.isoformat(timespec="seconds"), numero),
         )
-    return f"Recordatorio #{numero} actualizado."
+    return scheduled_text(numero, text, moment, bool(row["urgent"]))
 
 
 # Palabras que no dicen cuál recordatorio es: "el recordatorio de sacar la ropa" es "sacar ropa".
@@ -2073,6 +2078,14 @@ def pending_text(pending: list[dict[str, Any]]) -> str:
     if not pending:
         return "No hay recordatorios pendientes."
     return "Pendientes:\n" + "\n".join(reminder_line(r) for r in pending)
+
+
+def is_pending(number: int) -> bool:
+    with connect() as db:
+        row = db.execute(
+            "SELECT 1 FROM reminders WHERE id = ? AND status = 'pendiente'", (number,)
+        ).fetchone()
+    return row is not None
 
 
 def cancel_question(row: dict[str, Any]) -> str:

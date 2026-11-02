@@ -4,6 +4,7 @@ Un solo usuario y una sola conversación. El turno corre en un hilo con el motor
 eventos llegan al navegador por una cola, y las confirmaciones esperan la respuesta de Renzo.
 """
 
+import hashlib
 import json
 import os
 import queue
@@ -34,6 +35,10 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 HERE = Path(__file__).parent
+# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
+STATIC_VERSION = hashlib.sha256(
+    b"".join(p.read_bytes() for p in sorted((HERE / "static").iterdir()) if p.is_file())
+).hexdigest()[:10]
 NOTICE_LABELS = {
     "mostrado": "sin responder",
     "ignorado": "sin respuesta",
@@ -175,7 +180,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             raise HTTPException(status_code=403, detail="Falta el token CSRF")
 
     def page(request: Request, name: str, **context: Any) -> HTMLResponse:
-        return templates.TemplateResponse(request, name, {"csrf": csrf, **context})
+        context = {"csrf": csrf, "v": STATIC_VERSION, **context}
+        return templates.TemplateResponse(request, name, context)
 
     def chat_history() -> list[tuple[str, str]]:
         """La conversación, con los comandos y los avisos, tal como se vio."""
@@ -187,17 +193,32 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 if item["texto"]:
                     shown.append(("user", item["texto"]))
                 shown.append(("command", item["respuesta"]))
+                # Los botones vuelven solo para los recordatorios que siguen pendientes.
+                still = [
+                    c
+                    for c in item.get("opciones", [])
+                    if memoria.is_pending(int(c["command"].rsplit(" ", 1)[1]))
+                ]
+                if still:
+                    shown.append(("choices", still))
             elif kind == "proactive":
                 shown.append(("notice", f"Aviso · {content}"))
             else:
                 shown.append(("user" if kind == "user_msg" else "assistant", content))
         return shown
 
-    def answer_command(text: str, reply: str, **extra: str) -> dict[str, Any]:
-        """Responde un comando y lo guarda, para que siga en el chat al volver."""
-        item = {"texto": text, "respuesta": reply}
+    def answer_command(
+        text: str, reply: str, confirm: str = "", choices: list | None = None
+    ) -> dict[str, Any]:
+        """Responde un comando y lo guarda, con sus opciones, para que siga en el chat al volver."""
+        item = {"texto": text, "respuesta": reply, "opciones": choices or []}
         brain.store.log("command", json.dumps(item, ensure_ascii=False))
-        return {"reply": reply, **extra}
+        answer: dict[str, Any] = {"reply": reply}
+        if confirm:
+            answer["confirm"] = confirm
+        if choices:
+            answer["choices"] = choices
+        return answer
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
@@ -221,13 +242,11 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 if len(found) == 1:
                     session.pending = ("cancelar", found[0]["id"])
                     return answer_command(text, preview, confirm=preview)
-                reply = answer_command(text, preview)
-                if found:
-                    reply["choices"] = [
-                        {"label": memoria.reminder_line(r), "command": f"/cancelar {r['id']}"}
-                        for r in found
-                    ]
-                return reply
+                choices = [
+                    {"label": memoria.reminder_line(r), "command": f"/cancelar {r['id']}"}
+                    for r in found
+                ]
+                return answer_command(text, preview, choices=choices)
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
         turn_id = session.start(text)
         if turn_id is None:

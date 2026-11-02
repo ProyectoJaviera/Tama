@@ -394,3 +394,10 @@ def test_model_cancel_shows_the_real_reminder(chores):
     assert (
         confirm_question(call) == "¿Cancelo el recordatorio «Sacar la basura» de hoy a las 12:00?"
     )
+
+
+def test_update_reminder_tells_the_exact_time(monkeypatch):
+    monkeypatch.setattr(memoria, "local_now", lambda: WEDNESDAY)
+    remind(WEDNESDAY + timedelta(minutes=5), text="Sacar la basura")
+    text = memoria.update_reminder(1, texto="Sacar la basura y la orgánica")
+    assert "avisaré hoy 10:05" in text and "orgánica" in text

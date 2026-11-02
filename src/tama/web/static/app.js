@@ -98,7 +98,8 @@
     });
   }
 
-  // Varias opciones (por ejemplo, qué recordatorio cancelar): un botón por cada una.
+  // Varias opciones (por ejemplo, qué recordatorio cancelar): un botón por cada una. También
+  // sirven los que vuelven del historial al recargar.
   function addChoices(choices) {
     const row = document.createElement("div");
     row.className = "row choices";
@@ -106,17 +107,21 @@
       const option = document.createElement("button");
       option.type = "button";
       option.className = "plain";
+      option.dataset.command = choice.command;
       option.textContent = choice.label;
-      option.onclick = () => {
-        row.remove();
-        input.value = choice.command;
-        form.requestSubmit();
-      };
       row.appendChild(option);
     }
     log.appendChild(row);
     log.scrollTop = log.scrollHeight;
   }
+
+  log.addEventListener("click", (event) => {
+    const option = event.target.closest(".choices button");
+    if (!option || button.disabled) return;
+    option.parentElement.remove();
+    input.value = option.dataset.command;
+    form.requestSubmit();
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

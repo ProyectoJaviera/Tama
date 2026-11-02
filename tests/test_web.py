@@ -388,3 +388,14 @@ def test_open_reminders_feed_the_banner(web):
     assert [n["text"] for n in client.get("/avisos/abiertos").json()] == ["Pan"]
     client.post(f"/avisos/{notice['id']}/listo")
     assert client.get("/avisos/abiertos").json() == []
+
+
+def test_choice_buttons_return_only_while_pending(web):
+    client, _ = web()
+    memoria.crear_recordatorio("Sacar la basura", "en 2 horas")
+    memoria.crear_recordatorio("Sacar la basura reciclable", "en 3 horas")
+    client.post("/chat", data={"text": "/cancelar basura"})
+    assert client.get("/").text.count('data-command="/cancelar') == 2
+    memoria.cancel_one(1)
+    page = client.get("/").text
+    assert 'data-command="/cancelar 2"' in page and 'data-command="/cancelar 1"' not in page
