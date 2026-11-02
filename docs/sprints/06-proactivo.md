@@ -1,6 +1,6 @@
 # Sprint 6: Acompañante proactivo
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-02)
 
 ## Objetivo
 Tama avisa, recuerda y sugiere por iniciativa propia en buen momento, sin molestar (Silencio Operativo). Los avisos llegan a la web, a la CLI y, opcionalmente, al celular.
@@ -66,3 +66,22 @@ Voz, remoto/PWA y clima o noticias.
 - Demo: recordatorio a 2 minutos que llega a la web (y al celular con ntfy); /resumen.
 - Docker web probada.
 - La semana de uso real con la bitácora se revisa en el sprint final (no bloquea el merge).
+
+## Cierre
+Evals en la nube y sin Claude; reflexión y diario en local; prueba rápida sin red.
+
+- Recordatorios en lenguaje natural: 12/12. Resumen matutino (juez): 5/5/5, sin inventar.
+- Herramientas: 23/23. Memoria: 9/10, 3/3 sin inventar. Rectificación: 3/3. Corrección e historial: bien.
+- Reflexión: 4/5 duplicados, 0 fusiones incorrectas. Diario: 5/5/5. Prueba sin red: 5/5.
+- Una corrida de memoria dio 0/10 por un corte de la nube (ningún turno usó herramientas); al repetirla, 9/10.
+- `docker compose up` responde en 127.0.0.1. Avisos en vivo probados en la web, incluido un urgente.
+
+Cambios tras la demo: franja fija, sonido y notificación del navegador; urgentes también mientras
+Renzo conversa; la hora real si cae en no molestar o al editar; estado de cada recordatorio en
+`/recordatorios`, `/resumen` y el panel; botones aplicados marcados; comandos guardados en el chat;
+`/cancelar` por texto o número, con botones cuando hay varios; resumen perdido solo antes de las 12:00.
+
+Pendiente:
+
+- ntfy en un celular real (solo probado con un servidor simulado en los tests).
+- La semana de uso real con la bitácora de valor se revisa en el sprint final.
