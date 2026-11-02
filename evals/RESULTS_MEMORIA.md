@@ -15,7 +15,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 | Capa | Completo | En orden |
 |---|---|---|
-| nube | FALLA | FALLA |
+| nube | ok | ok |
 | local | ok | ok |
 | local (sin red) | ok | ok |
 
@@ -30,7 +30,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 ## Fallos
 
-- `nube` · ¿Qué hierba no me gusta?: No tengo ese dato anotado. Si me lo cuentas, lo recordaré para la próxima.
+- `nube` · ¿Qué hierba no me gusta?: No tengo registro de ninguna hierba que no te guste. Solo recuerdo que prefieres el té verde sobre el café por las tarde
 - `nube` · duplicada: mama de renzo / renzo
 - `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
 - `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 
