@@ -174,6 +174,8 @@ def test_health_topic_keeps_only_health_facts():
 
 def test_operated_counts_as_health():
     memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.create_entities([entity("Ana", "persona", "A Ana le operaron la muñeca")])
+    assert "muñeca" in memoria.linea_de_tiempo("salud")
     assert "rodilla" in memoria.linea_de_tiempo("salud")
 
 

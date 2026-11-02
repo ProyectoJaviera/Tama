@@ -150,6 +150,7 @@ HEALTH_WORDS = (
     "duele",
     "dolor",
     "operad",
+    "operar",
     "cirug",
     "medic",
     "doctor",
