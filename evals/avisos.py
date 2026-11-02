@@ -1,8 +1,10 @@
 """Evals del motor proactivo: recordatorios en lenguaje natural y un resumen que no inventa.
 
 uv run python -m evals.avisos
+uv run python -m evals.avisos --capas local --offline   # el modelo local, sin red
 """
 
+import argparse
 import os
 import sqlite3
 import sys
@@ -55,11 +57,11 @@ def isolated():
     return settings
 
 
-def run_reminders() -> int:
+def run_reminders(layer: str = "nube", offline: bool = False) -> int:
     good = 0
     for text, minutes in REMINDERS:
         settings = isolated()
-        brain = brain_module.build(settings, only=["nube"])
+        brain = brain_module.build(settings, force_offline=offline, only=[layer])
         system = session_prompt(settings.memory_dir, brain.store)
         limits = (settings.history_max_tokens, settings.tools_max)
         started = memoria.local_now()
@@ -113,7 +115,12 @@ def run_summary() -> None:
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    run_reminders()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--capas", nargs="+", default=["nube"])
+    parser.add_argument("--offline", action="store_true", help="simula no tener internet")
+    args = parser.parse_args()
+    for layer in args.capas:
+        run_reminders(layer, args.offline)
     run_summary()
     return 0
 
