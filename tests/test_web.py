@@ -149,7 +149,10 @@ def test_yes_runs_the_destructive_tool(web):
     turn = client.post("/chat", data={"text": "borra"}).json()["turn"]
     assert client.post(f"/chat/{turn}/confirmar", data={"respuesta": "si"}).status_code == 204
     found = events(client, turn)
-    assert any(e["kind"] == "confirm" and e["question"] == "¿Borro la nota 3?" for e in found)
+    assert any(
+        e["kind"] == "confirm" and e["question"] == "¿Borro la nota 3? No la encuentro."
+        for e in found
+    )
     assert brain.tools.executed == ["delete_note"]
 
 

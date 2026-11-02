@@ -90,7 +90,7 @@ def test_chat_and_destructive_confirmation(site, page):
     page.wait_for_function("!document.querySelector('#chat-form button').disabled")
     say(page, "borra la nota 3")
     page.wait_for_selector("#confirm[open]")
-    assert page.inner_text("#confirm-text") == "¿Borro la nota 3?"
+    assert page.inner_text("#confirm-text") == "¿Borro la nota 3? No la encuentro."
     page.click("#confirm-yes")
     page.wait_for_selector(".assistant:has-text('Listo, la borré.')")
     assert tools.executed == ["delete_note"]

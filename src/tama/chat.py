@@ -25,10 +25,12 @@ def short(value: object, limit: int = 60) -> str:
     return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
-def note_name(note_id: object) -> str:
-    """El título de la nota: su número no le dice nada a Renzo."""
-    title = notas.title_of(note_id)
-    return f"«{short(title)}»" if title else str(note_id)
+def note_question(verb: str, note_id: object) -> str:
+    """Muestra la nota real: su número no le dice nada a Renzo."""
+    note = notas.title_of(note_id)
+    if not note:
+        return f"¿{verb} la nota {note_id}? No la encuentro."
+    return f"¿{verb} la nota «{short(note, 80)}»?"
 
 
 def confirm_question(call: ToolCall) -> str:
@@ -38,9 +40,9 @@ def confirm_question(call: ToolCall) -> str:
         items = [o for d in args.get("deletions", []) for o in d.get("observations", [])]
         return "¿Borro de la memoria: " + ", ".join(f"«{short(i)}»" for i in items) + "?"
     if call.name == "delete_note":
-        return f"¿Borro la nota {note_name(args.get('note_id'))}?"
+        return note_question("Borro", args.get("note_id"))
     if call.name == "update_note":
-        return f"¿Cambio la nota {note_name(args.get('note_id'))}?"
+        return note_question("Cambio", args.get("note_id"))
     if call.name == "overwrite_file":
         return f"¿Reemplazo todo el contenido de {args.get('path')}?"
     if call.name == "discard_goal":

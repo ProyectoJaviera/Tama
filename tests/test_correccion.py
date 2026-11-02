@@ -375,7 +375,7 @@ def test_olvidar_only_messages(monkeypatch):
             {"deletions": [{"entityName": "H", "observations": ["se disfrazará de Shrek"]}]},
             "¿Borro de la memoria: «se disfrazará de Shrek»?",
         ),
-        ("delete_note", {"note_id": 3}, "¿Borro la nota 3?"),
+        ("delete_note", {"note_id": 3}, "¿Borro la nota 3? No la encuentro."),
         ("overwrite_file", {"path": "a.txt"}, "¿Reemplazo todo el contenido de a.txt?"),
     ],
 )
@@ -386,7 +386,12 @@ def test_confirmation_is_readable(name, args, expected):
 def test_confirmation_names_the_note(tmp_path):
     notas.create_note("Lista de compras", "Pan")
     question = cli.confirm_question(ToolCall("delete_note", {"note_id": 1}, "c"))
-    assert question == "¿Borro la nota «Lista de compras»?"
+    assert question == "¿Borro la nota «Lista de compras: Pan»?"
+
+
+def test_confirmation_says_when_the_note_is_missing():
+    question = cli.confirm_question(ToolCall("delete_note", {"note_id": 9}, "c"))
+    assert question == "¿Borro la nota 9? No la encuentro."
 
 
 def test_emojis_are_removed():
