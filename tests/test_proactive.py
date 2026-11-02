@@ -41,6 +41,8 @@ def remind(moment, urgent=False, text="Sacar la basura"):
     [
         ("en 2 minutos", datetime(2026, 11, 4, 10, 2, tzinfo=ZONE)),
         ("en una hora", datetime(2026, 11, 4, 11, 0, tzinfo=ZONE)),
+        ("en media hora", datetime(2026, 11, 4, 10, 30, tzinfo=ZONE)),
+        ("la próxima semana", datetime(2026, 11, 11, 9, 0, tzinfo=ZONE)),
         ("en tres dias", datetime(2026, 11, 7, 10, 0, tzinfo=ZONE)),
         ("mañana a las 9", datetime(2026, 11, 5, 9, 0, tzinfo=ZONE)),
         ("mañana a las 3 de la tarde", datetime(2026, 11, 5, 15, 0, tzinfo=ZONE)),

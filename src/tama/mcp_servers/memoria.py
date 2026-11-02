@@ -1818,6 +1818,10 @@ def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
         return moment if moment.tzinfo else moment.replace(tzinfo=now.tzinfo)
     except ValueError:
         pass
+    if "media hora" in plain:
+        return now + timedelta(minutes=30)
+    if "proxima semana" in plain or "semana que viene" in plain:
+        return (now + timedelta(days=7)).replace(hour=9, minute=0, second=0, microsecond=0)
     relative = RELATIVE_TIME.search(plain)
     if relative:
         amount = relative.group(1) or "1"
