@@ -102,9 +102,7 @@ def run_summary() -> None:
     try:
         verdict = judge(
             f"Datos guardados:\n{data}\n\nResumen matutino:\n{text}\n\nCriterios (3):\n"
-            f"{JUDGE_CRITERIA}
-
-"
+            f"{JUDGE_CRITERIA}\n\n"
             'Devuelve {"puntajes": [un entero por criterio], "comentario": "una frase"}.'
         )
     finally:
