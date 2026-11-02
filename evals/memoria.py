@@ -364,8 +364,12 @@ def run_rectification(layer: str, offline: bool) -> dict[str, Any]:
         system = session_prompt(settings.memory_dir, brain.store)
         turn = ask(brain, [{"role": "system", "content": system}], fixed, *limits)
         brain.close()
+        # Si el modelo no guardó nada, la base ni siquiera se creó: cuenta como fallo.
         db = sqlite3.connect(settings.data_dir / "memoria.db")
-        first = db.execute("SELECT valid FROM observations ORDER BY id LIMIT 1").fetchone()
+        try:
+            first = db.execute("SELECT valid FROM observations ORDER BY id LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            first = None
         db.close()
         ok = bool(first) and not first[0]
         mark = "ok" if ok else "FALLA"
