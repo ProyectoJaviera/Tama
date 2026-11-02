@@ -195,7 +195,15 @@ def retire_contradictions(thinker: Thinker) -> list[str]:
             if 1 <= old < new <= len(listed)
             and is_replaced(thinker, entity["name"], listed[old - 1], listed[new - 1])
         }
-        replaced = [(listed[o - 1]["id"], listed[n - 1]["id"]) for o, n in sorted(chosen)]
+        replaced = []
+        for old, new in sorted(chosen):
+            if memoria.is_history(listed[old - 1]["id"]):
+                first, second = listed[old - 1]["text"], listed[new - 1]["text"]
+                question = f"Tengo anotado «{first}» y también «{second}». ¿Cuál es correcto?"
+                if memoria.add_suggestion(question):
+                    done.append(f"pregunta: {question}")
+            else:
+                replaced.append((listed[old - 1]["id"], listed[new - 1]["id"]))
         if memoria.retire_observations(replaced):
             done.append(f"{entity['name']}: {len(replaced)} datos ya no vigentes")
         memoria.mark_reviewed(entity["id"])

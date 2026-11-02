@@ -229,6 +229,13 @@ def test_wrong_id_error_offers_similar_facts():
         memoria.update_observation(["o99"], "Irá disfrazado de pirata")
 
 
+def test_search_matches_other_forms_of_a_word():
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.create_entities([entity("Renzo", "persona", *facts)])
+    assert "operado" in memoria.search_nodes("Renzo operación")
+
+
 def test_repeated_fact_only_adds_links():
     memoria.create_entities([entity("Halloween", "plan", "Irán de piratas")])
     memoria.create_entities([entity("Ana", "persona", "Irán de piratas")])

@@ -68,7 +68,7 @@ def test_other_date_is_another_fact():
 def test_past_fact_is_an_event_that_survives_a_correction():
     memoria.create_entities([entity("Renzo", "persona", "El 3 de marzo de 2020 se operó")])
     text = memoria.update_observation([first_id()], "Ya no le duele")
-    assert "eventos" in text
+    assert "error=true" in text
     assert valid("El 3 de marzo de 2020 se operó") == 1
 
 

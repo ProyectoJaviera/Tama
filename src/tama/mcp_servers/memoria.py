@@ -134,6 +134,10 @@ MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS, CORRECTION_R
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 NO_GOALS = "No hay objetivos en ese estado."
+SEARCH_NOTE = (
+    "Si el mensaje de Renzo niega o corrige uno de estos datos, antes de responder llama "
+    "update_observation con su id y error=true, aunque lo nuevo ya esté anotado."
+)
 MIN_SIMILARITY = 0.75
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
@@ -494,7 +498,8 @@ def already_happened(db: sqlite3.Connection, row: sqlite3.Row) -> bool:
 
 
 def stems(text: str) -> set[str]:
-    return {w[:6] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
+    """Raíz corta de cada palabra: "operación" y "operado" deben coincidir."""
+    return {w[:5] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
 
 
 def recent_observations(
@@ -719,7 +724,8 @@ def search_nodes(query: str = "") -> str:
             ).fetchall()
         if not rows:
             return no_match(db)
-        return "\n\n".join(describe(db, r, query) for r in rows)
+        found = "\n\n".join(describe(db, r, query) for r in rows)
+        return f"{found}\n\n{SEARCH_NOTE}" if query.strip() else found
 
 
 @server.tool(
@@ -846,7 +852,10 @@ def update_observation(
         others = related_facts(db, nueva, numbers)
     text = f"Corregido: {len(states)} datos antiguos dejaron de estar vigentes."
     if len(states) < len(numbers):
-        text += " Los eventos pasados se conservan en la historia."
+        text += (
+            " Los de salud siguen vigentes como historia: si nunca fueron ciertos, repite con "
+            "error=true."
+        )
     if others:
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
@@ -1527,6 +1536,13 @@ def retire_observations(pairs: list[tuple[int, int]]) -> int:
             for entity_id in linked_entities(db, [old_id]):
                 reindex(db, entity_id)
     return changed
+
+
+def is_history(observation_id: int) -> bool:
+    """Lo que ya ocurrió o es de salud no se retira solo: se le pregunta a Renzo."""
+    with connect() as db:
+        row = db.execute("SELECT * FROM observations WHERE id = ?", (observation_id,)).fetchone()
+        return row is not None and already_happened(db, row)
 
 
 def mark_reviewed(entity_id: int) -> None:

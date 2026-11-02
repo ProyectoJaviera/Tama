@@ -327,25 +327,22 @@ def run_history(layer: str, offline: bool) -> dict[str, Any]:
     }
 
 
+# Lo contado, lo que ya quedó a medio guardar y la rectificación, esta última en otra sesión.
 RECTIFICATIONS = [
     (
         "El 3 de marzo me operaron de la rodilla.",
+        "A Renzo se le sanó sola una lesión que pensaba que requería operación.",
         "En verdad no me operaron, se sanó sola.",
-        "operad",
     ),
-    ("Mi hermano Pablo vive en Valdivia.", "Me equivoqué, Pablo vive en Osorno.", "valdivia"),
-    (
-        "Ayer me compré un auto rojo.",
-        "No es cierto, no compré ningún auto, solo lo probé.",
-        "compr",
-    ),
+    ("Mi hermano Pablo vive en Valdivia.", "", "Me equivoqué, Pablo vive en Osorno."),
+    ("Ayer me compré un auto rojo.", "", "No es cierto, no compré ningún auto, solo lo probé."),
 ]
 
 
 def run_rectification(layer: str, offline: bool) -> dict[str, Any]:
-    """Renzo aclara que un dato estaba mal: no debe seguir vigente."""
+    """Renzo aclara en otra sesión que un dato estaba mal: no debe seguir vigente."""
     results = []
-    for told, fixed, word in RECTIFICATIONS:
+    for told, partial, fixed in RECTIFICATIONS:
         base = Path(tempfile.mkdtemp(prefix=f"tama-rectificacion-{layer}-"))
         settings = get_settings().model_copy(
             update={
@@ -358,20 +355,22 @@ def run_rectification(layer: str, offline: bool) -> dict[str, Any]:
         limits = (settings.history_max_tokens, settings.tools_max)
         brain = brain_module.build(settings, force_offline=offline, only=[layer])
         system = session_prompt(settings.memory_dir, brain.store)
-        messages = [{"role": "system", "content": system}]
-        ask(brain, messages, told, *limits)
-        turn = ask(brain, messages, fixed, *limits)
+        ask(brain, [{"role": "system", "content": system}], told, *limits)
+        if partial:
+            entity = {"name": "Renzo", "entityType": "persona", "observations": [partial]}
+            brain.tools.call("create_entities", {"entities": [entity]})
+        brain.close()
+        brain = brain_module.build(settings, force_offline=offline, only=[layer])
+        system = session_prompt(settings.memory_dir, brain.store)
+        turn = ask(brain, [{"role": "system", "content": system}], fixed, *limits)
         brain.close()
         db = sqlite3.connect(settings.data_dir / "memoria.db")
         first = db.execute("SELECT valid FROM observations ORDER BY id LIMIT 1").fetchone()
-        rows = db.execute("SELECT id, content, valid FROM observations").fetchall()
         db.close()
         ok = bool(first) and not first[0]
-        print(
-            f"[{layer}] {fixed[:40]} -> {turn['herramientas']} {'ok' if ok else 'FALLA'}",
-            flush=True,
-        )
-        results.append({"caso": fixed, "palabra": word, "ok": ok, "datos": rows})
+        mark = "ok" if ok else "FALLA"
+        print(f"[{layer}] {fixed[:40]} -> {turn['herramientas']} {mark}", flush=True)
+        results.append({"caso": fixed, "ok": ok})
     return {"capa": layer, "correctos": sum(r["ok"] for r in results), "total": len(results)}
 
 

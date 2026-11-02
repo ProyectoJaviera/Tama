@@ -11,7 +11,7 @@ from tama.cascade import Cascade, Layer
 from tama.config import Settings
 from tama.events import EventStore
 from tama.mcp_hub import ToolInfo, ToolOutcome
-from tama.mcp_servers import memoria
+from tama.mcp_servers import memoria, notas
 from tama.providers import Done, Text, ToolCall
 from tama.web.app import Starting, create_app
 from tests.fakes import FakeConnectivity
@@ -154,6 +154,17 @@ def test_yes_runs_the_destructive_tool(web):
         for e in found
     )
     assert brain.tools.executed == ["delete_note"]
+
+
+def test_dialog_shows_the_real_note(web):
+    client, _ = web(*destructive())
+    notas.create_note("prueba", "hola")
+    notas.create_note("otra", "x")
+    notas.create_note("tercera", "y")
+    turn = client.post("/chat", data={"text": "borra"}).json()["turn"]
+    client.post(f"/chat/{turn}/confirmar", data={"respuesta": "no"})
+    found = events(client, turn)
+    assert any(e.get("question") == "¿Borro la nota «tercera: y»?" for e in found)
 
 
 def test_no_does_not_run_it(web):
