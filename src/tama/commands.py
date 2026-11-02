@@ -79,7 +79,7 @@ def status_text(brain: Brain) -> str:
 
 def closest(name: str) -> str:
     """Comando desconocido: sugiere el más parecido."""
-    found = get_close_matches(name, COMMANDS, n=1, cutoff=0.4)
+    found = get_close_matches(name, COMMANDS, n=1, cutoff=0.6)
     if found:
         return f"No conozco {name}. ¿Quisiste decir {found[0]}? Con /ayuda ves la lista."
     return f"No conozco {name}. {HELP}"
