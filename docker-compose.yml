@@ -16,6 +16,7 @@ services:
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
       TAMA_THINK: ${TAMA_THINK:-false}
+      TAMA_WEB_HOST: 0.0.0.0
     # En Linux host.docker.internal no existe por defecto.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -25,6 +26,10 @@ services:
       - tama-memoria:/memoria
       # Carpeta de trabajo para el servidor de archivos: la de Renzo en el host.
       - ${TAMA_WORKDIR_HOST:-./trabajo}:/trabajo
+    # Solo en localhost: Tama no queda a la vista de la red. Se abre con `docker compose run
+    # --service-ports tama web`. Dentro del contenedor debe escuchar en todas sus interfaces.
+    ports:
+      - "127.0.0.1:${TAMA_WEB_PORT:-8765}:${TAMA_WEB_PORT:-8765}"
     stdin_open: true
     tty: true
     restart: unless-stopped

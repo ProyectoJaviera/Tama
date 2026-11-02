@@ -26,7 +26,7 @@ Sprint en curso: ver `docs/sprints/` (el archivo de número más alto sin marcar
 
 ## Stack
 
-Python 3.12, `uv` (dependencias y entorno), FastAPI (más adelante), SQLite + FTS5, Ollama (nativo en el host), Docker Compose (Tama), `ruff` (lint y formato), `pytest`, GitHub Actions.
+Python 3.12, `uv` (dependencias y entorno), FastAPI + HTMX (`tama web`), SQLite + FTS5, Ollama (nativo en el host), Docker Compose (Tama), `ruff` (lint y formato), `pytest`, GitHub Actions.
 
 La voz se capturará desde el navegador, así que el contenedor no necesita micrófono ni parlantes.
 

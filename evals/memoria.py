@@ -137,6 +137,8 @@ def ask(brain, messages: list[dict], text: str, max_tokens: int, max_tools: int)
     ):
         if isinstance(event, agent.ToolUse):
             tools_used.append(event.name)
+        elif isinstance(event, agent.ToolResult) and not event.ok:
+            print(f"  error de {event.name}: {event.text[:300]}", flush=True)
         elif isinstance(event, Answered) and first is None:
             first = event
         elif isinstance(event, agent.FinalAnswer):
@@ -325,6 +327,57 @@ def run_history(layer: str, offline: bool) -> dict[str, Any]:
     }
 
 
+# Lo contado, lo que ya quedó a medio guardar y la rectificación, esta última en otra sesión.
+RECTIFICATIONS = [
+    (
+        "El 3 de marzo me operaron de la rodilla.",
+        "A Renzo se le sanó sola una lesión que pensaba que requería operación.",
+        "En verdad no me operaron, se sanó sola.",
+    ),
+    ("Mi hermano Pablo vive en Valdivia.", "", "Me equivoqué, Pablo vive en Osorno."),
+    ("Ayer me compré un auto rojo.", "", "No es cierto, no compré ningún auto, solo lo probé."),
+]
+
+
+def run_rectification(layer: str, offline: bool) -> dict[str, Any]:
+    """Renzo aclara en otra sesión que un dato estaba mal: no debe seguir vigente."""
+    results = []
+    for told, partial, fixed in RECTIFICATIONS:
+        base = Path(tempfile.mkdtemp(prefix=f"tama-rectificacion-{layer}-"))
+        settings = get_settings().model_copy(
+            update={
+                "data_dir": base / "data",
+                "workdir": base / "trabajo",
+                "memory_dir": base / "memoria",
+                "connectivity_watch_s": 0,
+            }
+        )
+        limits = (settings.history_max_tokens, settings.tools_max)
+        brain = brain_module.build(settings, force_offline=offline, only=[layer])
+        system = session_prompt(settings.memory_dir, brain.store)
+        ask(brain, [{"role": "system", "content": system}], told, *limits)
+        if partial:
+            entity = {"name": "Renzo", "entityType": "persona", "observations": [partial]}
+            brain.tools.call("create_entities", {"entities": [entity]})
+        brain.close()
+        brain = brain_module.build(settings, force_offline=offline, only=[layer])
+        system = session_prompt(settings.memory_dir, brain.store)
+        turn = ask(brain, [{"role": "system", "content": system}], fixed, *limits)
+        brain.close()
+        # Si el modelo no guardó nada, la base ni siquiera se creó: cuenta como fallo.
+        db = sqlite3.connect(settings.data_dir / "memoria.db")
+        try:
+            first = db.execute("SELECT valid FROM observations ORDER BY id LIMIT 1").fetchone()
+        except sqlite3.OperationalError:
+            first = None
+        db.close()
+        ok = bool(first) and not first[0]
+        mark = "ok" if ok else "FALLA"
+        print(f"[{layer}] {fixed[:40]} -> {turn['herramientas']} {mark}", flush=True)
+        results.append({"caso": fixed, "ok": ok})
+    return {"capa": layer, "correctos": sum(r["ok"] for r in results), "total": len(results)}
+
+
 def render(data: dict[str, Any]) -> str:
     lines = [
         "# Evals de memoria",
@@ -394,6 +447,7 @@ def main() -> int:
     parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
     parser.add_argument("--historial", action="store_true", help="solo historial médico")
+    parser.add_argument("--rectificacion", action="store_true", help="solo datos que estaban mal")
     args = parser.parse_args()
     if args.local_completo:
         args.capas = [*args.capas, "local"]
@@ -402,6 +456,10 @@ def main() -> int:
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     for layer in args.capas:
         key = layer + (" (sin red)" if args.offline else "")
+        if args.rectificacion:
+            result = run_rectification(layer, args.offline)
+            print(f"{layer}: {result['correctos']}/{result['total']}")
+            continue
         if args.historial:
             data[f"historial {key}"] = run_history(layer, args.offline)
         elif args.correccion:

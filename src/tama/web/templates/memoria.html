@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block body %}
+<h2>Perfil</h2>
+<form hx-post="/memoria/perfil" hx-target="#perfil-estado">
+  <textarea name="texto" maxlength="{{ limit }}" aria-label="Perfil">{{ profile }}</textarea>
+  <button type="submit">Guardar perfil</button>
+  <span id="perfil-estado" class="muted">Máximo {{ limit }} caracteres (unos 300 tokens).</span>
+</form>
+<h2>Fichas</h2>
+<input type="search" name="q" value="{{ q }}" placeholder="Buscar en la memoria" aria-label="Buscar"
+  hx-get="/memoria" hx-trigger="keyup changed delay:300ms" hx-target="#fichas">
+<div id="fichas">{% include "fichas.html" %}</div>
+<div id="ficha"></div>
+<h2>Línea de tiempo</h2>
+<form class="row" hx-get="/memoria/linea" hx-target="#linea">
+  <input name="tema" placeholder="Tema (por ejemplo, salud)" aria-label="Tema">
+  <button type="submit">Ver</button>
+</form>
+<pre id="linea" class="timeline"></pre>
+{% endblock %}

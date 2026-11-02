@@ -66,6 +66,12 @@ docker compose run --rm tama --check       # chequeo de salud
 Debajo de cada respuesta aparece en gris qué capa respondió y cuánto tardó. Cada turno queda
 registrado en `events.db` (en el volumen de datos).
 
+### Interfaz web
+
+`uv run tama web` abre Tama en http://127.0.0.1:8765. Ahí conversas, confirmas acciones y corriges
+perfil, memoria y objetivos. Solo escucha en esta máquina y no pide nada a internet. En Docker:
+`docker compose run --rm --service-ports tama web`, publicado solo en localhost.
+
 ### Cerebro en cascada
 
 Tama prueba tres capas en orden y usa la primera que responda:
@@ -180,7 +186,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
-| `TAMA_TOOLS_MAX` | `16` | Máximo de herramientas visibles por turno |
+| `TAMA_TOOLS_MAX` | `17` | Máximo de herramientas visibles por turno |
+| `TAMA_WEB_PORT` | `8765` | Puerto de `tama web`, solo en localhost |
 | `TAMA_REFLECTION` | `true` | Reflexión en inactividad |
 | `TAMA_REFLECTION_IDLE_MIN` | `20` | Minutos sin actividad antes de reflexionar |
 | `TAMA_REFLECTION_MIN_FREE_GB` | `6` | RAM libre mínima para reflexionar |

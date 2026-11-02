@@ -63,12 +63,17 @@ class Settings(BaseSettings):
     # La capa local busca en la memoria con las palabras del mensaje (ADR 0003).
     local_auto_recall: bool = True
 
+    # Interfaz web: solo localhost, salvo que el contenedor necesite escuchar hacia su puerto.
+    web_host: str = "127.0.0.1"
+    web_port: int = 8765
+    web_confirm_timeout_s: float = 120.0
+
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
     workdir: Path = Path("data/trabajo")
     # Máximo a la vista por turno; el resto se pide con abrir_herramientas (ver selector.py).
-    tools_max: int = 16
+    tools_max: int = 17
     tool_start_timeout_s: float = 15.0
     tool_timeout_s: float = 30.0
     tool_result_max_chars: int = 4000

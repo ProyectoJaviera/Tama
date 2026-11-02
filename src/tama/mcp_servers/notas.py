@@ -54,6 +54,15 @@ def connect() -> sqlite3.Connection:
     return db
 
 
+def title_of(note_id: object) -> str:
+    """Título y comienzo de una nota, para preguntar a Renzo. Vacío si no existe."""
+    if not db_path().exists():
+        return ""
+    with connect() as db:
+        row = db.execute("SELECT title, body FROM notes WHERE id = ?", (note_id,)).fetchone()
+    return f"{row['title']}: {row['body'][:40]}" if row else ""
+
+
 def _now() -> str:
     return datetime.now().isoformat(timespec="minutes")
 

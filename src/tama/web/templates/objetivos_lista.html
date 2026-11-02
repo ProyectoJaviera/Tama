@@ -1,0 +1,28 @@
+{% for state, items in goals.items() %}
+<h2>{{ state|capitalize }}</h2>
+{% for g in items %}
+<div class="card">
+  <form class="row" hx-post="/objetivos/{{ g.id }}/editar" hx-target="#objetivos">
+    <input name="titulo" value="{{ g.title }}" aria-label="Título">
+    <input name="detalle" value="{{ g.detail }}" placeholder="Detalle" aria-label="Detalle">
+    <input name="fecha" value="{{ g.target }}" placeholder="AAAA-MM-DD" aria-label="Fecha">
+    <button type="submit" class="plain">Guardar</button>
+  </form>
+  {% for p in g.progress %}<div class="muted">{{ p.when }}: {{ p.text }}</div>{% endfor %}
+  <form class="row" hx-post="/objetivos/{{ g.id }}/avance" hx-target="#objetivos">
+    <input name="avance" required placeholder="Agregar avance" aria-label="Avance">
+    <button type="submit" class="plain">Anotar</button>
+  </form>
+  {% if state != "descartado" %}
+  <div class="row">
+    {% if state != "activo" %}<button class="plain" hx-post="/objetivos/{{ g.id }}/editar" hx-vals='{"estado": "activo"}' hx-target="#objetivos">Reactivar</button>{% endif %}
+    {% if state == "activo" %}<button class="plain" hx-post="/objetivos/{{ g.id }}/editar" hx-vals='{"estado": "pausado"}' hx-target="#objetivos">Pausar</button>{% endif %}
+    {% if state != "logrado" %}<button class="plain" hx-post="/objetivos/{{ g.id }}/editar" hx-vals='{"estado": "logrado"}' hx-target="#objetivos">Logrado</button>{% endif %}
+    <button class="plain" hx-post="/objetivos/{{ g.id }}/descartar" hx-target="#objetivos" hx-confirm="¿Descarto el objetivo {{ g.title }}?">Descartar</button>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<p class="muted">Ninguno.</p>
+{% endfor %}
+{% endfor %}

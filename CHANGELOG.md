@@ -6,6 +6,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 5: interfaz web local con `tama web` (FastAPI, HTMX y Jinja2, sin nada desde internet):
+  chat por SSE, confirmación Sí/No, paneles de perfil, memoria, objetivos, diario y estado. El turno
+  se comparte con la CLI en `tama/chat.py`. `/memoria <ficha>` muestra todos sus datos.
+  Comandos con barra en el chat web, confirmaciones con la nota real y datos erróneos marcados
+  como corregidos en la línea de tiempo.
 - Sprint 4: objetivos (una herramienta a la vista, `manage_goals`; `discard_goal` con confirmación y
   `/objetivos`), diario en `memoria/diario/` (`/diario`) y reflexión en inactividad con el modelo
   local: fusiona duplicados, marca lo reemplazado (nunca lo que ya ocurrió) y deja hasta 2

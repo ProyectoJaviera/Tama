@@ -3,11 +3,12 @@ import re
 import sqlite3
 
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
-from tama import cli
+from tama import chat, cli
 from tama.cascade import Answered, Cascade, Layer
 from tama.events import EventStore
-from tama.mcp_servers import memoria
+from tama.mcp_servers import memoria, notas
 from tama.providers import Done, Text, ToolCall
 from tests.fakes import FakeConnectivity
 
@@ -53,7 +54,7 @@ def test_update_covers_several_entities_at_once():
 
 def test_unknown_id_is_an_explicit_error_and_changes_nothing():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
-    with pytest.raises(ValueError, match="o99"):
+    with pytest.raises(ToolError, match="o99"):
         memoria.update_observation([*ids_of("Halloween"), "o99"], "Piratas")
     assert rows() == [("Shrek", 1)]
 
@@ -62,12 +63,12 @@ def test_already_retired_id_is_an_error():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     old = ids_of("Halloween")
     memoria.update_observation(old, "Piratas")
-    with pytest.raises(ValueError, match="vigente"):
+    with pytest.raises(ToolError, match="vigente"):
         memoria.update_observation(old, "Vaqueros")
 
 
 def test_update_without_ids_is_an_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ToolError):
         memoria.update_observation([], "Piratas")
 
 
@@ -224,8 +225,15 @@ def test_saving_returns_the_id_of_the_fact():
 
 def test_wrong_id_error_offers_similar_facts():
     memoria.create_entities([entity("Halloween", "plan", "Irá disfrazado de Shrek")])
-    with pytest.raises(ValueError, match=r"\[o1\] Irá disfrazado de Shrek"):
+    with pytest.raises(ToolError, match=r"\[o1\] Irá disfrazado de Shrek"):
         memoria.update_observation(["o99"], "Irá disfrazado de pirata")
+
+
+def test_search_matches_other_forms_of_a_word():
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.create_entities([entity("Renzo", "persona", *facts)])
+    assert "operado" in memoria.search_nodes("Renzo operación")
 
 
 def test_repeated_fact_only_adds_links():
@@ -374,7 +382,7 @@ def test_olvidar_only_messages(monkeypatch):
             {"deletions": [{"entityName": "H", "observations": ["se disfrazará de Shrek"]}]},
             "¿Borro de la memoria: «se disfrazará de Shrek»?",
         ),
-        ("delete_note", {"note_id": 3}, "¿Borro la nota 3?"),
+        ("delete_note", {"note_id": 3}, "¿Borro la nota 3? No la encuentro."),
         ("overwrite_file", {"path": "a.txt"}, "¿Reemplazo todo el contenido de a.txt?"),
     ],
 )
@@ -382,10 +390,20 @@ def test_confirmation_is_readable(name, args, expected):
     assert cli.confirm_question(ToolCall(name, args, "c")) == expected
 
 
-def test_printable_removes_emojis_on_windows(monkeypatch):
-    monkeypatch.setattr(cli.sys, "platform", "win32")
-    assert cli.printable("Listo 🎃✨😊") == "Listo "
-    assert cli.printable("¡Sí, ñandú!") == "¡Sí, ñandú!"
+def test_confirmation_names_the_note(tmp_path):
+    notas.create_note("Lista de compras", "Pan")
+    question = cli.confirm_question(ToolCall("delete_note", {"note_id": 1}, "c"))
+    assert question == "¿Borro la nota «Lista de compras: Pan»?"
+
+
+def test_confirmation_says_when_the_note_is_missing():
+    question = cli.confirm_question(ToolCall("delete_note", {"note_id": 9}, "c"))
+    assert question == "¿Borro la nota 9? No la encuentro."
+
+
+def test_emojis_are_removed():
+    assert chat.without_emojis("Listo 🎃✨😊🙏") == "Listo "
+    assert chat.without_emojis("¡Sí, ñandú!") == "¡Sí, ñandú!"
 
 
 class Provider:

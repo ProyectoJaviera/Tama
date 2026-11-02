@@ -1,0 +1,131 @@
+// Chat de Tama: envía el mensaje, recibe el turno por SSE y muestra las confirmaciones.
+(function () {
+  const form = document.getElementById("chat-form");
+  if (!form) return;
+  const log = document.getElementById("log");
+  const input = document.getElementById("chat-text");
+  const button = form.querySelector("button");
+  const dialog = document.getElementById("confirm");
+  const question = document.getElementById("confirm-text");
+  const csrf = document.body.dataset.csrf;
+  let turnId = null;
+
+  function add(kind, text) {
+    const item = document.createElement("div");
+    item.className = kind;
+    item.textContent = text;
+    log.appendChild(item);
+    log.scrollTop = log.scrollHeight;
+    return item;
+  }
+
+  function post(url, data) {
+    return fetch(url, {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrf },
+      body: new URLSearchParams(data),
+    });
+  }
+
+  let pendingForget = false;
+
+  async function answer(value) {
+    dialog.close();
+    if (pendingForget) {
+      pendingForget = false;
+      const response = await post("/chat/olvidar", { respuesta: value });
+      add("command", (await response.json()).reply);
+      button.disabled = false;
+      input.focus();
+      return;
+    }
+    post("/chat/" + turnId + "/confirmar", { respuesta: value });
+  }
+  document.getElementById("confirm-yes").onclick = () => answer("si");
+  document.getElementById("confirm-no").onclick = () => answer("no");
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    answer("no");
+  });
+
+  function addTool(event) {
+    const box = document.createElement("details");
+    box.className = "tool";
+    const title = document.createElement("summary");
+    title.textContent = (event.server || "?") + "." + event.name;
+    const body = document.createElement("pre");
+    body.textContent = JSON.stringify(event.args, null, 1);
+    box.append(title, body);
+    log.appendChild(box);
+    return body;
+  }
+
+  function follow() {
+    const source = new EventSource("/chat/" + turnId + "/eventos");
+    let reply = null;
+    let tool = null;
+    source.onmessage = (message) => {
+      const event = JSON.parse(message.data);
+      if (event.kind === "text") {
+        reply = reply || add("assistant", "");
+        reply.textContent += event.text;
+        log.scrollTop = log.scrollHeight;
+      } else if (event.kind === "tool") {
+        tool = addTool(event);
+        reply = null;
+      } else if (event.kind === "tool_result") {
+        if (tool) tool.textContent += "\n-> " + event.text;
+        if (event.skipped) add("line", "no se ejecutó (sin confirmación)");
+      } else if (event.kind === "confirm") {
+        question.textContent = event.question;
+        dialog.showModal();
+      } else if (event.kind === "confirm_closed") {
+        if (dialog.open) dialog.close();
+        add("line", "se agotó el tiempo: no se ejecutó");
+      } else if (event.kind === "note") {
+        reply = null;
+        add("line", event.text);
+      } else if (event.kind === "done") {
+        add("line", event.line);
+      } else if (event.kind === "error") {
+        add("error", event.text);
+      }
+    };
+    source.addEventListener("end", () => {
+      source.close();
+      button.disabled = false;
+      input.focus();
+    });
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = input.value.trim();
+    if (!text || button.disabled) return;
+    button.disabled = true;
+    input.value = "";
+    add("user", text);
+    const response = await post("/chat", { text: text });
+    if (!response.ok) {
+      add("error", "Tama aún está respondiendo.");
+      button.disabled = false;
+      return;
+    }
+    const result = await response.json();
+    if (result.reply !== undefined) {
+      add("command", result.reply);
+      if (result.confirm) {
+        pendingForget = true;
+        question.textContent = result.confirm;
+        dialog.showModal();
+        return;
+      }
+      button.disabled = false;
+      input.focus();
+      return;
+    }
+    turnId = result.turn;
+    follow();
+  });
+  log.scrollTop = log.scrollHeight;
+})();

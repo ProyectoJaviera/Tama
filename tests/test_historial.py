@@ -68,7 +68,7 @@ def test_other_date_is_another_fact():
 def test_past_fact_is_an_event_that_survives_a_correction():
     memoria.create_entities([entity("Renzo", "persona", "El 3 de marzo de 2020 se operó")])
     text = memoria.update_observation([first_id()], "Ya no le duele")
-    assert "eventos" in text
+    assert "error=true" in text
     assert valid("El 3 de marzo de 2020 se operó") == 1
 
 
@@ -98,6 +98,38 @@ def test_fact_of_an_event_entity_can_be_replaced():
     memoria.create_entities([entity("Halloween", "evento", "Irá de Shrek")])
     memoria.update_observation([first_id()], "Irá de piratas")
     assert valid("Irá de Shrek") == 0
+
+
+def test_wrong_event_is_corrected_and_shown_as_such():
+    memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.update_observation([first_id()], "No lo operaron: la rodilla sanó sola", error=True)
+    assert valid("Fue operado de la rodilla") == 0
+    text = memoria.linea_de_tiempo("rodilla")
+    assert "corregido, no fue así: No lo operaron" in text
+
+
+def test_plan_with_a_past_date_can_be_replaced():
+    memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek el 3 de marzo de 2020")])
+    memoria.update_observation([first_id()], "Irá de piratas")
+    assert valid("Irá de Shrek el 3 de marzo de 2020") == 0
+
+
+def test_alias_links_a_name_to_the_existing_person():
+    memoria.create_entities([entity("esposa de Renzo", "persona", "Toma té")])
+    memoria.create_entities(
+        [
+            {
+                "name": "esposa de Renzo",
+                "entityType": "persona",
+                "aliases": ["Lizette"],
+                "observations": ["Es de Tacna"],
+            }
+        ]
+    )
+    memoria.create_entities([entity("Lizette", "persona", "Vota en diciembre")])
+    assert "Vota en diciembre" in memoria.search_nodes("esposa de Renzo")
+    with memoria.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM entities").fetchone()[0] == 1
 
 
 def test_new_facts_are_events_by_default():
@@ -142,6 +174,8 @@ def test_health_topic_keeps_only_health_facts():
 
 def test_operated_counts_as_health():
     memoria.create_entities([entity("Renzo", "persona", "Fue operado de la rodilla")])
+    memoria.create_entities([entity("Ana", "persona", "A Ana le operaron la muñeca")])
+    assert "muñeca" in memoria.linea_de_tiempo("salud")
     assert "rodilla" in memoria.linea_de_tiempo("salud")
 
 
@@ -202,6 +236,18 @@ class Tools:
 class Brain:
     def __init__(self):
         self.tools = Tools()
+
+
+def test_memoria_with_a_name_shows_the_whole_card():
+    brain = Brain()
+    cli.show_memory(brain, "Renzo")
+    assert brain.tools.calls == [("open_nodes", {"names": ["Renzo"]})]
+
+
+def test_open_nodes_shows_all_facts():
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Ana", "persona", *facts)])
+    assert memoria.open_nodes(["Ana"]).count("Dato número") == 8
 
 
 def test_memoria_historial_command():

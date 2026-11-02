@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 SCHEMA = """
@@ -126,9 +127,17 @@ CREATE TABLE reviewed_entities (
     reviewed_at TEXT NOT NULL
 );
 """
-MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS]
+CORRECTION_REASON = """
+ALTER TABLE observations ADD COLUMN reason TEXT;
+"""
+MIGRATIONS = [SCHEMA, LINKED_FACTS, FACT_KINDS, LOCAL_DATES, GOALS, CORRECTION_REASON]
 GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
+NO_GOALS = "No hay objetivos en ese estado."
+SEARCH_NOTE = (
+    "Si el mensaje de Renzo niega o corrige uno de estos datos, antes de responder llama "
+    "update_observation con su id y error=true, aunque lo nuevo ya esté anotado."
+)
 MIN_SIMILARITY = 0.75
 MAX_ENTITIES = 5
 MAX_OBSERVATIONS = 5
@@ -137,6 +146,7 @@ MAX_FOUND = 10
 FORGOTTEN = "(olvidado)"
 MAX_RELATED = 5
 MAX_HISTORY = 3
+MAX_DETAIL = 200
 SOON_DAYS = 60
 # Lo de salud nunca se reemplaza: es la historia médica de Renzo.
 HEALTH_TOPICS = ("salud", "medic", "enferm", "doctor", "clinic")
@@ -144,6 +154,7 @@ HEALTH_WORDS = (
     "duele",
     "dolor",
     "operad",
+    "operar",
     "cirug",
     "medic",
     "doctor",
@@ -487,10 +498,13 @@ def already_happened(db: sqlite3.Connection, row: sqlite3.Row) -> bool:
 
 
 def stems(text: str) -> set[str]:
-    return {w[:6] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
+    """Raíz corta de cada palabra: "operación" y "operado" deben coincidir."""
+    return {w[:5] for w in re.findall(r"\w+", normalize(text)) if len(w) > 4}
 
 
-def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "") -> list[str]:
+def recent_observations(
+    db: sqlite3.Connection, entity_id: int, query: str = "", limit: int = MAX_OBSERVATIONS
+) -> list[str]:
     """Hechos vigentes: primero los que coinciden con la búsqueda, luego los más nuevos."""
     rows = db.execute(
         "SELECT o.id, o.content, o.created_at FROM observations o"
@@ -500,7 +514,7 @@ def recent_observations(db: sqlite3.Connection, entity_id: int, query: str = "")
     ).fetchall()
     wanted = stems(query)
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
-    chosen = (matching + [r for r in rows if r not in matching])[:MAX_OBSERVATIONS]
+    chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
         f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])}){earlier_versions(db, r['id'])}"
         for r in chosen
@@ -533,9 +547,11 @@ def relations_of(db: sqlite3.Connection, entity_id: int) -> list[str]:
     return [f"{r['a']} {r['t']} {r['b']}" for r in rows]
 
 
-def describe(db: sqlite3.Connection, row: sqlite3.Row, query: str = "") -> str:
+def describe(
+    db: sqlite3.Connection, row: sqlite3.Row, query: str = "", limit: int = MAX_OBSERVATIONS
+) -> str:
     lines = [f"{row['name']} ({row['type']})"]
-    lines += [f"- {o}" for o in recent_observations(db, row["id"], query)]
+    lines += [f"- {o}" for o in recent_observations(db, row["id"], query, limit)]
     lines += [f"- relación: {r}" for r in relations_of(db, row["id"])]
     return "\n".join(lines)
 
@@ -586,8 +602,10 @@ def fts_query(text: str) -> str:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan, evento, salud, objeto, gusto) y observations (frases que se entiendan solas, con "
-        "las fechas como las dijo: se calculan solas). Lo puntual con alguien va en esa persona."
+        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
+        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
+        "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
+        "entidad con aliases: [nombre]."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
@@ -706,7 +724,8 @@ def search_nodes(query: str = "") -> str:
             ).fetchall()
         if not rows:
             return no_match(db)
-        return "\n\n".join(describe(db, r, query) for r in rows)
+        found = "\n\n".join(describe(db, r, query) for r in rows)
+        return f"{found}\n\n{SEARCH_NOTE}" if query.strip() else found
 
 
 @server.tool(
@@ -718,7 +737,7 @@ def open_nodes(names: list[str]) -> str:
         found = [row for row in (find_entity(db, n) for n in names) if row]
         if not found:
             return "No hay nada anotado sobre eso."
-        return "\n\n".join(describe(db, r) for r in found)
+        return "\n\n".join(describe(db, r, limit=MAX_DETAIL) for r in found)
 
 
 @server.tool(
@@ -776,23 +795,28 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
 @server.tool(
     description=(
         "Reemplaza un dato que ya no es cierto (otro plan, otra ciudad). Un dato nuevo que no "
-        "contradice nada va en create_entities, y las metas en manage_goals. Antes "
-        "busca el tema con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos "
-        "antiguos, en todas las entidades), nueva (un solo hecho vigente) y entidades (TODAS las "
-        "que menciona, p. ej. Renzo, su esposa y Halloween)."
+        "contradice nada va en create_entities, y las metas en manage_goals. Antes busca el tema "
+        "con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos antiguos), nueva (un "
+        "solo hecho vigente), entidades (lista con TODAS las que menciona) y error=true si el dato "
+        "antiguo nunca fue cierto (Renzo aclara que no pasó)."
     )
 )
 def update_observation(
-    ids: list[str], nueva: str, entidades: Any = None, source: int | None = None
+    ids: list[str],
+    nueva: str,
+    entidades: Any = None,
+    error: bool = False,
+    source: int | None = None,
 ) -> str:
-    if entidades is not None and not isinstance(entidades, list):
-        raise ValueError(
+    # El modelo a veces manda {} cuando no tiene entidades que agregar.
+    if entidades and not isinstance(entidades, list):
+        raise ToolError(
             "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
             "otro, usa create_entities."
         )
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
-        raise ValueError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
+        raise ToolError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
@@ -802,28 +826,36 @@ def update_observation(
         if missing:
             listed = ", ".join(f"o{n}" for n in missing)
             similar = "; ".join(related_facts(db, nueva, [])) or "ninguno"
-            raise ValueError(
+            raise ToolError(
                 f"Nada cambió: {listed} no existe o ya no está vigente. "
                 f"Datos parecidos: {similar}. Reintenta con sus ids.{goal_reminder(db)}"
             )
         linked = linked_entities(db, numbers)
-        linked |= {upsert_entity(db, n, "objeto")[0] for n in entidades or [] if n.strip()}
-        # Corregir marca lo antiguo como estado, salvo lo que ya ocurrió: eso se acumula.
-        states = [r["id"] for r in found if not already_happened(db, r)]
+        linked |= {upsert_entity(db, n, "objeto")[0] for n in entity_names(entidades)}
+        # Lo de salud se acumula como historia, salvo que el dato fuera un error.
+        states = [
+            r["id"]
+            for r in found
+            if error or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
+        ]
         replaced = ",".join("?" * len(states))
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
         add_obs(db, linked, [nueva], source, kind="estado")
         new_id = same_fact(db, resolve_dates(nueva.strip())[0])
         db.execute(
-            f"UPDATE observations SET kind = 'estado', superseded_by = ? WHERE id IN ({replaced})",
-            [new_id, *states],
+            f"UPDATE observations SET kind = 'estado', superseded_by = ?, reason = ?"
+            f" WHERE id IN ({replaced})",
+            [new_id, "corregido" if error else None, *states],
         )
         for entity_id in linked:
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
     text = f"Corregido: {len(states)} datos antiguos dejaron de estar vigentes."
     if len(states) < len(numbers):
-        text += " Los eventos pasados se conservan en la historia."
+        text += (
+            " Los de salud siguen vigentes como historia: si nunca fueron ciertos, repite con "
+            "error=true."
+        )
     if others:
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
@@ -859,6 +891,12 @@ def goal_reminder(db: sqlite3.Connection) -> str:
     rows = db.execute("SELECT title FROM goals WHERE status = 'activo'").fetchall()
     titles = ", ".join(r["title"] for r in rows)
     return f" Si es sobre una meta ({titles}), usa manage_goals." if titles else ""
+
+
+def entity_names(value: Any) -> list[str]:
+    """Nombres de entidades; el modelo a veces los manda como objetos con `name`."""
+    items = [item.get("name", "") if isinstance(item, dict) else item for item in value or []]
+    return [str(name).strip() for name in items if str(name).strip()]
 
 
 def related_facts(db: sqlite3.Connection, text: str, retired: list[int]) -> list[str]:
@@ -908,7 +946,7 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
     with connect() as db:
         rows = db.execute(
             "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at,"
-            " (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
+            " o.reason, (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
             " FROM observations o ORDER BY o.occurred_at, o.id"
         ).fetchall()
@@ -927,6 +965,9 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         state = "vigente" if row["valid"] else "ya no vigente"
         if row["superseded_by"]:
             state = f"reemplazado por o{row['superseded_by']}"
+        if row["reason"] == "corregido":
+            right = by_id[row["superseded_by"]]["content"]
+            state = f"corregido, no fue así: {right}"
         lines.append(f"{row['occurred_at']} [o{row['id']}] {row['content']} ({state})")
     return "\n".join(lines)
 
@@ -1232,7 +1273,7 @@ def list_goals(estado: str = "activo") -> str:
                 "SELECT * FROM goals WHERE status = ? ORDER BY id", (status,)
             ).fetchall()
         if not rows:
-            return "No hay objetivos en ese estado."
+            return NO_GOALS
         return "\n\n".join(describe_goal(db, r) for r in rows)
 
 
@@ -1307,6 +1348,12 @@ def next_suggestion() -> str:
         return row["text"]
 
 
+def open_goals() -> str:
+    """Lo que sigue en curso: un objetivo pausado también existe."""
+    found = [list_goals(state) for state in ("activo", "pausado")]
+    return "\n\n".join(f for f in found if f != NO_GOALS) or NO_GOALS
+
+
 @server.tool(
     description=(
         "Objetivos de Renzo: metas que quiere lograr. Úsala siempre que hable de una meta o cuente "
@@ -1334,7 +1381,7 @@ def manage_goals(
     if action == "avance":
         return add_goal_progress(objetivo or titulo, avance or detalle, source)
     if action == "ver":
-        return list_goals(estado or "activo")
+        return list_goals(estado) if estado else open_goals()
     if action == "cambiar":
         return update_goal(objetivo or titulo, titulo if objetivo else "", detalle, fecha, estado)
     return "Acción no válida: usa crear, avance, ver o cambiar."
@@ -1394,15 +1441,21 @@ def review_pair(a: str, b: str, verdict: str) -> None:
         )
 
 
-def merge_entities(keep: str, drop: str) -> bool:
-    """Funde `drop` en `keep`: hechos, alias, relaciones y objetivos. Nada se pierde."""
+def merge_entities(keep: str, drop: str, manual: bool = False) -> bool:
+    """Funde `drop` en `keep`: hechos, alias, relaciones y objetivos. Nada se pierde.
+
+    `manual` es la decisión de Renzo en la web: basta con que ninguna de las dos sea él.
+    """
     with connect() as db:
         kept, dropped = find_entity(db, keep), find_entity(db, drop)
         if kept is None or dropped is None or kept["id"] == dropped["id"]:
             return False
-        if not can_merge(kept, dropped):
+        if OWNER in (kept["norm"], dropped["norm"]):
             return False
-        if similarity(kept["norm"], dropped["norm"]) < MIN_SIMILARITY:
+        automatic_ok = (
+            can_merge(kept, dropped) and similarity(kept["norm"], dropped["norm"]) >= MIN_SIMILARITY
+        )
+        if not manual and not automatic_ok:
             return False
         new, old = kept["id"], dropped["id"]
         db.execute(
@@ -1483,6 +1536,13 @@ def retire_observations(pairs: list[tuple[int, int]]) -> int:
             for entity_id in linked_entities(db, [old_id]):
                 reindex(db, entity_id)
     return changed
+
+
+def is_history(observation_id: int) -> bool:
+    """Lo que ya ocurrió o es de salud no se retira solo: se le pregunta a Renzo."""
+    with connect() as db:
+        row = db.execute("SELECT * FROM observations WHERE id = ?", (observation_id,)).fetchone()
+        return row is not None and already_happened(db, row)
 
 
 def mark_reviewed(entity_id: int) -> None:
@@ -1576,6 +1636,139 @@ def repair_chains() -> int:
                 )
                 changed += 1
     return changed
+
+
+# --- Paneles de la web: leen y corrigen la memoria sin pasar por el modelo. ---
+
+
+def list_cards(query: str = "") -> list[dict[str, Any]]:
+    """Fichas con datos vigentes, o las que coinciden con la búsqueda."""
+    with connect() as db:
+        match = fts_query(query)
+        if match:
+            rows = db.execute(
+                "SELECT e.* FROM search s JOIN entities e ON e.id = s.entity_id"
+                " WHERE search MATCH ? ORDER BY rank",
+                (match,),
+            ).fetchall()
+        else:
+            rows = db.execute("SELECT * FROM entities ORDER BY norm").fetchall()
+        cards = []
+        for row in rows:
+            count = db.execute(
+                "SELECT COUNT(*) FROM observation_entities l JOIN observations o"
+                " ON o.id = l.observation_id WHERE l.entity_id = ? AND o.valid = 1",
+                (row["id"],),
+            ).fetchone()[0]
+            if count:
+                cards.append(
+                    {"id": row["id"], "name": row["name"], "type": row["type"], "facts": count}
+                )
+        return cards
+
+
+def card(entity_id: int) -> dict[str, Any] | None:
+    """Una ficha completa: datos vigentes con su historial."""
+    with connect() as db:
+        row = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
+        if row is None:
+            return None
+        facts = db.execute(
+            "SELECT o.* FROM observations o JOIN observation_entities l"
+            " ON l.observation_id = o.id WHERE l.entity_id = ? AND o.valid = 1"
+            " ORDER BY o.created_at DESC, o.id DESC",
+            (entity_id,),
+        ).fetchall()
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "type": row["type"],
+            "owner": row["norm"] == OWNER,
+            "facts": [
+                {
+                    "id": f["id"],
+                    "text": f["content"],
+                    "when": shown_at(f["created_at"]),
+                    "kind": f["kind"],
+                    "before": earlier_versions(db, f["id"]).replace("\n  antes: ", ""),
+                }
+                for f in facts
+            ],
+        }
+
+
+def replace_fact(observation_id: int, text: str) -> bool:
+    """Renzo corrigió un dato: el nuevo lo reemplaza y el antiguo queda en el historial."""
+    with connect() as db:
+        row = db.execute(
+            "SELECT id FROM observations WHERE id = ? AND valid = 1", (observation_id,)
+        ).fetchone()
+        if row is None or not text.strip():
+            return False
+        linked = linked_entities(db, [observation_id])
+        db.execute("UPDATE observations SET valid = 0 WHERE id = ?", (observation_id,))
+        add_obs(db, linked, [text], None)
+        new_id = same_fact(db, resolve_dates(text.strip())[0])
+        db.execute(
+            "UPDATE observations SET kind = 'estado', superseded_by = ? WHERE id = ?",
+            (new_id, observation_id),
+        )
+        for entity_id in linked:
+            reindex(db, entity_id)
+    return True
+
+
+def split_card(entity_id: int, fact_ids: list[int], name: str) -> bool:
+    """Mueve hechos de una ficha a otra nueva; deshace una fusión equivocada."""
+    with connect() as db:
+        source = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
+        if source is None or not name.strip() or not fact_ids:
+            return False
+        # Tras una fusión el nombre antiguo es un alias: al separar, deja de serlo.
+        db.execute(
+            "DELETE FROM aliases WHERE norm = ? AND entity_id = ?", (normalize(name), entity_id)
+        )
+        new_id, _ = upsert_entity(db, name, source["type"])
+        for fact in fact_ids:
+            moved = db.execute(
+                "DELETE FROM observation_entities WHERE observation_id = ? AND entity_id = ?",
+                (fact, entity_id),
+            ).rowcount
+            if moved:
+                link(db, fact, {new_id})
+        reindex(db, entity_id)
+    return True
+
+
+def goals_by_status() -> dict[str, list[dict[str, Any]]]:
+    with connect() as db:
+        rows = db.execute("SELECT * FROM goals ORDER BY id DESC").fetchall()
+        grouped: dict[str, list[dict[str, Any]]] = {state: [] for state in GOAL_STATES}
+        for row in rows:
+            progress = db.execute(
+                "SELECT content, created_at FROM goal_progress WHERE goal_id = ? ORDER BY id DESC",
+                (row["id"],),
+            ).fetchall()
+            grouped[row["status"]].append(
+                {
+                    "id": row["id"],
+                    "title": row["title"],
+                    "detail": row["detail"],
+                    "target": row["target_date"],
+                    "progress": [
+                        {"text": p["content"], "when": p["created_at"][:10]} for p in progress
+                    ],
+                }
+            )
+        return grouped
+
+
+def pending_list() -> list[str]:
+    with connect() as db:
+        rows = db.execute(
+            "SELECT text FROM suggestions WHERE mentioned_at IS NULL ORDER BY id"
+        ).fetchall()
+    return [r["text"] for r in rows]
 
 
 def export_graph(target: Path) -> int:

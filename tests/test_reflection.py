@@ -172,6 +172,17 @@ def test_repair_gives_a_successor_to_orphans():
         assert db.execute("SELECT superseded_by FROM observations WHERE id = 1").fetchone()[0] == 2
 
 
+def test_clashing_health_facts_become_a_question():
+    memoria.create_entities([entity("Vale", "persona", "Fue operada", "No fue operada")])
+    think, _ = thinker(
+        {"reemplazados": [{"antiguo": 1, "nuevo": 2}]}, {"antiguo_sigue_cierto": False}
+    )
+    retire_contradictions(think)
+    with memoria.connect() as db:
+        assert db.execute("SELECT MIN(valid) FROM observations").fetchone()[0] == 1
+    assert "¿Cuál es correcto?" in memoria.next_suggestion()
+
+
 def test_newest_observation_is_never_retired():
     memoria.create_entities([entity("Vale", "persona", "Vive en Talca", "Vive en Temuco")])
     think, _ = thinker({"reemplazados": [{"antiguo": 2, "nuevo": 1}, {"antiguo": 9, "nuevo": 10}]})

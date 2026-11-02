@@ -1,0 +1,8 @@
+<ul class="cards">
+  {% for c in cards %}
+  <li><a hx-get="/memoria/ficha/{{ c.id }}" hx-target="#ficha">{{ c.name }}</a>
+    <span class="muted">{{ c.type }} · {{ c.facts }} datos</span></li>
+  {% else %}
+  <li class="muted">No hay fichas con esa búsqueda.</li>
+  {% endfor %}
+</ul>
