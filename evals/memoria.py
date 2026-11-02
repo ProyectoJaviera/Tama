@@ -327,6 +327,54 @@ def run_history(layer: str, offline: bool) -> dict[str, Any]:
     }
 
 
+RECTIFICATIONS = [
+    (
+        "El 3 de marzo me operaron de la rodilla.",
+        "En verdad no me operaron, se sanó sola.",
+        "operad",
+    ),
+    ("Mi hermano Pablo vive en Valdivia.", "Me equivoqué, Pablo vive en Osorno.", "valdivia"),
+    (
+        "Ayer me compré un auto rojo.",
+        "No es cierto, no compré ningún auto, solo lo probé.",
+        "compr",
+    ),
+]
+
+
+def run_rectification(layer: str, offline: bool) -> dict[str, Any]:
+    """Renzo aclara que un dato estaba mal: no debe seguir vigente."""
+    results = []
+    for told, fixed, word in RECTIFICATIONS:
+        base = Path(tempfile.mkdtemp(prefix=f"tama-rectificacion-{layer}-"))
+        settings = get_settings().model_copy(
+            update={
+                "data_dir": base / "data",
+                "workdir": base / "trabajo",
+                "memory_dir": base / "memoria",
+                "connectivity_watch_s": 0,
+            }
+        )
+        limits = (settings.history_max_tokens, settings.tools_max)
+        brain = brain_module.build(settings, force_offline=offline, only=[layer])
+        system = session_prompt(settings.memory_dir, brain.store)
+        messages = [{"role": "system", "content": system}]
+        ask(brain, messages, told, *limits)
+        turn = ask(brain, messages, fixed, *limits)
+        brain.close()
+        db = sqlite3.connect(settings.data_dir / "memoria.db")
+        first = db.execute("SELECT valid FROM observations ORDER BY id LIMIT 1").fetchone()
+        rows = db.execute("SELECT id, content, valid FROM observations").fetchall()
+        db.close()
+        ok = bool(first) and not first[0]
+        print(
+            f"[{layer}] {fixed[:40]} -> {turn['herramientas']} {'ok' if ok else 'FALLA'}",
+            flush=True,
+        )
+        results.append({"caso": fixed, "palabra": word, "ok": ok, "datos": rows})
+    return {"capa": layer, "correctos": sum(r["ok"] for r in results), "total": len(results)}
+
+
 def render(data: dict[str, Any]) -> str:
     lines = [
         "# Evals de memoria",
@@ -396,6 +444,7 @@ def main() -> int:
     parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--correccion", action="store_true", help="solo corrección de un dato")
     parser.add_argument("--historial", action="store_true", help="solo historial médico")
+    parser.add_argument("--rectificacion", action="store_true", help="solo datos que estaban mal")
     args = parser.parse_args()
     if args.local_completo:
         args.capas = [*args.capas, "local"]
@@ -404,6 +453,10 @@ def main() -> int:
     data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     for layer in args.capas:
         key = layer + (" (sin red)" if args.offline else "")
+        if args.rectificacion:
+            result = run_rectification(layer, args.offline)
+            print(f"{layer}: {result['correctos']}/{result['total']}")
+            continue
         if args.historial:
             data[f"historial {key}"] = run_history(layer, args.offline)
         elif args.correccion:

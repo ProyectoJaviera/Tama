@@ -598,7 +598,8 @@ def fts_query(text: str) -> str:
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
         "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
         "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
-        "va en esa persona."
+        "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
+        "entidad con aliases: [nombre]."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:

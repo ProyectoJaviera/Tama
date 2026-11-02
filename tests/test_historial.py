@@ -114,6 +114,24 @@ def test_plan_with_a_past_date_can_be_replaced():
     assert valid("Irá de Shrek el 3 de marzo de 2020") == 0
 
 
+def test_alias_links_a_name_to_the_existing_person():
+    memoria.create_entities([entity("esposa de Renzo", "persona", "Toma té")])
+    memoria.create_entities(
+        [
+            {
+                "name": "esposa de Renzo",
+                "entityType": "persona",
+                "aliases": ["Lizette"],
+                "observations": ["Es de Tacna"],
+            }
+        ]
+    )
+    memoria.create_entities([entity("Lizette", "persona", "Vota en diciembre")])
+    assert "Vota en diciembre" in memoria.search_nodes("esposa de Renzo")
+    with memoria.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM entities").fetchone()[0] == 1
+
+
 def test_new_facts_are_events_by_default():
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     with memoria.connect() as db:

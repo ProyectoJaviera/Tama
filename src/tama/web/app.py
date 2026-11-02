@@ -68,7 +68,7 @@ def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str) -> None
             brain, session.messages, text, session.max_tokens, session.max_tools, turn.confirm
         ):
             if isinstance(event, Text):
-                turn.send("text", text=event.text)
+                turn.send("text", text=chat.without_emojis(event.text))
             elif isinstance(event, Switch):
                 note = f"{event.frm} no respondió ({event.reason}); seguí en {event.to}"
                 turn.send("note", text=note)

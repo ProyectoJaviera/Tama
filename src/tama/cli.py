@@ -3,7 +3,6 @@
 import argparse
 import json
 import os
-import re
 import sys
 import threading
 from datetime import date
@@ -21,8 +20,6 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
-# La consola de Windows muestra los emojis como cuadros.
-UNPRINTABLE = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,10 +57,6 @@ def print_status(brain: Brain) -> None:
         print(dim(f"  {layer.provider.name:<7} {layer.provider.model:<32} {state}"))
 
 
-def printable(text: str) -> str:
-    return UNPRINTABLE.sub("", text) if sys.platform == "win32" else text
-
-
 def ask_yes(question: str) -> bool:
     try:
         return input(f"{question} (s/n) ").strip().lower() in {"s", "si", "sí"}
@@ -83,7 +76,7 @@ def reply(
     answered: Answered | None = None
     for event in chat.run_turn(brain, messages, text, max_tokens, max_tools, confirm):
         if isinstance(event, Text):
-            print(printable(event.text), end="", flush=True)
+            print(chat.without_emojis(event.text), end="", flush=True)
         elif isinstance(event, Switch):
             if event.partial:
                 print()

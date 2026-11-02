@@ -5,7 +5,7 @@ import sqlite3
 import pytest
 from mcp.server.mcpserver.exceptions import ToolError
 
-from tama import cli
+from tama import chat, cli
 from tama.cascade import Answered, Cascade, Layer
 from tama.events import EventStore
 from tama.mcp_servers import memoria
@@ -383,10 +383,9 @@ def test_confirmation_is_readable(name, args, expected):
     assert cli.confirm_question(ToolCall(name, args, "c")) == expected
 
 
-def test_printable_removes_emojis_on_windows(monkeypatch):
-    monkeypatch.setattr(cli.sys, "platform", "win32")
-    assert cli.printable("Listo 🎃✨😊") == "Listo "
-    assert cli.printable("¡Sí, ñandú!") == "¡Sí, ñandú!"
+def test_emojis_are_removed():
+    assert chat.without_emojis("Listo 🎃✨😊🙏") == "Listo "
+    assert chat.without_emojis("¡Sí, ñandú!") == "¡Sí, ñandú!"
 
 
 class Provider:

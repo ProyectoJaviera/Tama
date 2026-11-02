@@ -3,12 +3,20 @@
 Registra lo ocurrido en events.db y actualiza el historial; quien llama solo muestra los eventos.
 """
 
+import re
 from collections.abc import Iterator
 
 from tama import agent, history
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.providers import Error, Message, ToolCall
+
+EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
+
+
+def without_emojis(text: str) -> str:
+    """El modelo local los usa aunque la identidad se lo prohíbe."""
+    return EMOJIS.sub("", text)
 
 
 def short(value: object, limit: int = 60) -> str:
