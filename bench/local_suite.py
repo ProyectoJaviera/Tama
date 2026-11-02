@@ -32,6 +32,7 @@ from bench.models import GB, bench_model  # noqa: E402
 from tama.ollama import OllamaClient  # noqa: E402
 
 OUT = ROOT / "bench" / "local"
+RAM_LIMIT_GB = 28
 EVALS = ROOT / "evals"
 SHARED = [
     "memoria-results.json",
@@ -105,19 +106,22 @@ def run_eval(model: str, name: str, args: list[str], hours: float, client: Ollam
     start = time.perf_counter()
     status = "ok"
     with RamWatch() as ram, log.open("w", encoding="utf-8") as out:
-        try:
-            code = subprocess.run(
-                [sys.executable, "-m", *args],
-                cwd=ROOT,
-                env=env,
-                stdout=out,
-                stderr=subprocess.STDOUT,
-                timeout=hours * 3600,
-            ).returncode
-            # Las evals salen con 1 cuando algún caso falla: eso es un resultado, no un error.
-            status = "ok" if code in (0, 1) else f"salió con {code}"
-        except subprocess.TimeoutExpired:
-            status = "tiempo agotado"
+        proc = subprocess.Popen(
+            [sys.executable, "-m", *args], cwd=ROOT, env=env, stdout=out, stderr=subprocess.STDOUT
+        )
+        deadline = time.monotonic() + hours * 3600
+        while proc.poll() is None:
+            time.sleep(2)
+            if psutil.virtual_memory().used / GB > RAM_LIMIT_GB:
+                # Con 32 GB, pasar de ~28 arriesga a Windows: se corta esta eval.
+                proc.kill()
+                status = f"RAM sobre {RAM_LIMIT_GB} GB"
+            elif time.monotonic() > deadline:
+                proc.kill()
+                status = "tiempo agotado"
+        # Las evals salen con 1 cuando algún caso falla: eso es un resultado, no un error.
+        if status == "ok" and proc.returncode not in (0, 1):
+            status = f"salió con {proc.returncode}"
     guard_cpu(client)
     fresh = {}
     for f in (
