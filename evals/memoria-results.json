@@ -5,18 +5,16 @@
     "fecha": "2026-11-01",
     "hechos": 9,
     "total_hechos": 10,
-    "guardados": 9,
+    "guardados": 10,
     "negativos": 3,
     "total_negativos": 3,
-    "tokens_prompt_max": 2161,
+    "tokens_prompt_max": 2188,
     "calidad": {
-      "entidades": 11,
+      "entidades": 9,
       "duplicadas": [
         "mama de renzo / renzo"
       ],
-      "mal_nombradas": [
-        "lectura de cien anos de soledad"
-      ]
+      "mal_nombradas": []
     },
     "detalle": [
       {
@@ -27,7 +25,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2158
+        "tokens_prompt": 2185
       },
       {
         "pregunta": "¿Qué estoy plantando en el balcón?",
@@ -38,7 +36,7 @@
           "search_notes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2159
+        "tokens_prompt": 2186
       },
       {
         "pregunta": "¿Cómo se llama mi perro?",
@@ -48,17 +46,17 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2156
+        "tokens_prompt": 2183
       },
       {
         "pregunta": "¿Qué hierba no me gusta?",
-        "ok": true,
-        "respuesta": "No soportas el cilantro, me dijiste que lo odias.",
+        "ok": false,
+        "respuesta": "No tengo ese dato anotado. Si me lo cuentas, lo recordaré para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2157
+        "tokens_prompt": 2184
       },
       {
         "pregunta": "¿Qué libro estoy leyendo?",
@@ -69,17 +67,17 @@
           "search_notes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2155
+        "tokens_prompt": 2182
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
-        "ok": false,
-        "respuesta": "Tu proyecto es el Proyecto Faro, en el cual estás trabajando junto a tu colega Tomás.",
+        "ok": true,
+        "respuesta": "Tu proyecto para este trimestre es construir un reloj con Arduino.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2158
+        "tokens_prompt": 2185
       },
       {
         "pregunta": "¿Cuándo es el cumpleaños de mi mamá?",
@@ -89,7 +87,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2159
+        "tokens_prompt": 2186
       },
       {
         "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
@@ -99,7 +97,7 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2161
+        "tokens_prompt": 2188
       },
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
@@ -109,47 +107,47 @@
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2156
+        "tokens_prompt": 2183
       },
       {
         "pregunta": "¿Qué prefiero tomar en las tardes?",
         "ok": true,
-        "respuesta": "Prefieres tomar té verde antes que café en las tardes.",
+        "respuesta": "Prefieres tomar té verde antes que café durante las tardes.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2158
+        "tokens_prompt": 2185
       },
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo.",
+        "respuesta": "No tengo ese dato guardado. Si quieres, dímelo ahora y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2157
+        "tokens_prompt": 2184
       },
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar y lo recuerdo.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2157
+        "tokens_prompt": 2184
       },
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar ahora y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],
         "capa": "nube",
-        "tokens_prompt": 2156
+        "tokens_prompt": 2183
       }
     ]
   },
@@ -557,7 +555,7 @@
     "hechos_vigentes": 1,
     "entidades_enlazadas": 3,
     "recuerda_nuevo": true,
-    "respuesta": "Se disfrazarán de piratas. Fue lo último que decidieron con tu esposa.",
+    "respuesta": "Se disfrazarán de piratas. Me parece una buena elección porque es un clásico que siempre funciona.",
     "herramientas": [
       "create_entities",
       "create_entities",
@@ -629,9 +627,9 @@
   "historial nube": {
     "capa": "nube",
     "sin_red": false,
-    "completo": true,
-    "en_orden": true,
-    "respuesta": "Tienes estos registros en orden: el 3 de marzo de 2026 te operaron la rodilla y el 20 de mayo tuviste una alergia a la penicilina. Después, el 2 de agosto te fracturaste la muñeca y el 29 de octubre fuiste al dentista por una muela.",
+    "completo": false,
+    "en_orden": false,
+    "respuesta": "Tienes tres registros: el 20 de mayo de 2026 tuviste una alergia a la penicilina, el 2 de agosto de 2026 te fracturaste la muñeca y el 29 de octubre de 2026 fuiste al dentista por una muela.",
     "herramientas": [
       "linea_de_tiempo"
     ]
