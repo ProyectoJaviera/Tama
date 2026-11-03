@@ -1,9 +1,9 @@
 {
   "modelo": "ministral-3:8b",
   "rendimiento": {
-    "carga_s": 24.3,
-    "prompt_tps": 52.0,
-    "gen_tps": 5.0,
+    "carga_s": 26.0,
+    "prompt_tps": 51.7,
+    "gen_tps": 4.9,
     "ram_gb": 5.6,
     "herramientas_10": "10/10",
     "error": null
@@ -74,5 +74,30 @@
       5,
       5
     ]
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 8.5,
+    "ram_pico_gb": 15.4,
+    "abre_grupos": 0,
+    "checks": "0/2"
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 17.9,
+    "ram_pico_gb": 16.8,
+    "abre_grupos": 0,
+    "puntaje_medio": 4.854166666666667,
+    "aprobados": "20/20",
+    "errores": 0,
+    "ttft_p50": 1.0309999999954016,
+    "total_p50": 21.981507399999828
+  },
+  "sin_red": {
+    "estado": "ok",
+    "minutos": 1.6,
+    "ram_pico_gb": 16.6,
+    "abre_grupos": 0,
+    "casos": "5/5"
   }
 }
