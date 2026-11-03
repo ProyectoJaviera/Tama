@@ -1,0 +1,10 @@
+{
+  "modelo": "qwen3:4b-instruct-2507-q4_K_M",
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 9.0,
+    "ram_pico_gb": 14.3,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  }
+}
