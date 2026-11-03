@@ -1,0 +1,64 @@
+[local sin red] día 1: Hola Tama, ¿cómo va todo? -> []
+[local sin red] día 1: Mi hermana Lucía se muda a Temuco en mar -> ['create_entities']
+[local sin red] día 1: Estoy armando una huerta en el balcón co -> ['create_entities']
+[local sin red] día 1: Mi perro se llama Bruno y tiene 4 años. -> ['create_entities']
+[local sin red] día 1: Odio el cilantro, no lo soporto. -> []
+[local sin red] día 1: Estoy leyendo Cien años de soledad. -> ['create_entities']
+[local sin red] día 1: Qué bueno, gracias. -> []
+[local sin red] día 1: Mi proyecto de este trimestre es un relo -> ['create_entities']
+[local sin red] día 1: El cumpleaños de mi mamá es el 14 de dic -> ['create_entities']
+[local sin red] día 1: Mi colega Tomás trabaja conmigo en el pr -> ['create_entities', 'create_entities']
+[local sin red] día 1: Empecé a aprender portugués en las tarde -> ['create_entities']
+[local sin red] día 1: En las tardes prefiero té verde antes qu -> ['create_entities']
+[local sin red] día 1: Bueno, eso por ahora. -> []
+[local sin red] día 2: ¿A qué ciudad se muda mi hermana? -> ok
+[local sin red] día 2: ¿Qué estoy plantando en el balcón? -> ok
+[local sin red] día 2: ¿Cómo se llama mi perro? -> ok
+[local sin red] día 2: ¿Qué hierba no me gusta? -> FALLA
+[local sin red] día 2: ¿Qué libro estoy leyendo? -> ok
+[local sin red] día 2: ¿Cuál es mi proyecto de este trimestre? -> ok
+[local sin red] día 2: ¿Cuándo es el cumpleaños de mi mamá? -> ok
+[local sin red] día 2: ¿Cómo se llama el proyecto en que trabaj -> ok
+[local sin red] día 2: ¿Qué idioma estoy aprendiendo? -> ok
+[local sin red] día 2: ¿Qué prefiero tomar en las tardes? -> ok
+[local sin red] negativo: ¿Cómo se llama mi dentista? -> ok
+[local sin red] negativo: ¿En qué año me casé? -> ok
+[local sin red] negativo: ¿Cuál es mi color favorito? -> ok
+# Evals de memoria
+
+Generado por `python -m evals.memoria` con datos ficticios. Día 1: 10 hechos en una
+conversación natural. Se reinicia Tama. Día 2: una pregunta por hecho, cada una en una
+sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna invención.
+
+| Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
+|---|---:|---:|---:|---:|---:|---:|
+| nube | 9/10 | 3/3 | 11 | 1 | 0 | 2344 |
+| claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
+| local | 8/10 | 3/3 | 14 | 0 | 0 | 2892 |
+| local (sin red) | 9/10 | 3/3 | 11 | 0 | 2 | 2961 |
+
+## Historial médico
+
+| Capa | Completo | En orden |
+|---|---|---|
+| nube | ok | ok |
+| local | ok | ok |
+| local (sin red) | ok | ok |
+
+## Corrección de un dato
+
+| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho | Anterior |
+|---|---|---|---|---|---|
+| nube | ok | ok | ok | ok | ok |
+| claude | ok | ok | FALLA | ok | FALLA |
+| local | ok | FALLA | ok | FALLA | ok |
+| local (sin red) | ok | FALLA | ok | FALLA | FALLA |
+
+## Fallos
+
+- `nube` · ¿Cuál es mi proyecto de este trimestre?: Tengo anotado que estás trabajando en el proyecto Faro con tu colega Tomás. También mencionaste que empezaste a aprender
+- `nube` · duplicada: mama de renzo / renzo
+- `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
+- `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 
+- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre hierbas que le gusten o no a Renzo. Si lo mencionó antes, puedo buscarlo en su historial. ¿Quieres 
+
