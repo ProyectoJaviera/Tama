@@ -7,6 +7,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 
 | Modelo | Carga | Prompt tok/s | Generación tok/s | RAM GB | Herramientas (10) |
 |---|---:|---:|---:|---:|---:|
+| bonsai-2:9b | 5.9 s | 14.1 | 8.1 | 2.9 | 10/10 |
 | gemma2:2b | 3.0 s | 103.3 | 14.9 | 1.8 | 0/0 |
 | gemma4:26b | 29.1 s | 37.6 | 9.0 | 8.4 | 10/10 |
 | gemma4:31b | 41.2 s | 9.8 | 2.7 | 15.2 | 10/10 |
@@ -31,6 +32,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 
 | Modelo | Memoria | Negativos | Tokens máx | Corrección | Historial | Objetivos | Rectificación | Herramientas | Abre grupos | Recordatorios | Conversación | 1er token p50 | Reflexión | Fusiones malas | Contradicciones | Diario | Sin red | Horas |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| bonsai-2:9b | - | - | - | 3/5 | - | - | 0/3 | 18/22 | 0 | - | - | - | - | - | - | - | - | 0.6 |
 | gemma4:26b | - | - | - | RAM sobre 28 GB | - | - | RAM sobre 28 GB | RAM sobre 28 GB | RAM sobre 28 GB | - | - | - | - | - | - | - | - | 0.1 |
 | gemma4:e4b | - | - | - | 4/5 | - | - | 0/3 | 17/22 | 0 | - | - | - | - | - | - | - | - | 0.2 |
 | gpt-oss:20b | 8/10 | 3/3 | 2026 | 2/5 | 2/2 | 3/4 | 3/3 | 20/22 | 0 | 12/12 | 4.720833333333333 | 13.719000000004598 | 4/5 | 0 | 0/3 | [5, 5, 5] | 5/5 | 2.2 |
