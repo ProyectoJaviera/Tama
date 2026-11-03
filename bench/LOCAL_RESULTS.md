@@ -14,6 +14,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | ministral-3:8b | 24.6 s | 51.4 | 5.0 | 5.6 | 10/10 |
 | qwen3:30b-a3b-instruct-2507-q4_K_M | 32.2 s | 55.0 | 10.4 | 17.7 | 10/10 |
 | qwen3:4b-instruct-2507-q4_K_M | 5.4 s | 52.1 | 6.6 | 3.0 | 9/10 |
+| qwen3:8b | 9.4 s | 39.3 | 5.2 | 5.5 | 10/10 |
 
 ## Evals sin red
 
@@ -26,3 +27,4 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | ministral-3:8b | - | - | - | 5/5 | - | - | 3/3 | 19/22 | 0 | - | - | - | - | - | - | - | - | 0.5 |
 | qwen3:30b-a3b-instruct-2507-q4_K_M | - | - | - | 5/5 | - | - | RAM sobre 28 GB | 15/22 | 0 | - | - | - | - | - | - | - | - | 0.2 |
 | qwen3:4b-instruct-2507-q4_K_M | 9/10 | 3/3 | 2961 | 5/5 | - | - | 0/3 | 20/22 | 0 | - | - | - | - | - | - | - | - | 0.7 |
+| qwen3:8b | - | - | - | 3/5 | - | - | 0/3 | 20/22 | 0 | - | - | - | - | - | - | - | - | 0.3 |

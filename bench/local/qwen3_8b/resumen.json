@@ -1,0 +1,35 @@
+{
+  "modelo": "qwen3:8b",
+  "rendimiento": {
+    "carga_s": 9.4,
+    "prompt_tps": 39.3,
+    "gen_tps": 5.2,
+    "ram_gb": 5.5,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 3.2,
+    "ram_pico_gb": 14.1,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 7.1,
+    "ram_pico_gb": 16.1,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 7.0,
+    "ram_pico_gb": 14.7,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 2.9770000000007713,
+    "voseo": 0
+  }
+}
