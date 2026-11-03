@@ -424,3 +424,12 @@ def test_skipped_layers_are_reported():
     answered = next(e for e in events if isinstance(e, Answered))
     assert answered.provider == "local"
     assert answered.skipped == ("nube: sin internet",)
+
+
+def test_update_accepts_entities_as_text_or_empty_object():
+    memoria.create_entities([entity("Pablo", "persona", "Vive en Talca")])
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Osorno", "Pablo, Osorno", True)
+    assert rows() == [("Vive en Talca", 0), ("Pablo vive en Osorno", 1)]
+    assert "Osorno" in memoria.search_nodes("Osorno")
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Valdivia", {})
+    assert rows()[-1] == ("Pablo vive en Valdivia", 1)

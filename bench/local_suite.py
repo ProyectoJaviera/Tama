@@ -92,7 +92,9 @@ def guard_cpu(client: OllamaClient) -> None:
         raise SystemExit(f"Un modelo usa {vram / GB:.2f} GB de GPU: el banco se detiene.")
 
 
-def run_eval(model: str, name: str, args: list[str], hours: float, client: OllamaClient) -> dict:
+def run_eval(
+    model: str, name: str, args: list[str], hours: float, client: OllamaClient, tag: str = ""
+) -> dict:
     saved = {f: (EVALS / f).read_bytes() for f in SHARED if (EVALS / f).exists()}
     env = {
         **os.environ,
@@ -102,7 +104,7 @@ def run_eval(model: str, name: str, args: list[str], hours: float, client: Ollam
         "TAMA_NUM_GPU": "0",
         "PYTHONIOENCODING": "utf-8",
     }
-    log = folder(model) / f"{name}.log"
+    log = folder(model) / f"{name}{tag}.log"
     start = time.perf_counter()
     status = "ok"
     with RamWatch() as ram, log.open("w", encoding="utf-8") as out:
@@ -222,13 +224,21 @@ def performance(client: OllamaClient, model: str) -> dict[str, Any]:
     }
 
 
-def summary_path(model: str) -> Path:
-    return folder(model) / "resumen.json"
+def summary_path(model: str, round_no: int = 1) -> Path:
+    """La ronda 1 va a la tabla; las repeticiones, aparte, para ver la media y el rango."""
+    return folder(model) / ("resumen.json" if round_no == 1 else f"resumen-r{round_no}.json")
 
 
-def run_model(client: OllamaClient, model: str, only_perf: bool, names: list[str] | None) -> None:
+def run_model(
+    client: OllamaClient,
+    model: str,
+    only_perf: bool,
+    names: list[str] | None,
+    round_no: int = 1,
+) -> None:
     folder(model).mkdir(parents=True, exist_ok=True)
-    path = summary_path(model)
+    path = summary_path(model, round_no)
+    tag = "" if round_no == 1 else f"-r{round_no}"
     summary = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"modelo": model}
 
     def save() -> None:
@@ -241,20 +251,21 @@ def run_model(client: OllamaClient, model: str, only_perf: bool, names: list[str
     if free < size + 4:
         print(f"[omitido] {model}: necesita {size + 4:.1f} GB libres y hay {free:.1f}", flush=True)
         return
-    print(f"[{datetime.now():%H:%M}] {model}: rendimiento", flush=True)
-    summary["rendimiento"] = performance(client, model)
-    if summary["rendimiento"]["error"]:
+    if round_no == 1:
+        print(f"[{datetime.now():%H:%M}] {model}: rendimiento", flush=True)
+        summary["rendimiento"] = performance(client, model)
+        if summary["rendimiento"]["error"]:
+            save()
+            print(f"  error: {summary['rendimiento']['error']}", flush=True)
+            return
         save()
-        print(f"  error: {summary['rendimiento']['error']}", flush=True)
-        return
-    save()
     if only_perf:
         return
     for name, args, hours in SUITE:
         if names and name not in names:
             continue
-        print(f"[{datetime.now():%H:%M}] {model}: {name}", flush=True)
-        summary[name] = run_eval(model, name, args, hours, client)
+        print(f"[{datetime.now():%H:%M}] {model}: {name}{tag}", flush=True)
+        summary[name] = run_eval(model, name, args, hours, client, tag)
         print(f"  {summary[name]}", flush=True)
         save()
     client.unload(model)
@@ -328,6 +339,7 @@ def main() -> int:
     parser.add_argument("--solo-rendimiento", action="store_true")
     parser.add_argument("--evals", nargs="+", help="solo estas evals del banco")
     parser.add_argument("--resumen", action="store_true", help="solo rehace la tabla")
+    parser.add_argument("--ronda", type=int, default=1, help="repetición (2, 3...) aparte")
     args = parser.parse_args()
     if args.resumen:
         write_table()
@@ -335,7 +347,7 @@ def main() -> int:
     with OllamaClient("http://127.0.0.1:11434", timeout=900) as client:
         guard_cpu(client)
         for model in args.models:
-            run_model(client, model, args.solo_rendimiento, args.evals)
+            run_model(client, model, args.solo_rendimiento, args.evals, args.ronda)
     write_table()
     return 0
 

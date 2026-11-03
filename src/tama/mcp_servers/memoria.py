@@ -839,7 +839,12 @@ def update_observation(
     error: bool = False,
     source: int | None = None,
 ) -> str:
-    # El modelo a veces manda {} cuando no tiene entidades que agregar.
+    # Los modelos chicos mandan {} cuando no hay entidades, o un texto con nombres separados por
+    # comas en vez de una lista: se aceptan antes de reclamar.
+    if isinstance(entidades, dict) and not entidades:
+        entidades = None
+    elif isinstance(entidades, str):
+        entidades = [name.strip() for name in entidades.split(",") if name.strip()]
     if entidades and not isinstance(entidades, list):
         raise ToolError(
             "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
