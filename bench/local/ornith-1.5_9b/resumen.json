@@ -1,8 +1,8 @@
 {
   "modelo": "ornith-1.5:9b",
   "rendimiento": {
-    "carga_s": 6.6,
-    "prompt_tps": 43.4,
+    "carga_s": 6.3,
+    "prompt_tps": 42.3,
     "gen_tps": 5.6,
     "ram_gb": 5.8,
     "herramientas_10": "7/10",
@@ -56,5 +56,16 @@
     "duplicados": "4/5",
     "fusiones_incorrectas": [],
     "contradicciones": "3/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 0.7,
+    "ram_pico_gb": 13.3,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      5,
+      5
+    ]
   }
 }
