@@ -1,0 +1,35 @@
+{
+  "modelo": "qwen3:4b-instruct-2507-q8_0",
+  "rendimiento": {
+    "carga_s": 5.9,
+    "prompt_tps": 28.5,
+    "gen_tps": 6.1,
+    "ram_gb": 4.6,
+    "herramientas_10": "9/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 9.5,
+    "ram_pico_gb": 13.8,
+    "abre_grupos": 0,
+    "checks": "4/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 11.1,
+    "ram_pico_gb": 16.9,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 6.1,
+    "ram_pico_gb": 15.4,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 2.0230000000010477,
+    "voseo": 3
+  }
+}
