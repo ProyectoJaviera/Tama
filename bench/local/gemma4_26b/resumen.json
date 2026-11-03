@@ -1,0 +1,31 @@
+{
+  "modelo": "gemma4:26b",
+  "rendimiento": {
+    "carga_s": 29.7,
+    "prompt_tps": 30.6,
+    "gen_tps": 9.0,
+    "ram_gb": 8.4,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 3.9,
+    "ram_pico_gb": 28.0,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 0.2,
+    "ram_pico_gb": 27.8,
+    "abre_grupos": 0,
+    "correctas": "-"
+  },
+  "herramientas": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 0.1,
+    "ram_pico_gb": 27.9,
+    "abre_grupos": 0
+  }
+}
