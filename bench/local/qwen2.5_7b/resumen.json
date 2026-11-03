@@ -1,8 +1,8 @@
 {
   "modelo": "qwen2.5:7b",
   "rendimiento": {
-    "carga_s": 8.6,
-    "prompt_tps": 46.9,
+    "carga_s": 8.7,
+    "prompt_tps": 46.2,
     "gen_tps": 6.3,
     "ram_gb": 4.7,
     "herramientas_10": "10/10",
@@ -31,5 +31,48 @@
     "pct": "86.4%",
     "ttft_p50": 1.742500000000291,
     "voseo": 0
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 5.8,
+    "ram_pico_gb": 12.7,
+    "abre_grupos": 0,
+    "hechos": "2/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2290
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 3.8,
+    "ram_pico_gb": 12.4,
+    "abre_grupos": 0,
+    "checks": "3/4"
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 3.7,
+    "ram_pico_gb": 20.8,
+    "abre_grupos": 0,
+    "recordatorios": "12/12"
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 2.4,
+    "ram_pico_gb": 16.1,
+    "abre_grupos": 0,
+    "duplicados": "2/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "1/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 0.4,
+    "ram_pico_gb": 16.1,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      3,
+      5
+    ]
   }
 }
