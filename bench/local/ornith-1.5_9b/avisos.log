@@ -1,0 +1,17 @@
+ok: Recuérdame en 2 minutos sacar la ropa de la lavadora. -> [('2026-11-03T15:06:12-03:00', 'Sacar la ropa de la lavadora')] ['crear_recordatorio']
+ok: Avísame en media hora que debo llamar al banco. -> [('2026-11-03T15:34:44-03:00', 'Debes llamar al banco.')] ['get_current_time', 'crear_recordatorio']
+ok: En una hora recuérdame tomar agua. -> [('2026-11-03T16:05:13-03:00', 'Tomar agua 💧')] ['get_current_time', 'crear_recordatorio']
+ok: Recuérdame mañana a las 9 pagar la luz. -> [('2026-11-04T09:00:00-03:00', 'Pagar la luz')] ['crear_recordatorio']
+ok: Mañana a las 3 de la tarde tengo dentista, recuérdamelo. -> [('2026-11-04T15:00:00-03:00', 'Renzo tiene cita de dentista mañana 3 de la tarde')] ['get_current_time', 'crear_recordatorio']
+ok: Recuérdame el viernes a las 10 revisar el auto. -> [('2026-11-06T10:00:00-03:00', 'Revisar el auto')] ['crear_recordatorio']
+ok: Avísame el 5 de diciembre a las 8 que es el cumpleaños de Ana. -> [('2026-12-05T08:00:00-03:00', 'Es el cumpleaños de Ana')] ['crear_recordatorio']
+ok: Recuérdame hoy en la noche, a las 21:30, regar las plantas. -> [('2026-11-03T21:30:00-03:00', 'Regar las plantas')] ['crear_recordatorio']
+ok: En tres días recuérdame comprar pan. -> [('2026-11-06T15:07:53-03:00', 'Comprar pan')] ['get_current_time', 'crear_recordatorio']
+ok: Agenda un recordatorio urgente en 10 minutos para apagar el horno. -> [('2026-11-03T15:18:19-03:00', 'Apagar el horno')] ['crear_recordatorio']
+ok: Recuérdame el lunes a las 8:15 llevar el informe. -> [('2026-11-09T08:15:00-03:00', 'Llevar el informe.')] ['crear_recordatorio']
+FALLA: La próxima semana recuérdame renovar la licencia. -> [] ['search_nodes', 'get_current_time']
+Recordatorios: 11/12
+Hoy: 15:39 Reunión con Tomás (pendiente)
+Objetivo: Terminar el reloj Arduino, quedan 3 días
+Sugerencia: Retomar el libro que dejaste
+Resumen: [5, 5, 5] La respuesta cumple estrictamente con todos los criterios establecidos.

@@ -1,9 +1,9 @@
 {
   "modelo": "ornith-1.5:9b",
   "rendimiento": {
-    "carga_s": 11.0,
-    "prompt_tps": 42.3,
-    "gen_tps": 5.6,
+    "carga_s": 6.6,
+    "prompt_tps": 42.4,
+    "gen_tps": 5.5,
     "ram_gb": 5.8,
     "herramientas_10": "7/10",
     "error": null
@@ -40,5 +40,12 @@
     "hechos": "10/10",
     "negativos": "3/3",
     "tokens_prompt_max": 2995
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 6.8,
+    "ram_pico_gb": 17.0,
+    "abre_grupos": 0,
+    "recordatorios": "11/12"
   }
 }
