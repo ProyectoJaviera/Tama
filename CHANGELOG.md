@@ -7,7 +7,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ### Añadido
 
 - Sprint final: banco del modelo local (`bench/local_suite.py`) con todas las evals sin red y solo
-  CPU, y comparación de 17 modelos en `bench/local/TABLA.md` (ADR 0004).
+  CPU, comparación de 22 modelos en `bench/local/TABLA.md` (ADR 0004) y repeticiones con
+  `bench/rounds.py`.
+- `update_observation` acepta las entidades como texto o como mapa, como las mandan los modelos
+  locales: la rectificación sin red dejó de fallar siempre.
 - Sprint 6: motor proactivo con recordatorios, resumen matutino y seguimiento de objetivos, Silencio
   Operativo, campana en la web, avisos en la CLI y ntfy autoalojado opcional. Comandos
   `/recordatorios`, `/avisos`, `/silencio` y `/resumen`. Se pueden renombrar fichas.

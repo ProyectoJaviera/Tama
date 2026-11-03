@@ -24,26 +24,30 @@ Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10
 - Las evals no usan la capa de Claude.
 - El resultado queda en un ADR, junto a `docs/adr/0001-modelo-local.md`.
 
-## Resultado del banco (noche del 2026-11-02)
-`bench/local_suite.py` corrió 17 modelos sin red y solo en CPU: etapa rápida para 14 y suite
-completa para 5. Tabla en `bench/local/TABLA.md` y decisión propuesta en
+## Resultado del banco (2026-11-02 y 2026-11-03)
+`bench/local_suite.py` probó 22 modelos sin red y solo en CPU; los tres mejores con rondas
+repetidas (`bench/rounds.py`). Tabla en `bench/local/TABLA.md` y decisión propuesta en
 `docs/adr/0004-modelo-local-final.md`.
 
-- Se mantiene `qwen3:4b-instruct-2507` para el chat y para el fondo: mejor memoria (9/10), 20/22
-  herramientas, corrección 5/5, reflexión 4/5 sin fusiones malas y 3/3 contradicciones, y el más
-  rápido de los capaces (8,7 tok/s, 3 GB).
-- Alternativa: `ministral-3:8b`, el único que rectifica 3/3, pero a 5 tok/s.
-- Los MoE de ~18 GB no caben con margen bajo 28 GB de RAM usada.
-- Ningún modelo abre grupos de herramientas.
+- `update_observation` acepta las entidades como texto o mapa: la rectificación del actual pasó
+  de 0 a 1,8 de 3, y la del mismo modelo en q8_0, a 3 de 3.
+- Propuesta: `qwen3:4b-instruct-2507-q8_0` para todo (memoria 9, rectificación 3 de 3, la mejor
+  reflexión, ~12 s por respuesta). Alternativa: `ministral-3:8b` para el chat (corrige mejor,
+  ~22 s por respuesta).
+- Los MoE de ~18 GB no caben con margen bajo 28 GB de RAM usada. Ningún modelo abre grupos.
 
 ## Pasos de la demo (sin red)
 1. Desde `Tama-s7`, con Ollama abierto, desconecta el cable o el WiFi.
-2. `uv run tama web` y abre http://127.0.0.1:8765. En Estado debe verse la capa local.
-3. Cuéntale algo ("mi hermana se muda a Temuco en marzo"), recarga y pregúntale.
-4. Corrige un dato ("en verdad se muda a Valdivia") y pregunta de nuevo.
-5. "Recuérdame en 2 minutos regar las plantas" y espera el aviso.
-6. Opcional: lo mismo con `TAMA_LOCAL_MODEL=ministral-3:8b` para comparar velocidad.
+2. En PowerShell: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q8_0"; uv run tama web` y abre
+   http://127.0.0.1:8765. En Estado debe verse la capa local con ese modelo.
+3. Cuéntale "mi hermana se muda a Temuco en marzo", recarga y pregúntale a dónde se muda.
+4. Corrige con "en verdad se muda a Valdivia" y pregunta de nuevo.
+5. Dile "me equivoqué, nunca me operaron de la rodilla" después de haberlo contado.
+6. "Recuérdame en 2 minutos regar las plantas" y espera el aviso.
+7. Detén Tama y repite 2 a 6 con `$env:TAMA_LOCAL_MODEL="ministral-3:8b"` para comparar calidad
+   y espera. Para volver al de hoy: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q4_K_M"`.
 
 ## Pendiente
-- Conversación de 20 escenarios, historial médico y prueba rápida sin red para los finalistas.
-- Rectificar un dato que estaba mal sin red: mejorar la descripción de `update_observation`.
+- Fijar en la instalación el modelo que elija Renzo.
+- Si elige dos modelos: que la reflexión y el diario usen `TAMA_BACKGROUND_MODEL`.
+- Repetir el historial médico de q8_0 y ministral-3:8b (0 de 2 en una corrida).

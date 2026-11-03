@@ -1,64 +1,66 @@
 # 0004. Modelo local de la versión: chat y tareas de fondo
 
-- Estado: propuesto (falta la demo de Renzo sin red)
+- Estado: propuesto (lo decide Renzo en la demo sin red)
 - Fecha: 2026-11-03
 - Decisores: Renzo
-- Reemplaza en parte a: [0001](0001-modelo-local.md) (el modelo de fondo)
+- Reemplaza a: [0001](0001-modelo-local.md)
 
 ## Contexto y problema
 
 Al final de la versión se mide el modelo local con todas las tareas de Tama, como pidió Renzo:
-memoria, corrección de datos, herramientas, objetivos, recordatorios, reflexión y diario, sin red
-y solo en CPU (i5-10400F, 32 GB, un modelo cargado a la vez). ¿Qué modelo usar para conversar sin
-internet y cuál para las tareas de fondo?
+memoria, corrección de datos, herramientas, historial, objetivos, recordatorios, conversación,
+reflexión y diario. Todo sin red y solo en CPU (i5-10400F, 32 GB, un modelo cargado a la vez).
+¿Qué modelo usar para conversar sin internet y cuál para las tareas de fondo?
 
 ## Factores de decisión
 
-- Recordar lo que Renzo contó y no inventar (lo esencial sin red).
-- Usar bien las herramientas, incluidas las correcciones de datos.
+- Recordar lo que Renzo contó, corregirlo cuando cambia y no inventar: es lo esencial sin red.
+- Usar bien las herramientas.
 - Reflexión fiable: fusionar duplicados sin fusionar lo distinto y marcar contradicciones.
-- Velocidad en CPU (generación, prompt, carga) y RAM con margen: Renzo cerró programas y el PC
-  queda en ~11 GB usados sin modelo; pasar de ~28 GB arriesga a Windows.
+- Tiempo de respuesta en CPU y RAM con margen: el PC queda en ~11 GB usados sin modelo y pasar
+  de ~28 GB arriesga a Windows.
+- Un solo modelo evita recargas al pasar de la reflexión al chat.
 
 ## Opciones consideradas
 
-17 modelos. Etapa rápida (herramientas, corrección, rectificación y rendimiento) para 14 y suite
-completa para los 5 mejores. Tabla en `bench/local/TABLA.md`.
+22 modelos. Etapa rápida para 19, suite completa para 7 y rondas repetidas de las evals clave
+para los tres mejores. Tabla en `bench/local/TABLA.md`.
 
-| | qwen3:4b-instruct-2507 | qwen3:8b | ministral-3:8b | gpt-oss:20b |
-|---|---:|---:|---:|---:|
-| Memoria (de 10) | 9 | 8 | 8 | 8 |
-| Herramientas (de 22) | 20 | 20 | 19 | 20 |
-| Corrección (de 5) | 5 | 3 | 5 | 2 |
-| Rectificación (de 3) | 0 | 0 | 3 | 3 |
-| Reflexión: contradicciones (de 3) | 3 | 3 | 1 | 0 |
-| Generación (tok/s) | 8,7 | 5,1 | 5,0 | 7,3 |
-| RAM | 3,0 GB | 5,5 GB | 5,6 GB | 12,9 GB |
+| | qwen3:4b-instruct-2507 q4_K_M (hoy) | el mismo en q8_0 | ministral-3:8b |
+|---|---:|---:|---:|
+| Memoria, de 10 | 7,3 (6 a 9; 3 rondas) | 9 (1 ronda) | 9,0 (8 a 10; 3 rondas) |
+| Corrección, de 5 (3 rondas) | 3,7 | 3,3 | 4,7 |
+| Rectificación, de 3 | 1,8 (5 rondas) | 3,0 (3 rondas) | 3,0 (2 rondas) |
+| Herramientas, de 22 | 19,3 | 20 | 19,7 |
+| Conversación (20 escenarios) | 4,72; 17 aprobados | 4,75; 18 aprobados | 4,85; 20 aprobados |
+| Historial médico, de 2 | 2 | 0 | 0 |
+| Reflexión: duplicados, de 5 | 4,0 | 5 | 4,7 |
+| Reflexión: contradicciones, de 3 | 3,0 | 3 | 1,3 |
+| Respuesta completa (p50) | 9,6 s | 12,4 s | 22,0 s |
+| Carga | 3 s | 3 s | 26 s |
+| RAM | 3,0 GB | 4,6 GB | 5,6 GB |
 
-Los MoE grandes (qwen3:30b-a3b, gemma4:26b) prometían velocidad, pero con ~18 GB rozan o pasan
-el límite de RAM y no rindieron mejor. Los modelos de 1,7 a 4B de otras familias (phi4-mini,
-llama3.2, granite4, gemma4:e4b) fallan más con herramientas.
+ornith-1.5:9b fue el mejor en una corrida (memoria 10, herramientas 21), pero tarda 38 s por
+respuesta. Los MoE de ~18 GB (qwen3:30b-a3b, gemma4:26b) no caben con margen bajo 28 GB.
+gpt-oss:20b tarda 13,7 s en el primer token y no marca contradicciones.
 
-## Decisión
+## Decisión propuesta
 
-- **Chat local: se mantiene `qwen3:4b-instruct-2507-q4_K_M`.** Es el que mejor recuerda (9 de 10),
-  empata en herramientas, corrige bien un dato y es el más rápido de los capaces (8,7 tok/s, carga
-  en 5 s, 3 GB). Su punto débil es rectificar un dato que estaba mal (0 de 3); se trabaja con la
-  descripción de `update_observation`, como piden las reglas, no cambiando de modelo.
-- **Fondo (reflexión y diario): `qwen3:4b-instruct-2507-q4_K_M`, el mismo.** 4 de 5 duplicados,
-  0 fusiones incorrectas, 3 de 3 contradicciones y diario 5/5/5. Usar el mismo modelo evita
-  recargar al pasar de conversar a reflexionar. `qwen3:4b` (fondo en el ADR 0001) razona siempre
-  y no aporta.
-- **Alternativa: `ministral-3:8b`.** El único que rectifica 3 de 3 y corrige 5 de 5, pero genera
-  a 5 tok/s, carga en 24 s y marca solo 1 de 3 contradicciones en la reflexión. Si Renzo prioriza
-  las correcciones sobre la velocidad, sirve para el chat con `TAMA_LOCAL_MODEL=ministral-3:8b`,
-  dejando el fondo en el 4B.
+- **Un solo modelo para chat y fondo: `qwen3:4b-instruct-2507-q8_0`.** Es el mismo modelo de hoy
+  con menos compresión: rectifica 3 de 3 en las tres rondas (el actual, 1,8), recuerda 9 de 10, la
+  mejor reflexión (5 de 5 duplicados, 3 de 3 contradicciones) y responde en ~12 s, cerca de los
+  ~10 s de hoy. Con un solo modelo no hay recargas.
+- **Alternativa, más precisa y más lenta: `ministral-3:8b` para el chat**, dejando el q8_0 en el
+  fondo. Corrige mejor (4,7 de 5) y aprueba los 20 escenarios, pero tarda ~22 s por respuesta,
+  26 s en cargar y marca pocas contradicciones.
+- La elige Renzo en la demo sin red, probando los dos.
 
 ## Consecuencias
 
-- Positivas: no cambia nada en la instalación; RAM holgada; el chat sin red sigue siendo el más
-  rápido posible en este PC.
-- Negativas: rectificar datos sin red queda débil hasta mejorar la herramienta.
-- Pendiente: conversación de 20 escenarios, historial médico y prueba rápida sin red para los
-  finalistas; una corrida por eval, así que diferencias de un caso son ruido.
-- Los modelos descartados se pueden borrar para liberar ~90 GB, con el OK de Renzo.
+- Cambia `TAMA_LOCAL_MODEL` y el modelo que se descarga al instalar (4,3 GB en vez de 2,5 GB).
+- Si Renzo elige dos modelos, la reflexión y el diario deben pasar a usar `TAMA_BACKGROUND_MODEL`
+  (hoy usan el modelo del chat), y Ollama recargará al volver al chat (hasta 26 s).
+- El historial médico falla en q8_0 y ministral (0 de 2, una corrida) y pasa en el q4: hay que
+  repetirlo y, si se confirma, mejorar la descripción de `linea_de_tiempo`.
+- La corrección de un dato del q8_0 (3,3 de 5) queda por mejorar desde las herramientas.
+- Los modelos descartados se pueden borrar para liberar ~110 GB, con el OK de Renzo.

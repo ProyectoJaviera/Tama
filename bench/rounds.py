@@ -1,6 +1,7 @@
 """Media y rango de las evals repetidas del banco local (`resumen.json` y `resumen-rN.json`).
 
-La rectificación de la ronda 1 se hizo antes de arreglar `update_observation` y no se promedia.
+Las rectificaciones corridas antes de arreglar `update_observation` (2026-11-03, 06:50) no se
+promedian: se reconocen por la fecha de su registro.
 
 Uso:
     uv run python bench/rounds.py
@@ -9,9 +10,11 @@ Uso:
 import json
 import statistics
 import sys
+from datetime import datetime
 from pathlib import Path
 
 OUT = Path(__file__).parent / "local"
+FIX = datetime(2026, 11, 3, 6, 50).timestamp()
 KEYS = [
     ("Memoria", "memoria", "hechos"),
     ("Corrección", "correccion", "checks"),
@@ -33,10 +36,12 @@ def fraction(value: object) -> tuple[int, int] | None:
 def collect(folder: Path) -> dict[str, list[tuple[int, int]]]:
     found: dict[str, list[tuple[int, int]]] = {}
     for path in sorted(folder.glob("resumen*.json")):
-        first = path.name == "resumen.json"
+        tag = path.stem.removeprefix("resumen")
         data = json.loads(path.read_text(encoding="utf-8"))
+        log = folder / f"rectificacion{tag}.log"
+        before_fix = log.exists() and log.stat().st_mtime < FIX
         for label, name, key in KEYS:
-            if first and name == "rectificacion":
+            if name == "rectificacion" and before_fix:
                 continue
             item = data.get(name, {})
             value = fraction(item.get(key)) if item.get("estado") == "ok" else None
