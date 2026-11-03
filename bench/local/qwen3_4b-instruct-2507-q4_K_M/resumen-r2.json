@@ -2,9 +2,44 @@
   "modelo": "qwen3:4b-instruct-2507-q4_K_M",
   "rectificacion": {
     "estado": "ok",
-    "minutos": 9.0,
-    "ram_pico_gb": 14.3,
+    "minutos": 5.2,
+    "ram_pico_gb": 19.5,
     "abre_grupos": 0,
-    "correctas": "0/3"
+    "correctas": "2/3"
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 15.5,
+    "ram_pico_gb": 16.6,
+    "abre_grupos": 0,
+    "hechos": "7/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2805
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 2.9,
+    "ram_pico_gb": 17.2,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 4.6,
+    "ram_pico_gb": 18.0,
+    "abre_grupos": 0,
+    "correctos": "19/22",
+    "pct": "86.4%",
+    "ttft_p50": 1.6565000000009604,
+    "voseo": 0
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 3.1,
+    "ram_pico_gb": 18.1,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "3/3"
   }
 }

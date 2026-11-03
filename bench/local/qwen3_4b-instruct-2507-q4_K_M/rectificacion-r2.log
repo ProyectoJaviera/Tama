@@ -1,10 +1,7 @@
-  error de update_observation: Error executing tool update_observation: entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a otro, usa create_entities.
-[local] En verdad no me operaron, se sanó sola. -> ['update_observation', 'create_entities'] FALLA
-  error de update_observation: Error executing tool update_observation: entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a otro, usa create_entities.
-  error de update_observation: Error executing tool update_observation: entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a otro, usa create_entities.
-[local] Me equivoqué, Pablo vive en Osorno. -> ['search_nodes', 'update_observation', 'create_entities', 'update_observation', 'create_entities'] FALLA
-[local] No es cierto, no compré ningún auto, sol -> [] FALLA
-local: 0/3
+[local] En verdad no me operaron, se sanó sola. -> [] FALLA
+[local] Me equivoqué, Pablo vive en Osorno. -> ['search_nodes', 'update_observation'] ok
+[local] No es cierto, no compré ningún auto, sol -> ['update_observation'] ok
+local: 2/3
 # Evals de memoria
 
 Generado por `python -m evals.memoria` con datos ficticios. Día 1: 10 hechos en una
