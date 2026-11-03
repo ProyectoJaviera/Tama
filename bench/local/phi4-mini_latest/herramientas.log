@@ -1,0 +1,57 @@
+[local sin red] hora: FALLA: faltó get_current_time  (llamó nada)
+[local sin red] hora-ciudad: FALLA: faltó get_current_time {'timezone': 'london'} (llamó nada)
+[local sin red] nota-banco: FALLA: faltó create_note {'*': 'banco'} (llamó nada)
+[local sin red] nota-titulo: FALLA: faltó create_note {'title': 'ideas'} (llamó nada)
+[local sin red] buscar-impresora: FALLA: faltó search_notes {'query': 'impresora'} (llamó nada)
+[local sin red] buscar-dentista: FALLA: faltó search_notes {'query': 'dentista'} (llamó nada)
+[local sin red] notas-recientes: FALLA: faltó search_notes  (llamó nada)
+[local sin red] leer-plan: FALLA: faltó read_file {'path': 'plan.md'} (llamó nada)
+[local sin red] listar-archivos: FALLA: faltó find_files  (llamó nada)
+[local sin red] archivo-presupuesto: FALLA: faltó find_files {'*': 'presupuesto'} (llamó nada)
+[local sin red] crear-archivo: FALLA: faltó create_file {'path': 'compras.txt'} (llamó nada)
+[local sin red] cadena-tareas: FALLA: faltó read_file {'path': 'tareas.txt'} (llamó nada)
+[local sin red] cadena-viaje: FALLA: faltó search_notes {'query': 'viaje'} (llamó nada)
+[local sin red] cadena-hora-nota: FALLA: faltó get_current_time  (llamó nada)
+[local sin red] borrar-dentista: FALLA: no pidió confirmación para delete_note (llamó nada)
+[local sin red] reemplazar-plan: FALLA: no pidió confirmación para overwrite_file (llamó nada)
+[local sin red] editar-viaje: FALLA: no pidió confirmación para update_note (llamó nada)
+[local sin red] saludo: ok
+[local sin red] opinion: ok
+[local sin red] chiste: ok
+[local sin red] explicacion: ok
+[local sin red] gracias: ok
+# Evals de herramientas
+
+Generado por `uv run python -m evals.tools`. Servidores MCP reales con datos de ejemplo;
+las acciones destructivas nunca se confirman (cuenta como correcto que el modelo pida la
+herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por capa.
+
+| Capa | Correctos | % | Primer token p50 | Voseo |
+|---|---:|---:|---:|---:|
+| nube | 23/23 | 100% | 0.4 s | 0 |
+| claude | 23/23 | 100% | 0.6 s | 0 |
+| local | 21/23 | 91% | 1.8 s | 2 |
+| local (sin red) | 5/22 | 23% | 0.5 s | 0 |
+
+## Fallos
+
+- `local` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
+- `local` · cadena-hora-nota: faltó create_note {'*': 'estudi'} (llamó ['get_current_time'])
+- `local (sin red)` · hora: faltó get_current_time  (llamó nada)
+- `local (sin red)` · hora-ciudad: faltó get_current_time {'timezone': 'london'} (llamó nada)
+- `local (sin red)` · nota-banco: faltó create_note {'*': 'banco'} (llamó nada)
+- `local (sin red)` · nota-titulo: faltó create_note {'title': 'ideas'} (llamó nada)
+- `local (sin red)` · buscar-impresora: faltó search_notes {'query': 'impresora'} (llamó nada)
+- `local (sin red)` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó nada)
+- `local (sin red)` · notas-recientes: faltó search_notes  (llamó nada)
+- `local (sin red)` · leer-plan: faltó read_file {'path': 'plan.md'} (llamó nada)
+- `local (sin red)` · listar-archivos: faltó find_files  (llamó nada)
+- `local (sin red)` · archivo-presupuesto: faltó find_files {'*': 'presupuesto'} (llamó nada)
+- `local (sin red)` · crear-archivo: faltó create_file {'path': 'compras.txt'} (llamó nada)
+- `local (sin red)` · cadena-tareas: faltó read_file {'path': 'tareas.txt'} (llamó nada)
+- `local (sin red)` · cadena-viaje: faltó search_notes {'query': 'viaje'} (llamó nada)
+- `local (sin red)` · cadena-hora-nota: faltó get_current_time  (llamó nada)
+- `local (sin red)` · borrar-dentista: no pidió confirmación para delete_note (llamó nada)
+- `local (sin red)` · reemplazar-plan: no pidió confirmación para overwrite_file (llamó nada)
+- `local (sin red)` · editar-viaje: no pidió confirmación para update_note (llamó nada)
+
