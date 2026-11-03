@@ -1,0 +1,11 @@
+{
+  "modelo": "gemma2:2b",
+  "rendimiento": {
+    "carga_s": 3.0,
+    "prompt_tps": 103.3,
+    "gen_tps": 14.9,
+    "ram_gb": 1.8,
+    "herramientas_10": "0/0",
+    "error": "registry.ollama.ai/library/gemma2:2b does not support tools"
+  }
+}
