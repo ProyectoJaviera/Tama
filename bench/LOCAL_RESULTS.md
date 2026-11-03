@@ -7,7 +7,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 
 | Modelo | Carga | Prompt tok/s | Generación tok/s | RAM GB | Herramientas (10) |
 |---|---:|---:|---:|---:|---:|
-| gemma4:26b | 29.7 s | 30.6 | 9.0 | 8.4 | 10/10 |
+| gemma4:26b | 29.1 s | 37.6 | 9.0 | 8.4 | 10/10 |
 | gemma4:e4b | 10.9 s | 66.8 | 10.8 | 1.8 | 10/10 |
 | gpt-oss:20b | 21.3 s | 47.1 | 7.3 | 12.9 | 9/10 |
 | granite4:tiny-h | 0.1 s | 128.8 | 24.9 | 4.1 | 9/10 |
