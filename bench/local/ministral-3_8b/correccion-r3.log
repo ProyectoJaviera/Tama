@@ -1,0 +1,45 @@
+[local] Para Halloween me voy a disfrazar de Shr -> []
+[local] Mi esposa se va a disfrazar de Fiona par -> ['create_entities']
+[local] Cambio de planes: con mi esposa iremos d -> ['update_observation']
+  error de update_observation: Error executing tool update_observation: Nada cambió: o1 no existe o ya no está vigente. Datos parecidos: [o2] Renzo y su esposa [Lizette] se disfrazarán de personajes de *La Bella y la Bestia* para Halloween: él como la Bestia y ella como Bella.. Reintenta con sus ids.
+[local] Ya lo decidimos: con mi esposa iremos de -> ['update_observation', 'update_observation']
+# Evals de memoria
+
+Generado por `python -m evals.memoria` con datos ficticios. Día 1: 10 hechos en una
+conversación natural. Se reinicia Tama. Día 2: una pregunta por hecho, cada una en una
+sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna invención.
+
+| Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
+|---|---:|---:|---:|---:|---:|---:|
+| nube | 9/10 | 3/3 | 11 | 1 | 0 | 2344 |
+| claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
+| local | 8/10 | 3/3 | 14 | 0 | 0 | 2892 |
+| local (sin red) | 7/10 | 3/3 | 10 | 0 | 0 | 2721 |
+
+## Historial médico
+
+| Capa | Completo | En orden |
+|---|---|---|
+| nube | ok | ok |
+| local | ok | ok |
+| local (sin red) | ok | ok |
+
+## Corrección de un dato
+
+| Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho | Anterior |
+|---|---|---|---|---|---|
+| nube | ok | ok | ok | ok | ok |
+| claude | ok | ok | FALLA | ok | FALLA |
+| local | ok | FALLA | ok | FALLA | ok |
+| local (sin red) | ok | ok | ok | ok | FALLA |
+
+## Fallos
+
+- `nube` · ¿Cuál es mi proyecto de este trimestre?: Tengo anotado que estás trabajando en el proyecto Faro con tu colega Tomás. También mencionaste que empezaste a aprender
+- `nube` · duplicada: mama de renzo / renzo
+- `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
+- `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 
+- `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre tus gustos en hierbas. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba en cocina o
+- `local (sin red)` · ¿Qué libro estoy leyendo?: No tengo información sobre qué libro estás leyendo. Si lo tienes en mente, cuéntamelo y te lo anoto.
+- `local (sin red)` · ¿Cuál es mi proyecto de este trimestre?: No tengo datos sobre los proyectos de este trimestre de Renzo. Si me dices más, puedo ayudarte a organizarlo.
+
