@@ -1,0 +1,35 @@
+{
+  "modelo": "gpt-oss:20b",
+  "rendimiento": {
+    "carga_s": 21.3,
+    "prompt_tps": 47.1,
+    "gen_tps": 7.3,
+    "ram_gb": 12.9,
+    "herramientas_10": "9/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 15.4,
+    "ram_pico_gb": 20.9,
+    "abre_grupos": 0,
+    "checks": "2/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 18.0,
+    "ram_pico_gb": 21.9,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 12.2,
+    "ram_pico_gb": 20.3,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 8.64849999999933,
+    "voseo": 1
+  }
+}

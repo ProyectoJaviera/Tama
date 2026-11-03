@@ -8,6 +8,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | Modelo | Carga | Prompt tok/s | Generación tok/s | RAM GB | Herramientas (10) |
 |---|---:|---:|---:|---:|---:|
 | gemma4:26b | 29.7 s | 30.6 | 9.0 | 8.4 | 10/10 |
+| gpt-oss:20b | 21.3 s | 47.1 | 7.3 | 12.9 | 9/10 |
 | qwen3:30b-a3b-instruct-2507-q4_K_M | 32.2 s | 55.0 | 10.4 | 17.7 | 10/10 |
 | qwen3:4b-instruct-2507-q4_K_M | 5.4 s | 52.1 | 6.6 | 3.0 | 9/10 |
 
@@ -16,5 +17,6 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | Modelo | Memoria | Negativos | Tokens máx | Corrección | Historial | Objetivos | Rectificación | Herramientas | Abre grupos | Recordatorios | Conversación | 1er token p50 | Reflexión | Fusiones malas | Contradicciones | Diario | Sin red | Horas |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | gemma4:26b | - | - | - | RAM sobre 28 GB | - | - | RAM sobre 28 GB | RAM sobre 28 GB | RAM sobre 28 GB | - | - | - | - | - | - | - | - | 0.1 |
+| gpt-oss:20b | - | - | - | 2/5 | - | - | 3/3 | 20/22 | 0 | - | - | - | - | - | - | - | - | 0.8 |
 | qwen3:30b-a3b-instruct-2507-q4_K_M | - | - | - | 5/5 | - | - | RAM sobre 28 GB | 15/22 | 0 | - | - | - | - | - | - | - | - | 0.2 |
 | qwen3:4b-instruct-2507-q4_K_M | 9/10 | 3/3 | 2961 | 5/5 | - | - | 0/3 | 20/22 | 0 | - | - | - | - | - | - | - | - | 0.7 |
