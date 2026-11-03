@@ -1,0 +1,2 @@
+[local] En verdad no me operaron, se sanó sola. -> [] FALLA
+  error de update_observation: Error executing tool update_observation: entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a otro, usa create_entities.

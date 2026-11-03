@@ -433,3 +433,9 @@ def test_update_accepts_entities_as_text_or_empty_object():
     assert "Osorno" in memoria.search_nodes("Osorno")
     memoria.update_observation(ids_of("Pablo"), "Pablo vive en Valdivia", {})
     assert rows()[-1] == ("Pablo vive en Valdivia", 1)
+
+
+def test_update_accepts_entities_as_a_name_to_type_map():
+    memoria.create_entities([entity("Pablo", "persona", "Vive en Talca")])
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Osorno", {"Pablo": "persona"}, True)
+    assert rows() == [("Vive en Talca", 0), ("Pablo vive en Osorno", 1)]
