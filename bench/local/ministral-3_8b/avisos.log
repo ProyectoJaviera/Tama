@@ -1,0 +1,17 @@
+ok: Recuérdame en 2 minutos sacar la ropa de la lavadora. -> [('2026-11-03T02:50:59-03:00', '¡No olvides sacar la ropa de la lavadora!')] ['crear_recordatorio']
+ok: Avísame en media hora que debo llamar al banco. -> [('2026-11-03T03:19:25-03:00', 'Llamar al banco: no olvides agendar cita o consultar por tu cuenta.')] ['crear_recordatorio']
+ok: En una hora recuérdame tomar agua. -> [('2026-11-03T03:49:50-03:00', '¡Toma agua! Es importante mantenerte hidratado.')] ['crear_recordatorio']
+ok: Recuérdame mañana a las 9 pagar la luz. -> [('2026-11-04T09:00:00-03:00', 'Pagar la luz. No olvides que está programado para las 9:00 AM.')] ['crear_recordatorio', 'get_current_time']
+ok: Mañana a las 3 de la tarde tengo dentista, recuérdamelo. -> [('2026-11-04T15:00:00-03:00', 'Mañana a las 15:00 tienes cita en el dentista. No olvides ir.')] ['crear_recordatorio']
+ok: Recuérdame el viernes a las 10 revisar el auto. -> [('2026-11-06T10:00:00-03:00', 'Revisar el auto (aceite, líquidos, neumáticos).')] ['crear_recordatorio']
+ok: Avísame el 5 de diciembre a las 8 que es el cumpleaños de Ana. -> [('2024-12-05T08:00:00-03:00', 'Hoy es el cumpleaños de Ana. ¡No olvides celebrarlo!')] ['crear_recordatorio']
+ok: Recuérdame hoy en la noche, a las 21:30, regar las plantas. -> [('2026-11-03T21:30:00-03:00', 'Regar las plantas de Renzo.')] ['crear_recordatorio', 'get_current_time']
+ok: En tres días recuérdame comprar pan. -> [('2026-11-06T02:52:40-03:00', 'Comprar pan (recuerdo de Tama).')] ['crear_recordatorio']
+ok: Agenda un recordatorio urgente en 10 minutos para apagar el horno. -> [('2026-11-03T03:03:10-03:00', '¡No olvides apagar el horno!')] ['crear_recordatorio']
+ok: Recuérdame el lunes a las 8:15 llevar el informe. -> [('2026-11-09T08:15:00-03:00', 'Llevar el informe a la reunión del lunes.')] ['crear_recordatorio']
+ok: La próxima semana recuérdame renovar la licencia. -> [('2026-11-10T09:00:00-03:00', 'Renovar licencia (ej: matrícula, seguro, etc.). Verificar fechas y pagar a tiempo.')] ['crear_recordatorio', 'get_current_time']
+Recordatorios: 12/12
+Hoy: 03:24 Reunión con Tomás (pendiente, avisaré hoy 08:00)
+Objetivo: Terminar el reloj Arduino, quedan 3 días
+Sugerencia: Retomar el libro que dejaste
+Resumen: [5, 5, 5] La respuesta cumple estrictamente con todos los criterios establecidos.
