@@ -1,9 +1,9 @@
 {
   "modelo": "ornith-1.5:9b",
   "rendimiento": {
-    "carga_s": 6.3,
-    "prompt_tps": 42.3,
-    "gen_tps": 5.6,
+    "carga_s": 6.2,
+    "prompt_tps": 42.1,
+    "gen_tps": 5.5,
     "ram_gb": 5.8,
     "herramientas_10": "7/10",
     "error": null
@@ -67,5 +67,16 @@
       5,
       5
     ]
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 20.6,
+    "ram_pico_gb": 14.8,
+    "abre_grupos": 0,
+    "puntaje_medio": 4.670833333333333,
+    "aprobados": "17/20",
+    "errores": 0,
+    "ttft_p50": 6.6560000000026776,
+    "total_p50": 37.7964881999942
   }
 }
