@@ -18,6 +18,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | llama3.2:3b | 4.1 s | 102.4 | 11.5 | 2.4 | 7/10 |
 | ministral-3:8b | 26.0 s | 51.7 | 4.9 | 5.6 | 10/10 |
 | nemotron-3.5-bolt:e4b | 12.8 s | 68.8 | 6.5 | 2.7 | 10/10 |
+| nimble-v3:9b | 0.0 s | 0.0 | 0.0 | 0 | 0/0 |
 | ornith-1.5:9b | 11.4 s | 41.4 | 5.6 | 5.8 | 7/10 |
 | phi4-mini:latest | 4.7 s | 88.9 | 10.1 | 2.9 | 2/10 |
 | qwen2.5:7b | 8.7 s | 46.8 | 6.3 | 4.7 | 10/10 |
