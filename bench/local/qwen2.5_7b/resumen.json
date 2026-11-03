@@ -1,0 +1,35 @@
+{
+  "modelo": "qwen2.5:7b",
+  "rendimiento": {
+    "carga_s": 8.6,
+    "prompt_tps": 46.9,
+    "gen_tps": 6.3,
+    "ram_gb": 4.7,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 5.6,
+    "ram_pico_gb": 13.4,
+    "abre_grupos": 0,
+    "checks": "2/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 5.7,
+    "ram_pico_gb": 14.9,
+    "abre_grupos": 0,
+    "correctas": "2/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 5.1,
+    "ram_pico_gb": 13.5,
+    "abre_grupos": 0,
+    "correctos": "19/22",
+    "pct": "86.4%",
+    "ttft_p50": 1.742500000000291,
+    "voseo": 0
+  }
+}
