@@ -16,6 +16,7 @@ juez en la nube sin Claude. Registros en `bench/local/<modelo>/`.
 | ministral-3:8b | 24.3 s | 52.0 | 5.0 | 5.6 | 10/10 |
 | phi4-mini:latest | 4.7 s | 88.9 | 10.1 | 2.9 | 2/10 |
 | qwen2.5:7b | 8.7 s | 46.2 | 6.3 | 4.7 | 10/10 |
+| qwen3:14b | 16.8 s | 22.3 | 3.1 | 9.4 | 10/10 |
 | qwen3:30b-a3b-instruct-2507-q4_K_M | 31.4 s | 55.2 | 10.4 | 17.7 | 10/10 |
 | qwen3:4b-instruct-2507-q4_K_M | 5.0 s | 72.8 | 8.7 | 3.0 | 9/10 |
 | qwen3:8b | 9.4 s | 39.3 | 5.2 | 5.5 | 10/10 |
