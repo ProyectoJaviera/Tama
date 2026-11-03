@@ -1,0 +1,35 @@
+{
+  "modelo": "llama3.2:3b",
+  "rendimiento": {
+    "carga_s": 4.1,
+    "prompt_tps": 102.4,
+    "gen_tps": 11.5,
+    "ram_gb": 2.4,
+    "herramientas_10": "7/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 3.2,
+    "ram_pico_gb": 12.4,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 3.4,
+    "ram_pico_gb": 14.8,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 9.6,
+    "ram_pico_gb": 18.1,
+    "abre_grupos": 0,
+    "correctos": "15/22",
+    "pct": "68.2%",
+    "ttft_p50": 1.0155000000013388,
+    "voseo": 1
+  }
+}
