@@ -312,6 +312,8 @@ def write_table() -> None:
         for _, name, key in COLUMNS:
             item = r.get(name, {})
             value = item.get(key, "-") if item.get("estado", "ok") == "ok" else item["estado"]
+            if isinstance(value, list) and key == "fusiones_incorrectas":
+                value = len(value)
             cells.append(str(value))
         hours = sum(r.get(name, {}).get("minutos", 0) for name, *_ in SUITE) / 60
         lines.append(f"| {r['modelo']} | " + " | ".join(cells) + f" | {hours:.1f} |")

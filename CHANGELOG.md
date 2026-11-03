@@ -6,6 +6,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint final: banco del modelo local (`bench/local_suite.py`) con todas las evals sin red y solo
+  CPU, y comparación de 17 modelos en `bench/local/TABLA.md` (ADR 0004).
 - Sprint 6: motor proactivo con recordatorios, resumen matutino y seguimiento de objetivos, Silencio
   Operativo, campana en la web, avisos en la CLI y ntfy autoalojado opcional. Comandos
   `/recordatorios`, `/avisos`, `/silencio` y `/resumen`. Se pueden renombrar fichas.
