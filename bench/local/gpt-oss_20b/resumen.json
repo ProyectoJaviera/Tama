@@ -1,8 +1,8 @@
 {
   "modelo": "gpt-oss:20b",
   "rendimiento": {
-    "carga_s": 21.3,
-    "prompt_tps": 47.1,
+    "carga_s": 21.2,
+    "prompt_tps": 45.9,
     "gen_tps": 7.3,
     "ram_gb": 12.9,
     "herramientas_10": "9/10",
@@ -31,5 +31,48 @@
     "pct": "90.9%",
     "ttft_p50": 8.64849999999933,
     "voseo": 1
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 22.4,
+    "ram_pico_gb": 21.0,
+    "abre_grupos": 0,
+    "hechos": "8/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2026
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 13.5,
+    "ram_pico_gb": 20.6,
+    "abre_grupos": 0,
+    "checks": "3/4"
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 9.7,
+    "ram_pico_gb": 23.8,
+    "abre_grupos": 0,
+    "recordatorios": "12/12"
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 15.3,
+    "ram_pico_gb": 20.7,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "0/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 1.1,
+    "ram_pico_gb": 20.7,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      5,
+      5
+    ]
   }
 }
