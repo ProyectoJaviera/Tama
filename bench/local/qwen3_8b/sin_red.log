@@ -1,0 +1,6 @@
+ok: Hola Tama, ¿cómo estás? -> []
+ok: ¿Qué hora es? -> ['get_current_time']
+ok: Anota en una nota que debo comprar pan. -> ['create_note']
+ok: Mi perro se llama Bruno. -> ['create_entities']
+ok: Dime algo breve sobre el mar. -> []
+5/5 casos
