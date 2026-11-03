@@ -1,9 +1,9 @@
 {
   "modelo": "qwen3:4b-instruct-2507-q4_K_M",
   "rendimiento": {
-    "carga_s": 5.4,
-    "prompt_tps": 52.1,
-    "gen_tps": 6.6,
+    "carga_s": 5.0,
+    "prompt_tps": 72.8,
+    "gen_tps": 8.7,
     "ram_gb": 3.0,
     "herramientas_10": "9/10",
     "error": null
@@ -40,5 +40,39 @@
     "pct": "90.9%",
     "ttft_p50": 1.905999999999949,
     "voseo": 2
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 2.5,
+    "ram_pico_gb": 10.7,
+    "abre_grupos": 0,
+    "checks": "2/4"
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 3.4,
+    "ram_pico_gb": 13.6,
+    "abre_grupos": 0,
+    "recordatorios": "11/12"
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 3.0,
+    "ram_pico_gb": 10.9,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "3/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 0.4,
+    "ram_pico_gb": 10.9,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      5,
+      5
+    ]
   }
 }
