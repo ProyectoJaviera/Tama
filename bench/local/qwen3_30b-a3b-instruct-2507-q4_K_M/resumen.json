@@ -1,0 +1,35 @@
+{
+  "modelo": "qwen3:30b-a3b-instruct-2507-q4_K_M",
+  "rendimiento": {
+    "carga_s": 32.2,
+    "prompt_tps": 55.0,
+    "gen_tps": 10.4,
+    "ram_gb": 17.7,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 6.8,
+    "ram_pico_gb": 27.1,
+    "abre_grupos": 0,
+    "checks": "5/5"
+  },
+  "rectificacion": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 2.8,
+    "ram_pico_gb": 28.0,
+    "abre_grupos": 0,
+    "correctas": "-"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 3.3,
+    "ram_pico_gb": 27.1,
+    "abre_grupos": 0,
+    "correctos": "15/22",
+    "pct": "68.2%",
+    "ttft_p50": 1.344000000000051,
+    "voseo": 3
+  }
+}
