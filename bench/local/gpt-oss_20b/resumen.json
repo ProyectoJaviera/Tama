@@ -1,9 +1,9 @@
 {
   "modelo": "gpt-oss:20b",
   "rendimiento": {
-    "carga_s": 21.2,
-    "prompt_tps": 45.9,
-    "gen_tps": 7.3,
+    "carga_s": 22.8,
+    "prompt_tps": 39.4,
+    "gen_tps": 6.9,
     "ram_gb": 12.9,
     "herramientas_10": "9/10",
     "error": null
@@ -74,5 +74,30 @@
       5,
       5
     ]
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 6.9,
+    "ram_pico_gb": 20.0,
+    "abre_grupos": 0,
+    "checks": "2/2"
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 14.4,
+    "ram_pico_gb": 19.9,
+    "abre_grupos": 0,
+    "puntaje_medio": 4.720833333333333,
+    "aprobados": "19/20",
+    "errores": 0,
+    "ttft_p50": 13.719000000004598,
+    "total_p50": 26.278596600001038
+  },
+  "sin_red": {
+    "estado": "ok",
+    "minutos": 2.9,
+    "ram_pico_gb": 19.8,
+    "abre_grupos": 0,
+    "casos": "5/5"
   }
 }
