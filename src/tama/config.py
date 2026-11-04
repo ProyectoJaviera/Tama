@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     num_ctx: int = 8192
     # 0 = solo CPU y RAM. La GPU de este PC (GTX 660, 2 GB) no sirve para modelos.
     num_gpu: int = 0
+    # Hilos de CPU para el modelo local. Ollama usa solo los 6 núcleos físicos del i5-10400F;
+    # con 10 de sus 12 hilos lee el prompt ~35% más rápido y escribe ~20% más rápido (ADR 0004).
+    # 0 deja que Ollama decida.
+    num_thread: int = 10
     timeout: float = 300.0
     user_name: str = "Renzo"
     data_dir: Path = Path("data")

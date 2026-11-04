@@ -135,5 +135,5 @@ def test_cancel_offers_buttons_that_ask_first(site, page):
     assert "«Sacar la basura reciclable»" in page.inner_text("#confirm-text")
     page.click("#confirm-yes")
     page.wait_for_selector(".command:has-text('cancelado')")
-    assert "cancelado" in memoria.list_reminders()
+    assert not memoria.is_pending(2)
     assert page.outside == []

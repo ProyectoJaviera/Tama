@@ -182,6 +182,7 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_MODEL` | `qwen3:4b-instruct-2507-q4_K_M` | Modelo local |
 | `TAMA_NUM_CTX` | `8192` | Contexto por petición (siempre explícito) |
 | `TAMA_NUM_GPU` | `0` | Capas en GPU; 0 = solo CPU y RAM |
+| `TAMA_NUM_THREAD` | `10` | Hilos de CPU del modelo local; 0 = los que decida Ollama |
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |

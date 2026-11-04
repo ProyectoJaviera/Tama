@@ -356,7 +356,7 @@ def test_cancel_command_asks_first(web):
     assert "No se canceló" in no["reply"]
     client.post("/chat", data={"text": "/cancelar sacar la ropa"})
     client.post("/chat/comando/confirmar", data={"respuesta": "si"})
-    assert "cancelado" in client.post("/chat", data={"text": "/recordatorio"}).json()["reply"]
+    assert not memoria.is_pending(1)
     again = client.post("/chat", data={"text": "/cancelar sacar la ropa"}).json()
     assert "ya estaba cancelado" in again["reply"] and "confirm" not in again
 

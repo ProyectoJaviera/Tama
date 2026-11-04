@@ -73,10 +73,13 @@ class OllamaLocalProvider(_OllamaProvider):
     name = "local"
     needs_network = False
 
-    def __init__(self, client: OllamaClient, model: str, num_ctx: int, num_gpu: int = 0) -> None:
-        super().__init__(
-            client, model, options={"num_ctx": num_ctx, "num_gpu": num_gpu}, think=False
-        )
+    def __init__(
+        self, client: OllamaClient, model: str, num_ctx: int, num_gpu: int = 0, num_thread: int = 0
+    ) -> None:
+        options = {"num_ctx": num_ctx, "num_gpu": num_gpu}
+        if num_thread:
+            options["num_thread"] = num_thread
+        super().__init__(client, model, options=options, think=False)
         self.recall: Callable[[str], str] | None = None
         """Recuerdo automático: da lo que la memoria sabe sobre el último mensaje de Renzo."""
 
@@ -85,9 +88,11 @@ class OllamaLocalProvider(_OllamaProvider):
     ) -> Iterator[Event]:
         if self.recall and messages and messages[-1]["role"] == "user":
             found = self.recall(messages[-1]["content"])
-            if found and messages[0]["role"] == "system":
-                extended = f"{messages[0]['content']}\n\n{found}"
-                messages = [{**messages[0], "content": extended}, *messages[1:]]
+            if found:
+                # Va junto al último mensaje y no en el system prompt: si el inicio del prompt
+                # cambia, Ollama no reutiliza lo ya procesado y recalcula ~3.000 tokens (~1 min).
+                last = messages[-1]
+                messages = [*messages[:-1], {**last, "content": f"{found}\n\n{last['content']}"}]
         return super().stream_chat(messages, tools)
 
 
