@@ -886,7 +886,13 @@ def update_observation(
         for entity_id in linked:
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
-    text = f"Corregido: {len(states)} datos antiguos dejaron de estar vigentes."
+    # Lo que ahora es cierto va primero: los modelos chicos responden con lo último que leen.
+    text = (
+        f"Corregido. Ahora vale: «{nueva.strip()}». "
+        f"{len(states)} datos antiguos dejaron de estar vigentes."
+    )
+    if error:
+        text += " Lo anterior nunca fue cierto: respóndele a Renzo sin darlo por hecho."
     if len(states) < len(numbers):
         text += (
             " Los de salud siguen vigentes como historia: si nunca fueron ciertos, repite con "

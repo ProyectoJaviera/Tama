@@ -137,3 +137,12 @@ def test_cancel_offers_buttons_that_ask_first(site, page):
     page.wait_for_selector(".command:has-text('cancelado')")
     assert not memoria.is_pending(2)
     assert page.outside == []
+
+
+def test_bold_marks_render_as_bold_without_html(site, page, tmp_path):
+    url, _ = site
+    EventStore(tmp_path / "data" / "events.db").log("assistant_msg", "Va a **Iquique** <b>no</b>")
+    page.goto(url)
+    assert page.inner_text(".assistant strong") == "Iquique"
+    assert page.locator(".assistant b").count() == 0
+    assert "<b>no</b>" in page.inner_text(".assistant")

@@ -48,6 +48,20 @@
     answer("no");
   });
 
+  // Algunos modelos marcan **negritas**: se muestran como negrita, sin usar innerHTML.
+  function emphasize(item) {
+    const parts = item.textContent.split(/\*\*(.+?)\*\*/s);
+    if (parts.length < 2) return;
+    item.replaceChildren(
+      ...parts.map((part, i) => {
+        if (i % 2 === 0) return document.createTextNode(part);
+        const strong = document.createElement("strong");
+        strong.textContent = part;
+        return strong;
+      }),
+    );
+  }
+
   function addTool(event) {
     const box = document.createElement("details");
     box.className = "tool";
@@ -92,6 +106,7 @@
       }
     };
     source.addEventListener("end", () => {
+      log.querySelectorAll(".assistant").forEach(emphasize);
       source.close();
       button.disabled = false;
       input.focus();
@@ -153,5 +168,6 @@
     turnId = result.turn;
     follow();
   });
+  log.querySelectorAll(".assistant").forEach(emphasize);
   log.scrollTop = log.scrollHeight;
 })();
