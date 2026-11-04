@@ -78,8 +78,20 @@
     const source = new EventSource("/chat/" + turnId + "/eventos");
     let reply = null;
     let tool = null;
+    // Sin red, el modelo local puede tardar en empezar: se muestra que sigue trabajando.
+    const started = Date.now();
+    const waiting = add("line", "Tama está pensando…");
+    const clock = setInterval(() => {
+      const seconds = Math.round((Date.now() - started) / 1000);
+      waiting.textContent = "Tama está pensando… " + seconds + " s";
+    }, 1000);
+    const stopWaiting = () => {
+      clearInterval(clock);
+      waiting.remove();
+    };
     source.onmessage = (message) => {
       const event = JSON.parse(message.data);
+      if (event.kind !== "confirm") stopWaiting();
       if (event.kind === "text") {
         reply = reply || add("assistant", "");
         reply.textContent += event.text;
@@ -106,6 +118,7 @@
       }
     };
     source.addEventListener("end", () => {
+      stopWaiting();
       log.querySelectorAll(".assistant").forEach(emphasize);
       source.close();
       button.disabled = false;
@@ -147,7 +160,8 @@
     add("user", text);
     const response = await post("/chat", { text: text });
     if (!response.ok) {
-      add("error", "Tama aún está respondiendo.");
+      const problem = await response.json().catch(() => ({}));
+      add("error", problem.detail || "Tama aún está respondiendo.");
       button.disabled = false;
       return;
     }

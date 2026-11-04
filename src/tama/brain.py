@@ -42,6 +42,9 @@ class Brain:
         """
         if self.connectivity is None:
             return
+        # Si Tama arranca ya sin red no hay "corte" que detectar: se precarga de una vez.
+        if self.warmer is not None and not self.connectivity.online():
+            self.warmer.warm()
         tick = self.warmer.warm if keep_warm and self.warmer else None
         if tick:
             tick()

@@ -11,6 +11,7 @@ import queue
 import secrets
 import sys
 import threading
+import time
 from collections.abc import Callable, Iterator
 from datetime import date
 from html import escape
@@ -22,7 +23,7 @@ from fastapi.responses import HTMLResponse, PlainTextResponse, Response, Streami
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from tama import agent, chat, commands
+from tama import agent, chat, commands, history
 from tama import brain as brain_module
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -74,7 +75,7 @@ class Turn:
         return answer is True
 
 
-def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str) -> None:
+def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str, turn_id: str = "") -> None:
     answered: Answered | None = None
     try:
         for event in chat.run_turn(
@@ -98,9 +99,11 @@ def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str) -> None
                 if answered.skipped:
                     line += " · sin usar: " + "; ".join(answered.skipped)
                 turn.send("done", line=line)
+    except Exception as exc:  # un error no puede dejar el chat esperando para siempre
+        turn.send("error", text=f"No pude responder: {exc}")
     finally:
         turn.events.put(END)
-        session.finish()
+        session.finish(turn_id)
 
 
 class Session:
@@ -121,27 +124,48 @@ class Session:
         # Lo que espera un Sí de Renzo: ("olvidar", datos) o ("cancelar", número).
         self.pending: tuple[str, Any] | None = None
         self.brain = brain
-        self._busy = threading.Lock()
+        self.turn_limit_s = settings.web_turn_limit_s
+        self._guard = threading.Lock()
+        self._current: tuple[str, float] | None = None
+        """El turno en curso y cuándo empezó."""
+
+    def busy(self) -> bool:
+        with self._guard:
+            return self._running(time.monotonic())
+
+    def _running(self, now: float) -> bool:
+        # Pasado el límite, el turno se da por perdido: el chat nunca queda bloqueado.
+        return self._current is not None and now - self._current[1] < self.turn_limit_s
+
+    def running_for(self) -> float:
+        with self._guard:
+            return time.monotonic() - self._current[1] if self._current else 0.0
 
     def start(self, text: str) -> str | None:
         """Lanza un turno; devuelve su id, o None si ya hay uno en curso."""
-        if not self._busy.acquire(blocking=False):
-            return None
+        with self._guard:
+            now = time.monotonic()
+            if self._running(now):
+                return None
+            turn_id = secrets.token_hex(8)
+            self._current = (turn_id, now)
         if self.brain.reflector is not None:
             self.brain.reflector.activity()
-        turn_id = secrets.token_hex(8)
         turn = self.turns[turn_id] = Turn(self.timeout_s)
         threading.Thread(
-            target=stream_turn, args=(self.brain, self, turn, text), daemon=True
+            target=stream_turn, args=(self.brain, self, turn, text, turn_id), daemon=True
         ).start()
         return turn_id
 
-    def finish(self) -> None:
+    def finish(self, turn_id: str = "") -> None:
         if self.brain.reflector is not None:
             self.brain.reflector.activity()
         if self.brain.proactive is not None:
             self.brain.proactive.activity()
-        self._busy.release()
+        with self._guard:
+            # Un turno que se pasó del límite no libera el de otro que ya empezó.
+            if self._current is not None and self._current[0] in (turn_id, ""):
+                self._current = None
 
 
 def events_of(turn: Turn) -> Iterator[str]:
@@ -250,7 +274,12 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
         turn_id = session.start(text)
         if turn_id is None:
-            raise HTTPException(status_code=409, detail="Tama aún está respondiendo")
+            waited = int(session.running_for())
+            raise HTTPException(
+                status_code=409,
+                detail=f"Tama sigue con tu mensaje anterior (lleva {waited} s). Espera a que "
+                "termine.",
+            )
         return {"turn": turn_id}
 
     @app.post("/chat/comando/confirmar", dependencies=[Depends(check_csrf)])
@@ -406,7 +435,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
 
     watchers: list[queue.Queue] = []
     if brain.proactive is not None:
-        brain.proactive.busy = lambda: session._busy.locked()
+        brain.proactive.busy = session.busy
 
         def broadcast(notice: dict) -> None:
             for watcher in list(watchers):
@@ -499,6 +528,15 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             request, "estado.html", layers=layers, tools=tools, pending=memoria.pending_list()
         )
 
+    if brain.warmer is not None:
+        # La precarga usa el mismo prefijo que tendrá el próximo turno: sin red, la primera
+        # respuesta no espera a que el modelo procese todo en frío (~1 min en CPU).
+        brain.warmer.context = lambda: agent.prepare(
+            brain.tools,
+            history.trim(session.messages, session.max_tokens),
+            session.max_tools,
+            brain.focus,
+        )
     return app
 
 
@@ -549,8 +587,11 @@ def serve(settings: Settings) -> int:
         prepared.append(brain)
         app = create_app(brain, settings)
         if brain.reflector is not None:
-            brain.reflector.close_days()
+            # El diario pendiente se escribe en la primera inactividad, no al abrir: así no le
+            # quita el modelo local a la primera respuesta.
             brain.reflector.start()
+        if settings.connectivity_watch_s > 0:
+            brain.watch_network(settings.connectivity_watch_s, settings.local_keep_warm)
         if brain.proactive is not None:
             brain.proactive.start()
         print("Tama lista.", flush=True)

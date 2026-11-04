@@ -83,6 +83,8 @@ class Settings(BaseSettings):
     web_host: str = "127.0.0.1"
     web_port: int = 8765
     web_confirm_timeout_s: float = 120.0
+    # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
+    web_turn_limit_s: float = 600.0
 
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True
