@@ -46,7 +46,8 @@ ministral-3:8b lo falla en las tres. Detalle en `bench/local/TABLA.md`.
 ## Pasos de la demo (sin red)
 1. Desde `Tama-s7`, con Ollama abierto, desconecta el cable o el WiFi.
 2. En PowerShell: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q8_0"; uv run tama web` y abre
-   http://127.0.0.1:8765. La primera respuesta tarda ~1 min (el modelo procesa todo en frío).
+   http://127.0.0.1:8765. Sin red, Tama precarga el modelo al iniciar: espera ~2 min antes del
+   primer mensaje (si escribes antes, verás "Tama está pensando…" con los segundos).
 3. Cuéntale "mi hermana se muda a Temuco en marzo", y luego "en verdad se muda a Valdivia".
 4. Cuéntale "hace tres días fui al dentista por una muela" y "el 2 de agosto me fracturé la
    muñeca"; luego pregunta "cuéntame mi historial médico, en orden".
@@ -57,6 +58,5 @@ ministral-3:8b lo falla en las tres. Detalle en `bench/local/TABLA.md`.
 
 ## Pendiente
 - Fijar `qwen3:4b-instruct-2507-q8_0` como modelo por defecto e instalarlo, con el OK de Renzo.
-- Precargar el modelo local al iniciar `tama web` sin red, para que la primera respuesta no tarde ~1 min.
 - Guardar planes futuros en la corrección (q8_0 3,3 de 5).
 - Borrar los modelos descartados (~110 GB), con el OK de Renzo.
