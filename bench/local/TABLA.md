@@ -81,6 +81,13 @@ Repetición tras los arreglos (3 rondas cada uno):
 La corrección de q8_0 falla siempre en lo mismo: no guarda un plan futuro ("me voy a disfrazar
 de Shrek"). Queda pendiente.
 
+Segunda demo de Renzo (2026-11-04), y arreglos: las fechas se guardan y muestran en palabras ("1 de
+noviembre de 2026"; el modelo leía 2026-11-01 como el 11), sin fecha la línea de tiempo dice "fecha
+no indicada", la fecha que el modelo manda aparte (`fecha`) se suma a la frase, la búsqueda aclara
+que no cambia nada y el voseo se pasa a tú antes de mostrarse. Con todo eso, q8_0 en 3 rondas:
+historial médico 2, 1 y 2 de 2; corrección 3, 4 y 3 de 5. En la ronda que falló, el modelo dijo
+"fecha no especificada" para una operación que sí tenía fecha guardada.
+
 ## Etapa rápida (descartados)
 
 | Modelo | Herramientas (de 22) | Corrección | Rectificación | Generación (tok/s) | Motivo |
