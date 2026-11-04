@@ -78,10 +78,12 @@ def test_update_is_not_destructive():
     assert not (annotations and annotations.destructive_hint)
 
 
-def test_search_shows_id_date_and_time():
+def test_search_says_when_it_was_told_in_words():
+    # Una fecha como 2026-11-01 la leían los modelos locales como el 11: va en palabras.
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     assert re.search(
-        r"\[o\d+\] Shrek \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}\)", memoria.search_nodes("Halloween")
+        r"\[o\d+\] Shrek \(contado el \d{1,2} de [a-z]+ de \d{4}\)",
+        memoria.search_nodes("Halloween"),
     )
 
 

@@ -236,7 +236,7 @@ SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
-SHOWN_DATE = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?\)\s*$")
+SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|contado el [^)]*)\)\s*$")
 ENTITY_TYPES = (
     "persona",
     "mascota",
@@ -415,6 +415,12 @@ def as_list(value: Any) -> list[str]:
     return [value] if isinstance(value, str) else [str(item) for item in value]
 
 
+def spoken_date(iso: str) -> str:
+    """2026-11-01 → "1 de noviembre de 2026". Los modelos locales leían 2026-11-01 como el 11."""
+    day = date.fromisoformat(iso[:10])
+    return f"{day.day} de {MONTHS[day.month - 1]} de {day.year}"
+
+
 def dated(today: date, year: str | None, month: int, day: int) -> str:
     """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas."""
     if year:
@@ -433,7 +439,7 @@ def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     def shift(days: int) -> str:
         nonlocal found
         found = (today + timedelta(days=days)).isoformat()
-        return found
+        return spoken_date(found)
 
     def ago(match: re.Match) -> str:
         amount = match.group(1).lower()
@@ -547,7 +553,8 @@ def recent_observations(
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
     chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
-        f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])}){earlier_versions(db, r['id'])}"
+        f"[o{r['id']}] {r['content']} (contado el {spoken_date(shown_at(r['created_at']))})"
+        f"{earlier_versions(db, r['id'])}"
         for r in chosen
     ]
 
@@ -979,6 +986,13 @@ def with_chain(ids: set[int], rows: list[sqlite3.Row]) -> set[int]:
     return result
 
 
+def when_label(row: sqlite3.Row) -> str:
+    """La fecha en palabras; si Renzo no dio ninguna, se dice en vez de inventarla."""
+    if resolve_dates(row["content"])[1]:
+        return spoken_date(row["occurred_at"])
+    return f"fecha no indicada (contado el {spoken_date(row['occurred_at'])})"
+
+
 @server.tool(
     description=(
         "Historial en orden cronológico, incluidos los datos antiguos. Úsala para preguntas de "
@@ -1013,7 +1027,7 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         if row["reason"] == "corregido":
             right = by_id[row["superseded_by"]]["content"]
             state = f"corregido, no fue así: {right}"
-        lines.append(f"{row['occurred_at']} [o{row['id']}] {row['content']} ({state})")
+        lines.append(f"{when_label(row)} [o{row['id']}] {row['content']} ({state})")
     return "\n".join(lines)
 
 
