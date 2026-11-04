@@ -637,16 +637,6 @@ def fts_query(text: str) -> str:
     return " OR ".join(f'"{w}"*' for w in re.findall(r"\w+", text, flags=re.UNICODE))
 
 
-@server.tool(
-    description=(
-        "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
-        "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
-        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
-        "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
-        "entidad con aliases: [nombre]."
-    )
-)
 def with_date(texts: list[str], when: Any) -> list[str]:
     """Los modelos locales mandan la fecha aparte ("fecha": "2026-03-03"): se suma a cada frase
     que no traiga una, para que no se pierda."""
@@ -657,6 +647,16 @@ def with_date(texts: list[str], when: Any) -> list[str]:
     return [t if resolve_dates(t)[1] else f"{t.rstrip('.')} el {spoken}" for t in texts]
 
 
+@server.tool(
+    description=(
+        "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
+        "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
+        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
+        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
+        "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
+        "entidad con aliases: [nombre]."
+    )
+)
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
     created, updated, older, saved = [], [], [], []
     with connect() as db:
