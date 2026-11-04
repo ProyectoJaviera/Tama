@@ -1,0 +1,17 @@
+{
+  "modelo": "ministral-3:8b",
+  "correccion": {
+    "estado": "ok",
+    "minutos": 9.4,
+    "ram_pico_gb": 18.2,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 6.7,
+    "ram_pico_gb": 19.4,
+    "abre_grupos": 0,
+    "checks": "0/2"
+  }
+}
