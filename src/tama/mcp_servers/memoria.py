@@ -647,6 +647,16 @@ def fts_query(text: str) -> str:
         "entidad con aliases: [nombre]."
     )
 )
+def with_date(texts: list[str], when: Any) -> list[str]:
+    """Los modelos locales mandan la fecha aparte ("fecha": "2026-03-03"): se suma a cada frase
+    que no traiga una, para que no se pierda."""
+    when = str(when or "").strip()
+    if not when:
+        return texts
+    spoken = spoken_date(when) if ISO_DATE.fullmatch(when[:10]) and len(when) <= 10 else when
+    return [t if resolve_dates(t)[1] else f"{t.rstrip('.')} el {spoken}" for t in texts]
+
+
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:
     created, updated, older, saved = [], [], [], []
     with connect() as db:
@@ -655,7 +665,7 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            added = as_list(entity.get("observations"))
+            added = with_date(as_list(entity.get("observations")), entity.get("fecha"))
             people = mentioned_entities(db, name)
             owner = find_entity(db, OWNER)
             if type_ in ("plan", "evento") and people and not find_entity(db, name):

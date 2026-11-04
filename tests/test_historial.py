@@ -273,3 +273,19 @@ def test_timeline_shows_dates_in_words_and_no_invented_date():
     assert memoria.spoken_date(dentist) in timeline and dentist not in timeline
     told = memoria.spoken_date(today.isoformat())
     assert f"fecha no indicada (contado el {told})" in timeline
+
+
+def test_a_date_sent_apart_is_kept():
+    memoria.create_entities(
+        [
+            {
+                "name": "Renzo",
+                "entityType": "persona",
+                "observations": ["Me operaron de la rodilla"],
+                "fecha": "2026-03-03",
+            }
+        ]
+    )
+    assert "3 de marzo de 2026 [o1] Me operaron de la rodilla el 3 de marzo de 2026" in (
+        memoria.linea_de_tiempo("Renzo")
+    )
