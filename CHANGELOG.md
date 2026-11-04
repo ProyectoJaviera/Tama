@@ -9,6 +9,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Sprint final: banco del modelo local (`bench/local_suite.py`) con todas las evals sin red y solo
   CPU, comparación de 22 modelos en `bench/local/TABLA.md` (ADR 0004) y repeticiones con
   `bench/rounds.py`.
+- El recuerdo automático va junto al último mensaje: el prompt local ya no cambia al inicio y
+  Ollama reutiliza lo procesado (primer token de ~1 min a pocos segundos). `TAMA_NUM_THREAD`
+  (10 por defecto) usa más hilos de CPU. Las negritas de los modelos se ven en la web.
 - `update_observation` acepta las entidades como texto o como mapa, como las mandan los modelos
   locales: la rectificación sin red dejó de fallar siempre.
 - Sprint 6: motor proactivo con recordatorios, resumen matutino y seguimiento de objetivos, Silencio

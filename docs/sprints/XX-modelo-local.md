@@ -36,18 +36,26 @@ repetidas (`bench/rounds.py`). Tabla en `bench/local/TABLA.md` y decisión propu
   ~22 s por respuesta).
 - Los MoE de ~18 GB no caben con margen bajo 28 GB de RAM usada. Ningún modelo abre grupos.
 
+## Tras la demo de Renzo (2026-11-03)
+Renzo probó q8_0 y ministral-3:8b sin red. Arreglos: el recuerdo automático ya no cambia el
+inicio del prompt (primer token de 55-80 s a 3-20 s), 10 hilos de CPU (`TAMA_NUM_THREAD`), los
+datos de salud nuevos se guardan aunque no haya nada parecido, la corrección dice lo que ahora vale
+y las negritas se ven bien en la web. q8_0 pasa el historial médico 2 de 2 en tres rondas;
+ministral-3:8b lo falla en las tres. Detalle en `bench/local/TABLA.md`.
+
 ## Pasos de la demo (sin red)
 1. Desde `Tama-s7`, con Ollama abierto, desconecta el cable o el WiFi.
 2. En PowerShell: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q8_0"; uv run tama web` y abre
-   http://127.0.0.1:8765. En Estado debe verse la capa local con ese modelo.
-3. Cuéntale "mi hermana se muda a Temuco en marzo", recarga y pregúntale a dónde se muda.
-4. Corrige con "en verdad se muda a Valdivia" y pregunta de nuevo.
-5. Dile "me equivoqué, nunca me operaron de la rodilla" después de haberlo contado.
-6. "Recuérdame en 2 minutos regar las plantas" y espera el aviso.
-7. Detén Tama y repite 2 a 6 con `$env:TAMA_LOCAL_MODEL="ministral-3:8b"` para comparar calidad
-   y espera. Para volver al de hoy: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q4_K_M"`.
+   http://127.0.0.1:8765. Espera a que la página diga que está lista (precarga el modelo).
+3. Cuéntale "mi hermana se muda a Temuco en marzo", y luego "en verdad se muda a Valdivia".
+4. Cuéntale "hace tres días fui al dentista por una muela" y "el 2 de agosto me fracturé la
+   muñeca"; luego pregunta "cuéntame mi historial médico, en orden".
+5. "Me operaron de la rodilla" y después "me equivoqué, nunca me operaron de la rodilla".
+6. Mira el Administrador de tareas mientras responde: la CPU debería subir cerca del 85%.
+7. Fíjate en el primer token de cada respuesta (la línea gris): salvo la primera, debería
+   quedar en segundos.
 
 ## Pendiente
-- Fijar en la instalación el modelo que elija Renzo.
-- Si elige dos modelos: que la reflexión y el diario usen `TAMA_BACKGROUND_MODEL`.
-- Repetir el historial médico de q8_0 y ministral-3:8b (0 de 2 en una corrida).
+- Fijar `qwen3:4b-instruct-2507-q8_0` como modelo por defecto e instalarlo, con el OK de Renzo.
+- Guardar planes futuros en la corrección (q8_0 3,3 de 5).
+- Borrar los modelos descartados (~110 GB), con el OK de Renzo.

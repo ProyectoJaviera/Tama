@@ -47,6 +47,40 @@ Ningún finalista hizo fusiones incorrectas en la reflexión, y todos dijeron "n
 de datos nunca contados. qwen2.5:7b también llegó a la suite completa y quedó fuera por la
 memoria: 2 de 10.
 
+## Tras la demo de Renzo (2026-11-03, noche)
+
+Arreglos, medidos sin red:
+
+- **Primer token.** El recuerdo automático iba dentro del system prompt: cada turno con
+  coincidencias cambiaba el inicio del prompt y Ollama recalculaba ~3.000 tokens (55 a 80 s en la
+  demo). Ahora va junto al último mensaje. Con q8_0, en una conversación como la demo
+  (`bench/first_token.py`), solo el primer turno, sin precarga, tarda 81 s; los demás, 3 a 20 s
+  hasta el primer texto.
+- **Hilos de CPU.** Ollama usaba los 6 núcleos físicos. `TAMA_NUM_THREAD=10` (por defecto):
+
+| Hilos | q8_0 prompt | q8_0 generación | ministral prompt | ministral generación |
+|---:|---:|---:|---:|---:|
+| 6 | 29,6 | 5,2 | 31,6 | 4,7 |
+| 8 | 33,3 | 6,0 | 35,9 | 5,1 |
+| 10 | **41,0** | **6,5** | 39,2 | **5,5** |
+| 12 | 40,6 | 6,0 | **40,2** | 5,2 |
+
+- **Datos de salud nuevos.** El modelo pedía la hora para "hace tres días" y no guardaba el dato.
+  La descripción de `get_current_time` dice que no hace falta, la identidad pide guardar aunque
+  no haya nada parecido, y `update_observation` sin ids manda a `create_entities`.
+- **Corrección.** El resultado dice primero lo que ahora vale, para que el modelo no conteste lo
+  contrario. Las **negritas** de los modelos se ven como negrita en la web, sin HTML.
+
+Repetición tras los arreglos (3 rondas cada uno):
+
+| | q8_0 | ministral-3:8b |
+|---|---:|---:|
+| Historial médico, de 2 | **2, 2, 2** | 0, 0, 0 |
+| Corrección, de 5 | 3, 3, 4 | 5, 5, 3 |
+
+La corrección de q8_0 falla siempre en lo mismo: no guarda un plan futuro ("me voy a disfrazar
+de Shrek"). Queda pendiente.
+
 ## Etapa rápida (descartados)
 
 | Modelo | Herramientas (de 22) | Corrección | Rectificación | Generación (tok/s) | Motivo |

@@ -1,6 +1,6 @@
 # 0004. Modelo local de la versión: chat y tareas de fondo
 
-- Estado: propuesto (lo decide Renzo en la demo sin red)
+- Estado: propuesto (Renzo hizo la demo sin red el 2026-11-03; falta su OK)
 - Fecha: 2026-11-03
 - Decisores: Renzo
 - Reemplaza a: [0001](0001-modelo-local.md)
@@ -53,14 +53,19 @@ gpt-oss:20b tarda 13,7 s en el primer token y no marca contradicciones.
 - **Alternativa, más precisa y más lenta: `ministral-3:8b` para el chat**, dejando el q8_0 en el
   fondo. Corrige mejor (4,7 de 5) y aprueba los 20 escenarios, pero tarda ~22 s por respuesta,
   26 s en cargar y marca pocas contradicciones.
-- La elige Renzo en la demo sin red, probando los dos.
+- Tras la demo de Renzo se confirma `qwen3:4b-instruct-2507-q8_0`: con los arreglos pasa el
+  historial médico 2 de 2 en tres rondas, y ministral-3:8b lo falla en las tres. ministral además
+  tardó más y mostró negritas en crudo.
+- **CPU: 10 hilos** (`TAMA_NUM_THREAD`). Ollama usaba solo los 6 núcleos físicos; con 10 lee el
+  prompt ~35% más rápido y escribe ~20% más rápido.
 
 ## Consecuencias
 
 - Cambia `TAMA_LOCAL_MODEL` y el modelo que se descarga al instalar (4,3 GB en vez de 2,5 GB).
 - Si Renzo elige dos modelos, la reflexión y el diario deben pasar a usar `TAMA_BACKGROUND_MODEL`
   (hoy usan el modelo del chat), y Ollama recargará al volver al chat (hasta 26 s).
-- El historial médico falla en q8_0 y ministral (0 de 2, una corrida) y pasa en el q4: hay que
-  repetirlo y, si se confirma, mejorar la descripción de `linea_de_tiempo`.
-- La corrección de un dato del q8_0 (3,3 de 5) queda por mejorar desde las herramientas.
+- El primer turno sin precarga tarda ~80 s (procesa ~3.000 tokens en frío); los siguientes,
+  3 a 20 s, porque el inicio del prompt ya no cambia entre turnos.
+- La corrección de un dato del q8_0 (3,3 de 5) falla en guardar planes futuros: queda por mejorar
+  desde las herramientas.
 - Los modelos descartados se pueden borrar para liberar ~110 GB, con el OK de Renzo.
