@@ -852,7 +852,10 @@ def update_observation(
         )
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
-        raise ToolError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
+        raise ToolError(
+            "Faltan ids o el dato nuevo. Si es un dato nuevo que no reemplaza a otro, guárdalo "
+            "con create_entities; si reemplaza a uno, busca su id con search_nodes y reintenta."
+        )
     with connect() as db:
         marks = ",".join("?" * len(numbers))
         found = db.execute(
