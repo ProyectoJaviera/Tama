@@ -160,8 +160,9 @@ GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 NO_GOALS = "No hay objetivos en ese estado."
 SEARCH_NOTE = (
-    "Si el mensaje de Renzo niega o corrige uno de estos datos, antes de responder llama "
-    "update_observation con su id y error=true, aunque lo nuevo ya esté anotado."
+    "Esto es lo guardado; buscar no cambia nada. Si Renzo cuenta algo distinto, antes de "
+    "responder llama update_observation con el id (error=true solo si dice que nunca fue cierto), "
+    "aunque lo nuevo ya esté anotado. No digas que cambiaste algo sin esa llamada."
 )
 MIN_SIMILARITY = 0.75
 MAX_ENTITIES = 5

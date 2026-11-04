@@ -441,3 +441,12 @@ def test_update_accepts_entities_as_a_name_to_type_map():
     memoria.create_entities([entity("Pablo", "persona", "Vive en Talca")])
     memoria.update_observation(ids_of("Pablo"), "Pablo vive en Osorno", {"Pablo": "persona"}, True)
     assert rows() == [("Vive en Talca", 0), ("Pablo vive en Osorno", 1)]
+
+
+def test_voseo_becomes_tu_even_split_across_fragments():
+    events = [Text("¿Qu"), Text("erés que te "), Text("ayude? Tenés"), Text(" razón.")]
+    out = list(chat.whole_words(iter([*events, Done(1, 1)])))
+    text = "".join(e.text for e in out if isinstance(e, Text))
+    assert text == "¿Quieres que te ayude? Tienes razón."
+    assert chat.tutear("Si querés, podés") == "Si quieres, puedes"
+    assert chat.tutear("Quieres saber") == "Quieres saber"
