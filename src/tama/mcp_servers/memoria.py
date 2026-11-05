@@ -447,6 +447,8 @@ def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
         return "el " + shift(-(int(amount) if amount.isdigit() else NUMBERS[amount]))
 
     text = AGO.sub(ago, text)
+    # Una fecha que el modelo ya escribió como 2026-11-04 también queda en palabras.
+    text = ISO_DATE.sub(lambda m: spoken_date(m.group(0)), text)
     for word, days in RELATIVE.items():
         pattern = rf"(?<!\bla )(?<!\besta )\b{word}\b"
         if re.search(pattern, text, flags=re.IGNORECASE):
@@ -875,6 +877,9 @@ def update_observation(
             "con create_entities; si reemplaza a uno, busca su id con search_nodes y reintenta."
         )
     with connect() as db:
+        # Un id ya reemplazado apunta a su versión vigente: "me operaron" sobre una retractación
+        # ("nunca me operaron") debe reemplazar la retractación, que es lo que hoy vale.
+        numbers = list(dict.fromkeys(current_version(db, n) for n in numbers))
         marks = ",".join("?" * len(numbers))
         found = db.execute(
             f"SELECT * FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
@@ -893,7 +898,9 @@ def update_observation(
         states = [
             r["id"]
             for r in found
-            if error or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
+            if error
+            or is_retraction(db, r["id"])
+            or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
         ]
         replaced = ",".join("?" * len(states))
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
@@ -908,9 +915,10 @@ def update_observation(
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
     # Lo que ahora es cierto va primero: los modelos chicos responden con lo último que leen.
+    replaced = "; ".join(f"«{r['content']}»" for r in found if r["id"] in states)
     text = (
-        f"Corregido. Ahora vale: «{nueva.strip()}». "
-        f"{len(states)} datos antiguos dejaron de estar vigentes."
+        f"Corregido. Ahora vale: «{resolve_dates(nueva.strip())[0]}». Responde según esto. "
+        f"Dejó de valer: {replaced or 'nada'}."
     )
     if error:
         text += " Lo anterior nunca fue cierto: respóndele a Renzo sin darlo por hecho."
@@ -923,6 +931,29 @@ def update_observation(
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
     return text
+
+
+def is_retraction(db: sqlite3.Connection, number: int) -> bool:
+    """Un dato que corrigió a otro que nunca fue cierto ("nunca me operaron") no es historia de
+    salud: si Renzo vuelve a afirmar lo contrario, se reemplaza."""
+    row = db.execute(
+        "SELECT 1 FROM observations WHERE superseded_by = ? AND reason = 'corregido'", (number,)
+    ).fetchone()
+    return row is not None
+
+
+def current_version(db: sqlite3.Connection, number: int) -> int:
+    """Sigue la cadena de reemplazos hasta el dato vigente; si no hay, deja el mismo id."""
+    seen = {number}
+    row = db.execute("SELECT valid, superseded_by FROM observations WHERE id = ?", (number,))
+    row = row.fetchone()
+    while row is not None and not row["valid"] and row["superseded_by"] not in (None, *seen):
+        number = row["superseded_by"]
+        seen.add(number)
+        row = db.execute(
+            "SELECT valid, superseded_by FROM observations WHERE id = ?", (number,)
+        ).fetchone()
+    return number
 
 
 def saved_ids(db: sqlite3.Connection, texts: list[str]) -> list[str]:

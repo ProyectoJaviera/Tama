@@ -59,12 +59,17 @@ def test_unknown_id_is_an_explicit_error_and_changes_nothing():
     assert rows() == [("Shrek", 1)]
 
 
-def test_already_retired_id_is_an_error():
+def test_retired_id_updates_its_current_version():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     old = ids_of("Halloween")
     memoria.update_observation(old, "Piratas")
+    memoria.update_observation(old, "Vaqueros")
+    assert [c for c, valid in rows() if valid] == ["Vaqueros"]
+
+
+def test_unknown_id_is_an_error():
     with pytest.raises(ToolError, match="vigente"):
-        memoria.update_observation(old, "Vaqueros")
+        memoria.update_observation(["o99"], "Vaqueros")
 
 
 def test_update_without_ids_is_an_error():
@@ -450,3 +455,20 @@ def test_voseo_becomes_tu_even_split_across_fragments():
     assert text == "¿Quieres que te ayude? Tienes razón."
     assert chat.tutear("Si querés, podés") == "Si quieres, puedes"
     assert chat.tutear("Quieres saber") == "Quieres saber"
+
+
+def test_affirm_retract_and_affirm_again_ends_with_the_last_word():
+    memoria.create_entities([entity("Renzo", "persona", "Me operaron de la rodilla")])
+    first = ids_of("Renzo")
+    memoria.update_observation(first, "Nunca me operaron de la rodilla", None, True)
+    # El modelo vuelve a usar el id viejo, que ya no vale: se reemplaza la retractación.
+    text = memoria.update_observation(first, "Me operaron de la rodilla", None, False)
+    assert "Ahora vale: «Me operaron de la rodilla»" in text
+    assert "Dejó de valer: «Nunca me operaron de la rodilla»" in text
+    current = [content for content, valid in rows() if valid]
+    assert current == ["Me operaron de la rodilla"]
+
+
+def test_dates_the_model_writes_as_numbers_are_kept_in_words():
+    memoria.create_entities([entity("Renzo", "persona", "Fui al dentista el 2026-11-01")])
+    assert rows()[-1][0] == "Fui al dentista el 1 de noviembre de 2026"
