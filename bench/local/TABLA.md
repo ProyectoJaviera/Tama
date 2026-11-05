@@ -88,6 +88,12 @@ que no cambia nada y el voseo se pasa a tú antes de mostrarse. Con todo eso, q8
 historial médico 2, 1 y 2 de 2; corrección 3, 4 y 3 de 5. En la ronda que falló, el modelo dijo
 "fecha no especificada" para una operación que sí tenía fecha guardada.
 
+Tercera demo (2026-11-04): Renzo dijo "me operaron de la rodilla" sobre una retractación anterior y
+Tama respondió lo contrario. `update_observation` ahora sigue un id viejo hasta su versión vigente,
+una retractación se puede reemplazar aunque sea de salud, y el resultado dice qué dejó de valer.
+Con eso, q8_0 en 3 rondas: corrección 4, 4 y 5 de 5; historial médico 2, 2 y 2; rectificación
+3, 3 y 3.
+
 ## Etapa rápida (descartados)
 
 | Modelo | Herramientas (de 22) | Corrección | Rectificación | Generación (tok/s) | Motivo |
