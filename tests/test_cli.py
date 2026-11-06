@@ -170,3 +170,27 @@ def test_cli_output_symbols_fit_the_windows_console():
     for symbol in ("↳", "→ {", "…"):
         assert symbol not in source.replace('f"{event.frm} → {event.to}: {event.reason}"', "")
     assert cli.short("x" * 100, 20).endswith("...")
+
+
+def test_memory_command_lists_cards_and_pages_a_card_by_name(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    from tama import commands
+    from tama.mcp_servers import memoria
+
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    facts = [f"Dato {n} de Lucía" for n in range(1, 13)]
+    memoria.create_entities([{"name": "Lucía", "entityType": "persona", "observations": facts}])
+    memoria.create_entities([{"name": "Bruno", "entityType": "mascota", "observations": ["Perro"]}])
+    brain = SimpleNamespace(tools=object())
+    listing = commands.memory_text(brain)
+    assert "- Lucía (persona): 12 datos" in listing
+    assert "- Bruno (mascota): 1 dato\n" in listing
+    first = commands.memory_text(brain, "lucia")
+    assert first.startswith("Lucía (persona), 1-10 de 12 datos:")
+    assert "Página 1 de 2: /memoria Lucía 2" in first
+    second = commands.memory_text(brain, "Lucía 2")
+    assert "11-12 de 12" in second and "Dato 1 de Lucía" in second and "Página" not in second
+    assert "fecha no indicada" in second
+    assert commands.memory_text(brain, "Lusia").startswith("Lucía")  # un error de tipeo
+    assert "No encontré" in commands.memory_text(brain, "Zeus")

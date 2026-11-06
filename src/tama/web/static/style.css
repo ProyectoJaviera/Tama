@@ -198,3 +198,5 @@ button.plain.on, button.plain.on:disabled {
 }
 
 .choices button { text-align: left; }
+
+.preparando { color: var(--dim); font-size: 0.85rem; margin: 4px 0 8px; }

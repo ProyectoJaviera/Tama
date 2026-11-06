@@ -15,6 +15,7 @@ from tama.reflection import (
     pending_diaries,
     reflect,
     retire_contradictions,
+    review_plans,
     unify_entities,
     write_diary,
 )
@@ -125,7 +126,7 @@ def test_contradiction_is_marked_not_deleted():
     think, client = thinker(
         {"reemplazados": [{"antiguo": 1, "nuevo": 2}]}, {"antiguo_sigue_cierto": False}
     )
-    assert retire_contradictions(think) == ["Vale: 1 datos ya no vigentes"]
+    assert retire_contradictions(think) == ["Vale: 1 dato ya no vigente"]
     assert "1." in client.prompts[0]
     assert "- [o1]" not in memoria.search_nodes("Vale")
     with memoria.connect() as db:
@@ -207,6 +208,7 @@ def test_reflect_logs_events_and_stops_at_two_suggestions(tmp_path):
     assert [r["content"] for r in store.rows("reflection")] == [
         "sugerencia: uno",
         "sugerencia: dos",
+        "pasada completa, con 2 cambios",
     ]
 
 
@@ -330,3 +332,78 @@ def test_ollama_failure_does_not_kill_the_thread():
     item.tick()
     wait(item)
     assert not item.busy
+
+
+def test_list_suggestions_puts_pending_first(tmp_path, monkeypatch):
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    memoria.add_suggestion("Retomar el portugués")
+    memoria.next_suggestion()
+    memoria.add_suggestion("Salir a trotar")
+    lines = memoria.list_suggestions().splitlines()
+    assert lines[0].startswith("1 pendientes")
+    assert lines[1] == "- Salir a trotar"
+    assert lines[2] == "- Retomar el portugués (ya se la mencionaste)"
+
+
+def test_every_pass_is_logged_even_without_changes(tmp_path):
+    store = EventStore(":memory:")
+    reflect(thinker()[0], store, tmp_path)
+    assert [r["content"] for r in store.rows("reflection")] == ["pasada completa, con 0 cambios"]
+
+
+def test_an_interrupted_pass_is_logged_too(tmp_path):
+    store = EventStore(":memory:")
+    seed_duplicates()
+    think, _ = thinker({"decision": "misma", "conservar": "Bruno"})
+    think.cancel.set()
+    with pytest.raises(Cancelled):
+        reflect(think, store, tmp_path)
+    assert store.rows("reflection")[-1]["content"] == "pasada interrumpida, con 0 cambios"
+
+
+def plan_answer(*plans):
+    return {
+        "planes": [dict(zip(("mensaje", "plan", "cuando", "con"), p, strict=True)) for p in plans]
+    }
+
+
+def test_review_plans_saves_the_ones_the_model_finds():
+    memoria.ensure_owner("Renzo")
+    store = EventStore(":memory:")
+    store.log("user_msg", "hola Tama")
+    store.log("user_msg", "me voy a disfrazar de Shrek para la fiesta del 20 de diciembre")
+    store.log("user_msg", "el sábado voy a la playa con Ana")
+    think, client = thinker(
+        plan_answer(
+            (2, "Renzo se va a disfrazar de Shrek", "el 20 de diciembre", []),
+            (3, "Renzo va a la playa con Ana", "el sábado", ["Ana"]),
+            (9, "Inventado", "", []),
+        )
+    )
+    done = review_plans(think, store)
+    assert len(done) == 2
+    assert "2. me voy a disfrazar de Shrek" in client.prompts[0]
+    assert "plan para el 20 de diciembre" in memoria.search_nodes("Shrek")
+    assert "playa con Ana el" in memoria.open_nodes(["Ana"])
+    assert "Inventado" not in memoria.linea_de_tiempo()
+    assert store.rows("reflection")[-1]["content"].endswith("mensaje 3")
+
+
+def test_review_plans_only_reads_new_messages_and_skips_saved_plans():
+    memoria.ensure_owner("Renzo")
+    memoria.save_plans(["Renzo se va a disfrazar de Shrek"])
+    store = EventStore(":memory:")
+    store.log("user_msg", "me voy a disfrazar de Shrek")
+    think, client = thinker(plan_answer((1, "Renzo se va a disfrazar de Shrek.", "", [])))
+    assert review_plans(think, store) == []
+    assert "- Renzo se va a disfrazar de Shrek" in client.prompts[0]
+    assert len(memoria.plan_texts()) == 1
+    assert review_plans(thinker()[0], store) == []  # sin mensajes nuevos, no consulta al modelo
+
+
+def test_json_wrapped_in_a_code_block_is_read():
+    from tama.reflection import parse_json
+
+    assert parse_json('```json\n{"planes": []}\n```') == {"planes": []}
+    assert parse_json("no sé") == {}
+    assert parse_json("[1, 2]") == {}

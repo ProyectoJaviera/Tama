@@ -179,3 +179,44 @@ def test_starting_offline_preloads_the_local_model():
         brain.watch_network(3600)
         brain._stop.set()
         assert warmer.calls == expected
+
+
+def test_warmer_reports_busy_ready_and_failed():
+    loader = FakeLoader()
+    warmer = LocalWarmer(loader, "qwen", {}, clock=FakeClock())
+    assert not warmer.busy and not warmer.ready
+    warmer.warm()
+    warmer.thread.join(2)
+    assert warmer.ready and not warmer.busy and warmer.failed == ""
+    failing = LocalWarmer(FakeLoader(fail=True), "qwen", {}, clock=FakeClock())
+    failing.warm()
+    failing.thread.join(2)
+    assert not failing.ready and failing.failed == "caído"
+
+
+def test_warmer_keeps_the_model_as_long_as_the_client_says():
+    loader = FakeLoader()
+    loader.keep_alive = -1
+    warmer = LocalWarmer(loader, "qwen", {}, clock=FakeClock(), system_prompt="x")
+    warmer.warm()
+    warmer.thread.join(2)
+    assert loader.chats[0]["keep_alive"] == -1
+
+
+def test_keep_alive_setting_is_sent_as_ollama_expects():
+    from tama.brain import keep_alive
+    from tama.config import Settings
+
+    assert keep_alive(Settings(local_keep_alive="-1")) == -1
+    assert keep_alive(Settings(local_keep_alive="2h")) == "2h"
+
+
+def test_brain_preloads_on_open_even_online():
+    from tama.brain import Brain
+
+    loader = FakeLoader()
+    brain = Brain(None, None, None, warmer=LocalWarmer(loader, "qwen", {}, clock=FakeClock()))
+    assert brain.preload() is True
+    brain.warmer.thread.join(2)
+    assert loader.loads == [("qwen", {})]
+    assert Brain(None, None, None).preload() is False

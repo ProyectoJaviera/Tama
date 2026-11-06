@@ -208,6 +208,11 @@ HEALTH_WORDS = (
     "enferm",
 )
 MAX_TIMELINE = 30
+# Va antes de una línea de tiempo con datos sin fecha: el modelo tendía a callarlo al resumir.
+UNDATED_NOTE = (
+    "Al contarlo, repite la fecha de cada línea tal como está; donde dice «fecha no indicada», "
+    "dilo así, sin poner otra."
+)
 MONTHS = (
     "enero",
     "febrero",
@@ -237,7 +242,7 @@ SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
-SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|contado el [^)]*)\)\s*$")
+SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|[^()]*contado el [^)]*)\)\s*$")
 ENTITY_TYPES = (
     "persona",
     "mascota",
@@ -422,17 +427,38 @@ def spoken_date(iso: str) -> str:
     return f"{day.day} de {MONTHS[day.month - 1]} de {day.year}"
 
 
-def dated(today: date, year: str | None, month: int, day: int) -> str:
-    """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas."""
+def dated(today: date, year: str | None, month: int, day: int, future: bool = False) -> str:
+    """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas.
+
+    Un plan (`future`) siempre mira hacia adelante: "el 3 de marzo" es el próximo 3 de marzo.
+    """
     if year:
         return date(int(year), month, day).isoformat()
     result = date(today.year, month, day)
-    if result > today + timedelta(days=SOON_DAYS):
+    if future and result < today:
+        result = date(today.year + 1, month, day)
+    elif not future and result > today + timedelta(days=SOON_DAYS):
         result = date(today.year - 1, month, day)
     return result.isoformat()
 
 
-def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
+WEEKDAY_WORD = re.compile(
+    r"\b(?:el|este|pr[oó]ximo) (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b",
+    re.IGNORECASE,
+)
+
+
+def next_weekday(text: str, today: date) -> str:
+    """En un plan, "el sábado" es el próximo sábado: se agrega su fecha en palabras."""
+    match = WEEKDAY_WORD.search(text)
+    if not match:
+        return text
+    number = WEEKDAYS.index(normalize(match.group(1)))
+    day = today + timedelta(days=(number - today.weekday() - 1) % 7 + 1)
+    return f"{text[: match.end()]} {spoken_date(day.isoformat())}{text[match.end() :]}"
+
+
+def resolve_dates(text: str, today: date | None = None, future: bool = False) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
     today = today or local_now().date()
     found = ""
@@ -453,14 +479,16 @@ def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
         pattern = rf"(?<!\bla )(?<!\besta )\b{word}\b"
         if re.search(pattern, text, flags=re.IGNORECASE):
             text = re.sub(pattern, f"el {shift(days)}", text, flags=re.IGNORECASE)
+    if future and not ABSOLUTE_DATE.search(text):
+        text = next_weekday(text, today)
     absolute = ABSOLUTE_DATE.search(text)
     month_only = MONTH_ONLY.search(text)
     if absolute:
         month = MONTHS.index(absolute.group(2).lower()) + 1
-        found = dated(today, absolute.group(3), month, int(absolute.group(1)))
+        found = dated(today, absolute.group(3), month, int(absolute.group(1)), future)
     elif month_only:
         month = MONTHS.index(month_only.group(1).lower()) + 1
-        found = dated(today, month_only.group(2), month, 1)
+        found = dated(today, month_only.group(2), month, 1, future)
     iso = ISO_DATE.search(text)
     return text, found or (iso.group(0) if iso else "")
 
@@ -484,6 +512,34 @@ def same_fact(db: sqlite3.Connection, text: str) -> int | None:
     return None
 
 
+def plan_twin(
+    db: sqlite3.Connection, text: str, source: int | None, plan: bool
+) -> sqlite3.Row | None:
+    """El mismo hecho guardado en el mismo turno, una vez como plan y otra como dato común.
+
+    Pasa cuando el modelo manda la frase en la ficha del plan y también en la de Renzo, y la
+    fecha queda resuelta solo en una ("este sábado" y "este sábado 7 de noviembre"). Solo
+    compara datos del mismo mensaje de Renzo y no junta dos fechas distintas.
+    """
+    if source is None:
+        return None
+    wanted, when, digits = fact_key(text)
+    rows = db.execute(
+        "SELECT id, content, kind, occurred_at FROM observations"
+        " WHERE valid = 1 AND source = ? ORDER BY id",
+        (source,),
+    ).fetchall()
+    for row in rows:
+        if not plan and row["kind"] != "plan":
+            continue
+        current, other_when, other_digits = fact_key(row["content"])
+        close = SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT
+        dates_fit = not when or not other_when or when == other_when
+        if close and dates_fit and digits == other_digits:
+            return row
+    return None
+
+
 def add_obs(
     db: sqlite3.Connection,
     entity_ids: int | set[int],
@@ -493,17 +549,32 @@ def add_obs(
 ) -> int:
     """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten.
 
-    Todo es un evento, salvo lo que el modelo marca como estado al corregir un dato.
+    Todo es un evento, salvo lo que el modelo marca como estado al corregir un dato, o como plan
+    (algo que Renzo va a hacer, con su fecha futura si la dijo).
     """
     entities = {entity_ids} if isinstance(entity_ids, int) else entity_ids
     added = 0
+    plan = kind == "plan"
     for content in contents:
-        text, when = resolve_dates(content.strip())
+        text, when = resolve_dates(content.strip(), future=plan)
         if not text:
             continue
         repeated = same_fact(db, text)
-        if repeated:
+        twin = None if repeated else plan_twin(db, text, source, plan)
+        if twin:
+            observation_id = twin["id"]
+            if plan and twin["kind"] != "plan":
+                # El mismo hecho ya se guardó en este turno como dato común: pasa a ser el plan,
+                # con su fecha. El texto nuevo dice lo mismo y más (la fecha): nada se pierde.
+                db.execute(
+                    "UPDATE observations SET kind = 'plan', content = ?, occurred_at = ?"
+                    " WHERE id = ?",
+                    (text, when or twin["occurred_at"], twin["id"]),
+                )
+        elif repeated:
             observation_id = repeated
+            if plan:
+                db.execute("UPDATE observations SET kind = 'plan' WHERE id = ?", (repeated,))
         else:
             state = kind == "estado" and not is_health(db, entities, text)
             observation_id = db.execute(
@@ -513,7 +584,7 @@ def add_obs(
                     text,
                     now(),
                     source,
-                    "estado" if state else "evento",
+                    "plan" if plan else "estado" if state else "evento",
                     when or local_now().date().isoformat(),
                 ),
             ).lastrowid
@@ -547,7 +618,7 @@ def recent_observations(
 ) -> list[str]:
     """Hechos vigentes: primero los que coinciden con la búsqueda, luego los más nuevos."""
     rows = db.execute(
-        "SELECT o.id, o.content, o.created_at FROM observations o"
+        "SELECT o.id, o.content, o.created_at, o.kind, o.occurred_at FROM observations o"
         " JOIN observation_entities l ON l.observation_id = o.id"
         " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.created_at DESC, o.id DESC",
         (entity_id,),
@@ -556,8 +627,7 @@ def recent_observations(
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
     chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
-        f"[o{r['id']}] {r['content']} (contado el {spoken_date(shown_at(r['created_at']))})"
-        f"{earlier_versions(db, r['id'])}"
+        f"[o{r['id']}] {r['content']} ({told_note(r)}){earlier_versions(db, r['id'])}"
         for r in chosen
     ]
 
@@ -655,8 +725,9 @@ def with_date(texts: list[str], when: Any) -> list[str]:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
-        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
+        "plan: lo que va a hacer, también un evento futuro, evento, salud, objeto, gusto) y "
+        "observations (frases que digan de quién hablan, con su nombre, y las fechas como las "
+        "dijo: se calculan solas). Lo puntual con alguien "
         "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
         "entidad con aliases: [nombre]."
     )
@@ -669,18 +740,24 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            added = with_date(as_list(entity.get("observations")), entity.get("fecha"))
+            kind = "plan" if type_ == "plan" else ""
+            when = entity.get("fecha")
+            if kind and when:
+                when = plan_day(str(when)) or when
+            added = with_date(as_list(entity.get("observations")), when)
             people = mentioned_entities(db, name)
             owner = find_entity(db, OWNER)
             if type_ in ("plan", "evento") and people and not find_entity(db, name):
                 # Algo puntual con alguien va en sus personas, no en una entidad nueva.
                 targets = people | ({owner["id"]} if owner else set())
-                add_obs(db, targets, added, source)
+                add_obs(db, targets, added, source, kind=kind)
                 saved += saved_ids(db, added)
                 updated.append(name)
                 continue
             entity_id, new = upsert_entity(db, name, type_)
-            add_obs(db, entity_id, added, source)
+            # Un plan es de Renzo aunque tenga su propia ficha: también va en la suya.
+            mine = {owner["id"]} if kind and owner else set()
+            add_obs(db, {entity_id} | mine, added, source, kind=kind)
             saved += saved_ids(db, added)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
@@ -704,6 +781,57 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             "update_observation"
         )
     return ". ".join(parts) or "No había nada que guardar."
+
+
+def plan_day(cuando: str, today: date | None = None) -> str:
+    """Día de un plan, siempre hacia adelante: "en marzo", "el sábado", "mañana", "2026-12-20"."""
+    cuando = cuando.strip()
+    if not cuando:
+        return ""
+    _, found = resolve_dates(cuando, today, future=True)
+    if found:
+        return found
+    now = None
+    if today is not None:
+        now = datetime.combine(today, datetime.min.time(), tzinfo=local_now().tzinfo)
+    moment = resolve_when(cuando, now)
+    return moment.date().isoformat() if moment else ""
+
+
+def save_plans(
+    plans: list[str],
+    cuando: str = "",
+    con: Any = None,
+    source: int | None = None,
+    today: date | None = None,
+):
+    """Guarda planes de Renzo enlazados a él y a quienes participan. Devuelve los ids y el día.
+
+    `today` es el día en que Renzo lo dijo: "el sábado" se cuenta desde ahí.
+    """
+    day = plan_day(cuando, today)
+    texts = []
+    for plan in as_list(plans):
+        text = plan.strip().rstrip(".")
+        if not text:
+            continue
+        if day and not resolve_dates(text, future=True)[1]:
+            text = f"{text} el {spoken_date(day)}"
+        elif cuando.strip() and not day:
+            text = f"{text} ({cuando.strip()})"  # una fecha que no se entiende tampoco se pierde
+        texts.append(text)
+    with connect() as db:
+        owner = find_entity(db, OWNER)
+        targets = {owner["id"]} if owner else set()
+        for name in entity_names([con] if isinstance(con, str) else con):
+            targets.add(upsert_entity(db, name, "persona")[0])
+        if not targets:
+            targets.add(upsert_entity(db, OWNER.capitalize(), "persona")[0])
+        add_obs(db, targets, texts, source, kind="plan")
+        for entity_id in targets:
+            reindex(db, entity_id)
+        ids = saved_ids(db, texts)
+    return ids, day
 
 
 @server.tool(
@@ -1030,11 +1158,43 @@ def with_chain(ids: set[int], rows: list[sqlite3.Row]) -> set[int]:
     return result
 
 
+def has_date(row: sqlite3.Row) -> bool:
+    """Si Renzo dio la fecha del hecho; si no, occurred_at es solo el día en que lo contó."""
+    return bool(resolve_dates(row["content"])[1])
+
+
 def when_label(row: sqlite3.Row) -> str:
     """La fecha en palabras; si Renzo no dio ninguna, se dice en vez de inventarla."""
-    if resolve_dates(row["content"])[1]:
-        return spoken_date(row["occurred_at"])
-    return f"fecha no indicada (contado el {spoken_date(row['occurred_at'])})"
+    plan = row["kind"] == "plan"
+    if has_date(row):
+        day = spoken_date(row["occurred_at"])
+        return f"plan para el {day}" if plan else day
+    told = f"contado el {spoken_date(row['occurred_at'])}"
+    return f"plan, fecha no indicada ({told})" if plan else f"fecha no indicada ({told})"
+
+
+def whose(row: sqlite3.Row) -> str:
+    """ "Lucía: " delante de un dato que no nombra a nadie, para que se sepa de quién es.
+
+    Un dato puede estar enlazado a Renzo y a otra persona: se nombra a la otra, que es la que
+    el texto omite. Lo que es solo de Renzo va sin nombre, como lo contó.
+    """
+    names = [n for n in (row["shown"] or "").split("|") if n]
+    text = normalize(row["content"])
+    if not names or any(word in text.split() for name in names for word in normalize(name).split()):
+        return ""
+    others = [n for n in names if normalize(n) != OWNER]
+    return f"{', '.join(others)}: " if others else ""
+
+
+def told_note(row: sqlite3.Row) -> str:
+    """Lo que acompaña a un dato en las búsquedas: cuándo se contó y, si no trae fecha propia,
+    que no la tiene. Así el modelo no confunde el día en que se contó con el día del hecho."""
+    told = f"contado el {spoken_date(shown_at(row['created_at']))}"
+    if row["kind"] == "plan":
+        when = f"plan para el {spoken_date(row['occurred_at'])}" if has_date(row) else "plan"
+        return f"{when}; {told}"
+    return told if has_date(row) else f"fecha no indicada; {told}"
 
 
 @server.tool(
@@ -1048,9 +1208,11 @@ def when_label(row: sqlite3.Row) -> str:
 def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
     with connect() as db:
         rows = db.execute(
-            "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at,"
+            "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at, o.kind,"
             " o.reason, (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
+            ", (SELECT group_concat(e.name, '|') FROM observation_entities l JOIN entities e"
+            " ON e.id = l.entity_id WHERE l.observation_id = o.id) AS shown"
             " FROM observations o ORDER BY o.occurred_at, o.id"
         ).fetchall()
     by_id = {r["id"]: r for r in rows}
@@ -1071,7 +1233,9 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         if row["reason"] == "corregido":
             right = by_id[row["superseded_by"]]["content"]
             state = f"corregido, no fue así: {right}"
-        lines.append(f"{when_label(row)} [o{row['id']}] {row['content']} ({state})")
+        lines.append(f"- {when_label(row)}: [o{row['id']}] {whose(row)}{row['content']} ({state})")
+    if any(not has_date(row) for row in chosen):
+        lines.insert(0, UNDATED_NOTE)
     return "\n".join(lines)
 
 
@@ -1430,13 +1594,27 @@ def delete_goal(objetivo: str) -> str:
 
 
 @server.tool(
-    description="Muestra las sugerencias que Tama tiene pendientes para Renzo.",
+    description=(
+        "Sugerencias que Tama preparó para Renzo, las pendientes primero. Úsala cuando pida una "
+        "sugerencia o un consejo, antes de proponer otra."
+    ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
 def list_suggestions() -> str:
     with connect() as db:
-        rows = db.execute("SELECT text FROM suggestions ORDER BY id DESC LIMIT 5").fetchall()
-    return "\n".join(f"- {r['text']}" for r in rows) or "No hay sugerencias pendientes."
+        rows = db.execute(
+            "SELECT text, mentioned_at FROM suggestions"
+            " ORDER BY mentioned_at IS NOT NULL, id DESC LIMIT 5"
+        ).fetchall()
+    if not rows:
+        return "No hay sugerencias pendientes."
+    lines = [
+        f"- {r['text']}" + ("" if r["mentioned_at"] is None else " (ya se la mencionaste)")
+        for r in rows
+    ]
+    pending = sum(r["mentioned_at"] is None for r in rows)
+    head = f"{pending} pendientes; parte por ellas:" if pending else "Ninguna pendiente. Ya dichas:"
+    return "\n".join([head, *lines])
 
 
 @server.tool(description="Entrega una sugerencia pendiente y la marca como ya mencionada.")
@@ -1770,8 +1948,38 @@ def list_cards(query: str = "") -> list[dict[str, Any]]:
         return cards
 
 
-def card(entity_id: int) -> dict[str, Any] | None:
-    """Una ficha completa: datos vigentes con su historial."""
+def find_card(ref: str) -> int | None:
+    """Id de una ficha pedida por su nombre (o alias, o algo parecido), o por su número."""
+    ref = ref.strip()
+    with connect() as db:
+        if ref.isdigit():
+            row = db.execute("SELECT id FROM entities WHERE id = ?", (int(ref),)).fetchone()
+            if row:
+                return row["id"]
+        row = find_entity(db, ref)
+        if row:
+            return row["id"]
+        names = dict(db.execute("SELECT norm, entity_id FROM aliases").fetchall())
+        names.update(dict(db.execute("SELECT norm, id FROM entities").fetchall()))
+        close = get_close_matches(normalize(ref), names, n=1, cutoff=0.75)
+        if close:
+            return names[close[0]]
+        match = fts_query(ref)
+        found = (
+            match
+            and db.execute(
+                "SELECT entity_id FROM search WHERE search MATCH ? ORDER BY rank LIMIT 1", (match,)
+            ).fetchone()
+        )
+        return int(found[0]) if found else None
+
+
+def pages(total: int, size: int) -> int:
+    return max(1, -(-total // size))
+
+
+def card(entity_id: int, page: int = 1, size: int = 0) -> dict[str, Any] | None:
+    """Una ficha: datos vigentes con su historial. Con `size`, solo esa página de datos."""
     with connect() as db:
         row = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
         if row is None:
@@ -1782,17 +1990,27 @@ def card(entity_id: int) -> dict[str, Any] | None:
             " ORDER BY o.created_at DESC, o.id DESC",
             (entity_id,),
         ).fetchall()
+        total = len(facts)
+        last = pages(total, size) if size else 1
+        page = min(max(1, page), last)
+        if size:
+            facts = facts[(page - 1) * size : page * size]
         return {
             "id": row["id"],
             "name": row["name"],
             "type": row["type"],
             "owner": row["norm"] == OWNER,
+            "total": total,
+            "page": page,
+            "pages": last,
+            "relations": relations_of(db, entity_id),
             "facts": [
                 {
                     "id": f["id"],
                     "text": f["content"],
                     "when": shown_at(f["created_at"]),
                     "kind": f["kind"],
+                    "label": told_note(f),
                     "before": earlier_versions(db, f["id"]).replace("\n  antes: ", ""),
                 }
                 for f in facts
@@ -1956,7 +2174,9 @@ def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
     description=(
         "Agenda un recordatorio: Tama avisará sola en ese momento. Lleva texto y cuando (como lo "
         "dijo Renzo: 'en 2 minutos', 'mañana a las 9', 'el viernes a las 18'). urgente=true solo "
-        "si Renzo lo pide: avisa también de noche. Dile a Renzo la hora en que avisará."
+        "si Renzo lo pide: avisa también de noche. Dile a Renzo la hora en que avisará. Solo hay "
+        "avisos con hora: no puedes vigilar el clima, mensajes ni otras condiciones; si te "
+        "piden eso, dilo y ofrece un recordatorio a una hora."
     )
 )
 def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:
@@ -2481,6 +2701,15 @@ def export_graph(target: Path) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return len(rows)
+
+
+def plan_texts() -> list[str]:
+    """Planes ya guardados y vigentes: la reflexión no debe repetirlos."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT content FROM observations WHERE kind = 'plan' AND valid = 1 ORDER BY id"
+        ).fetchall()
+    return [r["content"] for r in rows]
 
 
 if __name__ == "__main__":

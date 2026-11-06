@@ -11,8 +11,10 @@ from tama.proactive import morning_summary
 from tama.reflection import diary_path
 
 NO_MEMORY = "Sin memoria: los servidores MCP no están activos."
+CARDS_PAGE = 20
+FACTS_PAGE = 10
 COMMANDS = {
-    "/memoria": "lo vigente; con un nombre, toda esa ficha",
+    "/memoria": "las fichas; con un nombre, toda esa ficha (por páginas: /memoria Lucía 2)",
     "/memoria historial": "línea de tiempo de un tema",
     "/objetivos": "todos los objetivos",
     "/diario": "el diario de hoy, o de una fecha AAAA-MM-DD",
@@ -37,16 +39,68 @@ def canonical(text: str) -> str:
     return ALIASES.get(name.lower(), name.lower()) + space + args.strip()
 
 
+def facts(count: int) -> str:
+    """ "1 dato", "3 datos"."""
+    return f"{count} dato" + ("" if count == 1 else "s")
+
+
+def split_page(args: str) -> tuple[str, int]:
+    """`Lucía 2` → ("Lucía", 2); sin número, la página 1."""
+    words = args.split()
+    if words and words[-1].isdigit():
+        return " ".join(words[:-1]), int(words[-1])
+    return args.strip(), 1
+
+
+def cards_text(page: int) -> str:
+    """Todas las fichas con cuántos datos tienen, de a CARDS_PAGE."""
+    cards = memoria.list_cards()
+    if not cards:
+        return "Todavía no hay nada guardado."
+    last = memoria.pages(len(cards), CARDS_PAGE)
+    page = min(max(1, page), last)
+    shown = cards[(page - 1) * CARDS_PAGE : page * CARDS_PAGE]
+    lines = [f"- {c['name']} ({c['type']}): {facts(c['facts'])}" for c in shown]
+    lines.append("Para ver una ficha entera: /memoria <nombre>.")
+    if last > 1:
+        lines.append(
+            f"Página {page} de {last}" + (f": /memoria {page + 1}" if page < last else ".")
+        )
+    return "\n".join([f"Fichas ({len(cards)}):", *lines])
+
+
+def card_text(name: str, page: int) -> str:
+    """Todos los datos de una ficha, de a FACTS_PAGE, pedida por su nombre."""
+    found = memoria.find_card(name)
+    data = memoria.card(found, page, FACTS_PAGE) if found else None
+    if data is None:
+        return f"No encontré una ficha llamada «{name}». Con /memoria ves la lista."
+    first = (data["page"] - 1) * FACTS_PAGE
+    shown = f"{first + 1}-{first + len(data['facts'])} de " if data["pages"] > 1 else ""
+    lines = [f"{data['name']} ({data['type']}), {shown}{facts(data['total'])}:"]
+    for fact in data["facts"]:
+        lines.append(f"- {fact['text']} ({fact['label']})")
+        if fact["before"]:
+            lines.append(f"  antes: {fact['before']}")
+    if data["page"] == 1:
+        lines += [f"- relación: {r}" for r in data["relations"]]
+    if data["page"] < data["pages"]:
+        lines.append(
+            f"Página {data['page']} de {data['pages']}: /memoria {data['name']} {data['page'] + 1}"
+        )
+    return "\n".join(lines)
+
+
 def memory_text(brain: Brain, args: str = "") -> str:
-    """`/memoria` da lo vigente; con una ficha, todos sus datos; `historial`, la línea de tiempo."""
+    """`/memoria` lista las fichas; con un nombre, todos sus datos por páginas; `historial`, la
+    línea de tiempo de un tema."""
     if brain.tools is None:
         return NO_MEMORY
     if args.startswith("histori"):
         tema = args.split(maxsplit=1)[1] if " " in args else ""
         return brain.tools.call("linea_de_tiempo", {"tema": tema}).text
-    if args:
-        return brain.tools.call("open_nodes", {"names": [args]}).text
-    return brain.tools.call("search_nodes", {"query": ""}).text
+    name, page = split_page(args)
+    return card_text(name, page) if name else cards_text(page)
 
 
 def goals_text(brain: Brain) -> str:

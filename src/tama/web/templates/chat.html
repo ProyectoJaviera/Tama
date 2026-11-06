@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block body %}
+<div id="preparando" hx-get="/preparando" hx-trigger="load" hx-swap="outerHTML"></div>
 <div id="log">
   {% for kind, text in history %}
   {% if kind == "choices" %}

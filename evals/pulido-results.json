@@ -1,0 +1,135 @@
+{
+  "nube": {
+    "fechas": {
+      "ok": true,
+      "respuesta": "Tu historial médico es el siguiente:\n\n- 3 de marzo de 2026: Te operaron la rodilla.\n- 2 de agosto de 2026: Te fracturaste la muñeca.\n- Fecha no indicada: Tuviste una alergia fuerte a la penicilina.",
+      "herramientas": [
+        "linea_de_tiempo"
+      ]
+    },
+    "planes": {
+      "correctos": 7,
+      "total": 7,
+      "detalle": [
+        {
+          "caso": "Me voy a disfrazar de Shrek para la fiesta de la oficina.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo se va a disfrazar de Shrek para la fiesta de la oficina",
+              "plan",
+              "2026-11-06"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": ""
+        },
+        {
+          "caso": "El sábado voy a la playa con Ana.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo irá a la playa con Ana el sábado 7 de noviembre de 2026.",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "El sábado voy a la playa con Frida",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo irá a la playa con Frida el sábado 7 de noviembre de 2026",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "El 20 de diciembre voy al concierto de Los Bunkers.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va al concierto de Los Bunkers el 20 de diciembre.",
+              "plan",
+              "2026-12-20"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-12-20"
+        },
+        {
+          "caso": "En marzo pienso empezar un curso de cerámica.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo piensa empezar un curso de cerámica en marzo.",
+              "plan",
+              "2027-03-01"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2027-03-01"
+        },
+        {
+          "caso": "Mañana voy a almorzar con mi mamá.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a almorzar con su mamá el 7 de noviembre de 2026.",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "Ayer fui a la playa con Ana.",
+          "ok": true,
+          "planes": [],
+          "duplicados": [],
+          "esperado": null
+        }
+      ]
+    },
+    "sugerencias": {
+      "ok": true,
+      "respuesta": "Tengo una pendiente: podrías retomar tus clases de portugués, ya que llevas tres semanas sin avanzar. Me parece buena idea para que no pierdas el ritmo que traías.",
+      "herramientas": [
+        "list_suggestions"
+      ]
+    },
+    "avisos": {
+      "correctos": 2,
+      "total": 2,
+      "detalle": [
+        {
+          "caso": "Avísame cuando empiece a llover.",
+          "ok": true,
+          "respuesta": "No puedo monitorear el clima en tiempo real para avisarte exactamente cuando empiece a llover. Si quieres, puedo dejarte un recordatorio a una hora específica para que revises el pronóstico."
+        },
+        {
+          "caso": "Avísame si mi hermana me escribe un mensaje.",
+          "ok": true,
+          "respuesta": "No puedo vigilar tus mensajes ni avisarte cuando alguien te escriba. Lo que puedo hacer es dejarte un recordatorio a una hora específica para que revises tu teléfono."
+        }
+      ]
+    },
+    "planes-reflexion": {
+      "encontrados": 3,
+      "total": 3,
+      "de_mas": [],
+      "lineas": [
+        "plan no guardado: Renzo se va a disfrazar de Shrek para la fiesta (o1)",
+        "plan no guardado: Renzo piensa ir a la playa (o2)",
+        "plan no guardado: Renzo empieza un curso de cerámica (o3)"
+      ]
+    }
+  }
+}

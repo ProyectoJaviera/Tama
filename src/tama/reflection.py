@@ -26,6 +26,7 @@ MAX_SUGGESTIONS = 2
 MAX_DIARY_MESSAGES = 60
 MAX_DIARY_CHARS = 300
 DIARY_DAYS_BACK = 3
+SAME_PLAN = 0.8
 
 MERGE_PROMPT = (
     "Revisas la memoria de un asistente. Dos fichas pueden ser la misma cosa o persona escrita de "
@@ -54,6 +55,15 @@ SUGGESTION_PROMPT = (
     "más sin avance, propone una sugerencia breve, amable y sin presionar, en español de Chile "
     'neutro. Responde en JSON: {"sugerencias": ["..."]}, con máximo 2. Si no hay motivo, lista '
     "vacía."
+)
+PLANS_PROMPT = (
+    "Revisas mensajes que Renzo le escribió a su asistente. Encuentra sus planes: cosas que Renzo "
+    "va a hacer o piensa hacer ('me voy a disfrazar de Shrek', 'el sábado voy a la playa con "
+    "Ana'). No cuentan los deseos vagos, las preguntas, lo que ya pasó, ni lo que ya está en la "
+    "lista de guardados. Para cada plan da el número del mensaje, la frase en tercera persona con "
+    "su nombre y sin la fecha ('Renzo se va a disfrazar de Shrek'), cuándo, tal como lo dijo (o "
+    'vacío), y con quién (nombres). Responde en JSON: {"planes": [{"mensaje": <número>, '
+    '"plan": "...", "cuando": "...", "con": ["..."]}]}. Si no hay ninguno, lista vacía.'
 )
 DIARY_PROMPT = (
     "Escribe en español el diario de un día de Tama, la asistente de Renzo, en Markdown breve. "
@@ -101,6 +111,25 @@ VERIFY_SCHEMA = {
     },
     "required": ["razon", "antiguo_sigue_cierto"],
 }
+PLANS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "planes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "mensaje": {"type": "integer"},
+                    "plan": {"type": "string"},
+                    "cuando": {"type": "string"},
+                    "con": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["mensaje", "plan", "cuando", "con"],
+            },
+        }
+    },
+    "required": ["planes"],
+}
 SUGGESTION_SCHEMA = {
     "type": "object",
     "properties": {"sugerencias": {"type": "array", "items": {"type": "string"}}},
@@ -144,10 +173,20 @@ class Thinker:
         return "".join(parts).strip()
 
     def json(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
-        try:
-            return json.loads(self.text(system, user, 300, schema))
-        except json.JSONDecodeError:
-            return {}
+        return parse_json(self.text(system, user, 300, schema))
+
+
+def parse_json(text: str) -> dict[str, Any]:
+    """El objeto JSON de una respuesta. Algunos modelos lo envuelven en ```json aunque se les pida
+    un formato: se toma lo que va entre la primera llave y la última."""
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end < start:
+        return {}
+    try:
+        found = json.loads(text[start : end + 1])
+    except json.JSONDecodeError:
+        return {}
+    return found if isinstance(found, dict) else {}
 
 
 def unify_entities(thinker: Thinker) -> list[str]:
@@ -205,7 +244,11 @@ def retire_contradictions(thinker: Thinker) -> list[str]:
             else:
                 replaced.append((listed[old - 1]["id"], listed[new - 1]["id"]))
         if memoria.retire_observations(replaced):
-            done.append(f"{entity['name']}: {len(replaced)} datos ya no vigentes")
+            n = len(replaced)
+            done.append(
+                f"{entity['name']}: {n} "
+                + ("dato ya no vigente" if n == 1 else "datos ya no vigentes")
+            )
         memoria.mark_reviewed(entity["id"])
     return done
 
@@ -260,12 +303,70 @@ def close_days(thinker: Thinker, store: EventStore, memory_dir: Path) -> None:
             store.log("reflection", f"diario de {day.isoformat()}")
 
 
+PLANS_MARK = "planes revisados hasta el mensaje "
+MAX_PLAN_MESSAGES = 40
+
+
+def review_plans(thinker: Thinker, store: EventStore) -> list[str]:
+    """Busca en lo que Renzo escribió planes que no quedaron guardados y los guarda.
+
+    Lo decide el modelo (regla 3): aquí solo se le pasan los mensajes nuevos y lo ya guardado.
+    """
+    mark = store.last_mark("reflection", PLANS_MARK)
+    last = int(mark.removeprefix(PLANS_MARK)) if mark else 0
+    messages = store.user_messages_after(last, MAX_PLAN_MESSAGES)
+    if not messages:
+        return []
+    listed = "\n".join(
+        f"{i}. {' '.join(text.split())[:MAX_DIARY_CHARS]}"
+        for i, (_, _, text) in enumerate(messages, 1)
+    )
+    saved = "\n".join(f"- {p}" for p in memoria.plan_texts()) or "- (ninguno)"
+    user = f"Mensajes:\n{listed}\n\nPlanes ya guardados:\n{saved}"
+    answer = thinker.json(PLANS_PROMPT, user, PLANS_SCHEMA)
+    done = []
+    for found in answer.get("planes", []):
+        number, text = found.get("mensaje", 0), str(found.get("plan", "")).strip()
+        if not text or not 1 <= number <= len(messages) or already_saved(text):
+            continue
+        event_id, ts, _ = messages[number - 1]
+        told = datetime.fromisoformat(ts).astimezone(memoria.local_now().tzinfo).date()
+        ids, _ = memoria.save_plans(
+            [text], str(found.get("cuando", "")), found.get("con") or [], event_id, told
+        )
+        if ids:
+            done.append(f"plan no guardado: {text} ({', '.join(ids)})")
+    store.log("reflection", f"{PLANS_MARK}{messages[-1][0]}")
+    return done
+
+
+def already_saved(text: str) -> bool:
+    """Un plan casi igual a uno guardado no se repite (el modelo a veces lo reescribe)."""
+    return any(
+        memoria.similarity(memoria.normalize(text), memoria.normalize(saved)) >= SAME_PLAN
+        for saved in memoria.plan_texts()
+    )
+
+
 def reflect(thinker: Thinker, store: EventStore, memory_dir: Path) -> None:
-    """Una pasada completa. Cada cambio queda guardado aunque luego se cancele."""
-    close_days(thinker, store, memory_dir)
-    for step in (unify_entities, retire_contradictions, propose_suggestions):
-        for line in step(thinker):
+    """Una pasada completa. Cada cambio queda guardado aunque luego se cancele.
+
+    Cada pasada queda en events.db, cambie algo o no, para saber que la reflexión corre.
+    """
+    changes = 0
+    try:
+        close_days(thinker, store, memory_dir)
+        for line in review_plans(thinker, store):
             store.log("reflection", line)
+            changes += 1
+        for step in (unify_entities, retire_contradictions, propose_suggestions):
+            for line in step(thinker):
+                store.log("reflection", line)
+                changes += 1
+    except Exception:
+        store.log("reflection", f"pasada interrumpida, con {changes} cambios")
+        raise
+    store.log("reflection", f"pasada completa, con {changes} cambios")
 
 
 class Reflector:

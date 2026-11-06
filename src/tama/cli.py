@@ -265,6 +265,7 @@ def chat_loop(
     watch_s: float = 0.0,
     keep_warm: bool = False,
     max_tools: int = 10,
+    preload: bool = False,
 ) -> None:
     print(
         "Tama. Comandos: /proveedor, /herramientas, /memoria, /olvidar <tema>, /objetivos, "
@@ -282,6 +283,8 @@ def chat_loop(
         brain.warmer.context = lambda: agent.prepare(
             brain.tools, history.trim(messages, max_tokens), max_tools, brain.focus
         )
+    if preload:
+        brain.preload()
     if watch_s > 0:
         brain.watch_network(watch_s, keep_warm)
     while True:
@@ -387,6 +390,7 @@ def main(
             settings.connectivity_watch_s,
             settings.local_keep_warm,
             settings.tools_max,
+            settings.local_preload,
         )
         return 0
     except KeyboardInterrupt:

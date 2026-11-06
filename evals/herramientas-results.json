@@ -2,11 +2,11 @@
   "nube": {
     "capa": "nube",
     "sin_red": false,
-    "fecha": "2026-11-02",
+    "fecha": "2026-11-06",
     "casos": 23,
     "correctos": 23,
     "pct": 100.0,
-    "ttft_p50": 0.3589999999999236,
+    "ttft_p50": 0.375,
     "voseo": 0,
     "resultados": [
       {
@@ -17,7 +17,7 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 20:27.",
+        "respuesta": "Son las 12:10.",
         "capa": "nube",
         "ttft_s": 0.375,
         "total_s": 0.5
@@ -30,10 +30,10 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "En Londres son las 23:27.",
+        "respuesta": "En Londres son las 15:10.",
         "capa": "nube",
-        "ttft_s": 0.34400000000005093,
-        "total_s": 0.46900000000005093
+        "ttft_s": 0.40599999999994907,
+        "total_s": 0.5
       },
       {
         "scenario": "nota-banco",
@@ -43,10 +43,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Ya lo anoté, Renzo.",
+        "respuesta": "Anotado. Ya guardé que tienes que llamar al banco el lunes.",
         "capa": "nube",
-        "ttft_s": 0.375,
-        "total_s": 0.5
+        "ttft_s": 0.7339999999994689,
+        "total_s": 1.0
       },
       {
         "scenario": "nota-titulo",
@@ -56,10 +56,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Ya quedó anotado en la nota Ideas.",
+        "respuesta": "Ya quedó, anoté el soporte para audífonos en la nota Ideas.",
         "capa": "nube",
-        "ttft_s": 0.42200000000002547,
-        "total_s": 0.6720000000000255
+        "ttft_s": 0.43800000000010186,
+        "total_s": 0.5940000000000509
       },
       {
         "scenario": "buscar-impresora",
@@ -69,10 +69,10 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tenías anotado que debes cambiar la boquilla de 0.4 mm y calibrar la cama de la impresora 3D.",
+        "respuesta": "Tienes anotado que debes cambiar la boquilla de 0.4 mm y calibrar la cama de la impresora 3D.",
         "capa": "nube",
-        "ttft_s": 0.36000000000012733,
-        "total_s": 0.5940000000000509
+        "ttft_s": 0.375,
+        "total_s": 0.5780000000004293
       },
       {
         "scenario": "buscar-dentista",
@@ -83,10 +83,10 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tengo una nota que dice que tu hora con el dentista es el martes a las 9:00.",
+        "respuesta": "Tienes una nota que dice que la hora es el martes a las 9:00.",
         "capa": "nube",
-        "ttft_s": 0.375,
-        "total_s": 0.6399999999998727
+        "ttft_s": 0.3429999999998472,
+        "total_s": 0.48399999999946886
       },
       {
         "scenario": "notas-recientes",
@@ -96,10 +96,10 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes cinco notas: una sobre el dentista, otra del viaje a Chiloé, una sobre la impresora 3D, una pendiente del banco e ideas para un soporte de audífonos.",
+        "respuesta": "Tienes cinco notas: una sobre el dentista, el viaje a Chiloé, la impresora 3D, un pendiente del banco e ideas generales. ¿Quieres que lea alguna en detalle?",
         "capa": "nube",
-        "ttft_s": 0.375,
-        "total_s": 0.7029999999999745
+        "ttft_s": 0.4850000000005821,
+        "total_s": 0.75
       },
       {
         "scenario": "leer-plan",
@@ -112,8 +112,8 @@
         "confirmaciones": [],
         "respuesta": "El archivo dice que el plan para el sábado es imprimir el soporte del teléfono y ordenar el taller.",
         "capa": "nube",
-        "ttft_s": 0.32799999999997453,
-        "total_s": 0.45299999999997453
+        "ttft_s": 0.375,
+        "total_s": 0.5150000000003274
       },
       {
         "scenario": "listar-archivos",
@@ -125,8 +125,8 @@
         "confirmaciones": [],
         "respuesta": "Tienes tres archivos: plan.md, presupuesto.md y tareas.txt.",
         "capa": "nube",
-        "ttft_s": 0.32799999999997453,
-        "total_s": 0.45299999999997453
+        "ttft_s": 0.375,
+        "total_s": 0.5159999999996217
       },
       {
         "scenario": "archivo-presupuesto",
@@ -138,8 +138,8 @@
         "confirmaciones": [],
         "respuesta": "El archivo que habla del presupuesto es presupuesto.md.",
         "capa": "nube",
-        "ttft_s": 0.40599999999994907,
-        "total_s": 0.5149999999998727
+        "ttft_s": 0.39100000000053114,
+        "total_s": 0.5470000000004802
       },
       {
         "scenario": "crear-archivo",
@@ -151,8 +151,8 @@
         "confirmaciones": [],
         "respuesta": "Listo, ya creé el archivo compras.txt con esos productos.",
         "capa": "nube",
-        "ttft_s": 1.6399999999998727,
-        "total_s": 1.7339999999999236
+        "ttft_s": 0.9059999999999491,
+        "total_s": 1.0470000000004802
       },
       {
         "scenario": "cadena-tareas",
@@ -164,10 +164,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Ya anoté que lo más urgente es pagar la luz, ya que vence mañana.",
+        "respuesta": "Ya lo anoté. Lo más urgente es pagar la luz, ya que vence mañana.",
         "capa": "nube",
-        "ttft_s": 0.32799999999997453,
-        "total_s": 0.43699999999989814
+        "ttft_s": 0.34400000000005093,
+        "total_s": 0.5940000000000509
       },
       {
         "scenario": "cadena-viaje",
@@ -178,10 +178,10 @@
           "create_file"
         ],
         "confirmaciones": [],
-        "respuesta": "Ya guardé el contenido de tu nota sobre el viaje a Chiloé en el archivo viaje.md.",
+        "respuesta": "Listo, ya guardé el contenido de tu nota en el archivo viaje.md.",
         "capa": "nube",
-        "ttft_s": 0.3589999999999236,
-        "total_s": 0.4839999999999236
+        "ttft_s": 0.375,
+        "total_s": 0.5469999999995707
       },
       {
         "scenario": "cadena-hora-nota",
@@ -192,10 +192,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 20:28. Ya anoté que empezaste a estudiar a esta hora.",
+        "respuesta": "Son las 12:10. Ya anoté que empezaste a estudiar a esta hora.",
         "capa": "nube",
-        "ttft_s": 0.36000000000012733,
-        "total_s": 0.48500000000012733
+        "ttft_s": 0.4210000000002765,
+        "total_s": 0.5780000000004293
       },
       {
         "scenario": "borrar-dentista",
@@ -208,10 +208,10 @@
         "confirmaciones": [
           "delete_note"
         ],
-        "respuesta": "No se borró la nota, así que sigue guardada tal como estaba.",
+        "respuesta": "No se borró la nota, así que sigue ahí tal cual estaba.",
         "capa": "nube",
-        "ttft_s": 0.3589999999999236,
-        "total_s": 0.4839999999999236
+        "ttft_s": 0.34400000000005093,
+        "total_s": 0.5
       },
       {
         "scenario": "reemplazar-plan",
@@ -223,10 +223,10 @@
         "confirmaciones": [
           "overwrite_file"
         ],
-        "respuesta": "No se pudo hacer el cambio, el archivo sigue como estaba.",
+        "respuesta": "No se hizo el cambio, el archivo sigue como estaba.",
         "capa": "nube",
-        "ttft_s": 0.34400000000005093,
-        "total_s": 0.46900000000005093
+        "ttft_s": 0.625,
+        "total_s": 0.7969999999995707
       },
       {
         "scenario": "editar-viaje",
@@ -239,10 +239,10 @@
         "confirmaciones": [
           "update_note"
         ],
-        "respuesta": "No se pudo realizar el cambio, la nota sigue diciendo que sales el 5 de enero.",
+        "respuesta": "No pude cambiar la nota, el sistema no permitió la actualización. Sigue diciendo que sales el 5 de enero.",
         "capa": "nube",
-        "ttft_s": 0.375,
-        "total_s": 0.5309999999999491
+        "ttft_s": 0.39099999999962165,
+        "total_s": 0.5940000000000509
       },
       {
         "scenario": "web-example",
@@ -252,9 +252,9 @@
           "fetch"
         ],
         "confirmaciones": [],
-        "respuesta": "Es un dominio creado específicamente para ser usado como ejemplo en documentaciones.",
+        "respuesta": "Es una página de ejemplo diseñada para ser utilizada en documentación sin necesidad de pedir permisos.",
         "capa": "nube",
-        "ttft_s": 0.3589999999999236,
+        "ttft_s": 0.375,
         "total_s": 0.5
       },
       {
@@ -263,10 +263,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "Hola Renzo, estoy muy bien. ¿Y tú, cómo va tu día?",
+        "respuesta": "Hola Renzo, estoy muy bien, gracias por preguntar. ¿En qué te puedo ayudar hoy?",
         "capa": "nube",
-        "ttft_s": 0.375,
-        "total_s": 0.5149999999998727
+        "ttft_s": 0.35900000000037835,
+        "total_s": 0.5
       },
       {
         "scenario": "opinion",
@@ -274,10 +274,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "Me parece una idea excelente. Creo que es una gran forma de ejercitar la mente y reducir el estrés, independientemente de la edad. Jamás es tarde para empezar un hobby que te motive.",
+        "respuesta": "Me parece una excelente idea. Como asistente, no tengo gustos personales, pero creo que es un gran desafío mental y una forma genial de desestresarse. Nunca es tarde para desarrollar una habilidad creativa.",
         "capa": "nube",
-        "ttft_s": 0.32799999999997453,
-        "total_s": 0.5940000000000509
+        "ttft_s": 0.34400000000005093,
+        "total_s": 0.625
       },
       {
         "scenario": "chiste",
@@ -287,8 +287,8 @@
         "confirmaciones": [],
         "respuesta": "¿Qué le dice un jaguar a otro jaguar?\nJaguar you?",
         "capa": "nube",
-        "ttft_s": 0.34400000000005093,
-        "total_s": 0.5
+        "ttft_s": 0.3280000000004293,
+        "total_s": 0.46900000000005093
       },
       {
         "scenario": "explicacion",
@@ -298,8 +298,8 @@
         "confirmaciones": [],
         "respuesta": "Es una región del espacio con una gravedad tan intensa que nada, ni siquiera la luz, puede escapar de ella.",
         "capa": "nube",
-        "ttft_s": 0.31199999999989814,
-        "total_s": 0.4839999999999236
+        "ttft_s": 0.3280000000004293,
+        "total_s": 0.6090000000003783
       },
       {
         "scenario": "gracias",
@@ -307,10 +307,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "De nada, Renzo. Quedo atento para cuando me necesites.",
+        "respuesta": "De nada, Renzo. Aquí estaré cuando me necesites. Que tengas un buen día.",
         "capa": "nube",
-        "ttft_s": 0.32799999999997453,
-        "total_s": 0.48500000000012733
+        "ttft_s": 0.34400000000005093,
+        "total_s": 0.5159999999996217
       }
     ]
   },

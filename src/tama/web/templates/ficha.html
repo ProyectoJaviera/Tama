@@ -1,8 +1,9 @@
 <div class="card" id="ficha-actual">
-  <h2>{{ card.name }} <span class="muted">{{ card.type }}</span></h2>
+  <h2>{{ card.name }} <span class="muted">{{ card.type }} · {{ card.total }} dato{{ "" if card.total == 1 else "s" }}</span></h2>
+  {% if card.page == 1 %}{% for r in card.relations %}<div class="muted">relación: {{ r }}</div>{% endfor %}{% endif %}
   {% for f in card.facts %}
   <div class="card">
-    <div class="muted">o{{ f.id }} · {{ f.when }} · {{ f.kind }}</div>
+    <div class="muted">o{{ f.id }} · {{ f.label }} · {{ f.kind }}</div>
     <form class="row" hx-post="/memoria/ficha/{{ card.id }}/dato/{{ f.id }}" hx-target="#ficha">
       <input name="texto" value="{{ f.text }}" aria-label="Dato o{{ f.id }}">
       <button type="submit">Guardar</button>
@@ -14,6 +15,13 @@
   {% else %}
   <p class="muted">Sin datos vigentes.</p>
   {% endfor %}
+  {% if card.pages > 1 %}
+  <div class="row muted">
+    {% if card.page > 1 %}<a href="/memoria/ficha/{{ card.name|urlencode }}?pagina={{ card.page - 1 }}" hx-get="/memoria/ficha/{{ card.name|urlencode }}?pagina={{ card.page - 1 }}" hx-target="#ficha">Anterior</a>{% endif %}
+    <span>Página {{ card.page }} de {{ card.pages }}</span>
+    {% if card.page < card.pages %}<a href="/memoria/ficha/{{ card.name|urlencode }}?pagina={{ card.page + 1 }}" hx-get="/memoria/ficha/{{ card.name|urlencode }}?pagina={{ card.page + 1 }}" hx-target="#ficha">Siguiente</a>{% endif %}
+  </div>
+  {% endif %}
   {% if not card.owner %}
   <form class="row" hx-post="/memoria/ficha/{{ card.id }}/renombrar" hx-target="#ficha">
     <input name="nombre" value="{{ card.name }}" aria-label="Nombre de la ficha">

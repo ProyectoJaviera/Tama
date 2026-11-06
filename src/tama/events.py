@@ -212,6 +212,23 @@ class EventStore:
         ).fetchall()
         return [(r[0], r[1] or "") for r in reversed(rows)]
 
+    def user_messages_after(self, event_id: int, limit: int = 40) -> list[tuple[int, str, str]]:
+        """Mensajes de Renzo posteriores a `event_id`, los más antiguos primero: (id, ts, texto)."""
+        rows = self._db.execute(
+            "SELECT id, ts, content FROM events WHERE type = 'user_msg' AND id > ?"
+            " ORDER BY id LIMIT ?",
+            (event_id, limit),
+        ).fetchall()
+        return [(r[0], r[1], r[2] or "") for r in rows]
+
+    def last_mark(self, type: str, prefix: str) -> str | None:
+        """Contenido del último evento de un tipo que empieza con `prefix`."""
+        row = self._db.execute(
+            "SELECT content FROM events WHERE type = ? AND content LIKE ? ORDER BY id DESC LIMIT 1",
+            (type, prefix.replace("%", "") + "%"),
+        ).fetchone()
+        return row[0] if row else None
+
     def month_tokens(self, provider: str) -> tuple[int, int]:
         """Tokens de entrada y salida del mes en curso (UTC) para un proveedor."""
         month = self._now().strftime("%Y-%m")

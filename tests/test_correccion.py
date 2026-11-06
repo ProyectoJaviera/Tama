@@ -87,7 +87,7 @@ def test_search_says_when_it_was_told_in_words():
     # Una fecha como 2026-11-01 la leían los modelos locales como el 11: va en palabras.
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     assert re.search(
-        r"\[o\d+\] Shrek \(contado el \d{1,2} de [a-z]+ de \d{4}\)",
+        r"\[o\d+\] Shrek \(plan; contado el \d{1,2} de [a-z]+ de \d{4}\)",
         memoria.search_nodes("Halloween"),
     )
 
@@ -217,7 +217,8 @@ def test_existing_relative_gets_its_short_alias():
         )
     memoria.ensure_owner("Renzo")
     memoria.create_entities([entity("Almuerzo", "plan", "Almuerzo con su esposa")])
-    assert links("Almuerzo con su esposa") == 2
+    # El plan, la esposa y Renzo (un plan siempre es también de Renzo).
+    assert links("Almuerzo con su esposa") == 3
 
 
 def test_no_match_shows_recent_facts_of_renzo():

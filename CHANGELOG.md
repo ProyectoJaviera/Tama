@@ -6,6 +6,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 8 (pulido): la línea de tiempo y las búsquedas dicen "fecha no indicada" en cada dato sin
+  fecha, y la línea de tiempo nombra de quién es cada dato; los planes son un tipo de dato propio,
+  enlazado a Renzo y con su fecha futura ("el sábado", "en marzo"), y la reflexión guarda los que
+  no quedaron guardados; Tama precarga el modelo local al abrirse, lo deja cargado
+  (`TAMA_LOCAL_PRELOAD`, `TAMA_LOCAL_KEEP_ALIVE`) y la web dice "preparando" sin red;
+  `/memoria` lista las fichas y muestra una entera por páginas, pedida por su nombre, también en
+  la web; las sugerencias pendientes van primero; Tama no promete avisos que no puede dar; cada
+  pasada de la reflexión queda en events.db. Evals en `python -m evals.pulido`.
+  Tras la demo: un plan enviado dos veces en un turno queda una sola vez, como plan, y los
+  contadores dicen "1 dato" en singular.
 - Modelo local por defecto: `qwen3:4b-instruct-2507-q8_0`, para conversar y para las tareas de fondo (ADR 0004).
   Fechas en palabras, "fecha no indicada" en la línea de tiempo, lo último que dice Renzo gana
   sobre una retractación anterior, precarga al iniciar sin red y el chat web nunca queda
@@ -65,7 +75,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## Sprint 1: conversación (2026-10-30)
 
-### Añadido
+Añadido
 
 - Cerebro en cascada (nube de Ollama → Claude → Ollama local) con tiempo máximo al
   primer token, cortacircuitos, detección de conexión y tope de gasto mensual para Claude.
@@ -93,6 +103,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Corregido
 
+- El chat y la reflexión no mandaban `keep_alive` a Ollama: volvía a sus 5 minutos y descargaba el
+  modelo local aunque la precarga hubiera pedido más.
 - Tama siempre envía `num_ctx` (8192) y `num_gpu` 0: no hereda el contexto global de Ollama
   (262.144) ni usa la GPU.
 - Con Avast, la variable `SSLKEYLOGFILE` apuntaba a su driver y hacía caer a Python/OpenSSL;

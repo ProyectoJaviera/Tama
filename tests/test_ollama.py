@@ -89,3 +89,33 @@ def test_stream_raw_sends_the_json_format():
     client = OllamaClient(transport=httpx.MockTransport(handler))
     list(client.stream_raw("m", [], format={"type": "object"}))
     assert seen["format"] == {"type": "object"}
+
+
+def test_client_keep_alive_goes_in_every_local_request():
+    sent = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        if sent[-1].get("stream"):
+            return httpx.Response(200, content=ndjson({"message": {"content": "x"}, "done": True}))
+        return httpx.Response(200, json={"message": {"content": "x"}})
+
+    transport = httpx.MockTransport(handler)
+    with OllamaClient("http://ollama.test", transport=transport, keep_alive=-1) as client:
+        list(client.stream_chat("m", [{"role": "user", "content": "hola"}]))
+        client.chat("m", [{"role": "user", "content": "hola"}])
+        client.chat("m", [], keep_alive="30m")
+        client.load("m")
+    assert [s["keep_alive"] for s in sent] == [-1, -1, "30m", -1]
+
+
+def test_client_without_keep_alive_lets_ollama_decide():
+    sent = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.update(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": "x"}})
+
+    with make_client(handler) as client:
+        client.chat("m", [])
+    assert "keep_alive" not in sent
