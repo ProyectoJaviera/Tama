@@ -442,6 +442,22 @@ def dated(today: date, year: str | None, month: int, day: int, future: bool = Fa
     return result.isoformat()
 
 
+WEEKDAY_WORD = re.compile(
+    r"\b(?:el|este|pr[oó]ximo) (lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\b",
+    re.IGNORECASE,
+)
+
+
+def next_weekday(text: str, today: date) -> str:
+    """En un plan, "el sábado" es el próximo sábado: se agrega su fecha en palabras."""
+    match = WEEKDAY_WORD.search(text)
+    if not match:
+        return text
+    number = WEEKDAYS.index(normalize(match.group(1)))
+    day = today + timedelta(days=(number - today.weekday() - 1) % 7 + 1)
+    return f"{text[: match.end()]} {spoken_date(day.isoformat())}{text[match.end() :]}"
+
+
 def resolve_dates(text: str, today: date | None = None, future: bool = False) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
     today = today or local_now().date()
@@ -463,6 +479,8 @@ def resolve_dates(text: str, today: date | None = None, future: bool = False) ->
         pattern = rf"(?<!\bla )(?<!\besta )\b{word}\b"
         if re.search(pattern, text, flags=re.IGNORECASE):
             text = re.sub(pattern, f"el {shift(days)}", text, flags=re.IGNORECASE)
+    if future and not ABSOLUTE_DATE.search(text):
+        text = next_weekday(text, today)
     absolute = ABSOLUTE_DATE.search(text)
     month_only = MONTH_ONLY.search(text)
     if absolute:

@@ -388,3 +388,13 @@ def test_timeline_says_whose_fact_it_is():
     lines = events_of(memoria.linea_de_tiempo())
     assert any("Lucía: Se muda a Temuco" in line for line in lines)
     assert any("] Me fracturé" in line for line in lines)
+
+
+def test_plan_on_a_weekday_gets_its_date():
+    friday = date(2026, 11, 6)
+    text, found = memoria.resolve_dates("Irá a la playa el sábado con Ana", friday, future=True)
+    assert (
+        found == "2026-11-07" and text == "Irá a la playa el sábado 7 de noviembre de 2026 con Ana"
+    )
+    assert memoria.resolve_dates("Irá el próximo viernes", friday, future=True)[1] == "2026-11-13"
+    assert memoria.resolve_dates("Fue el sábado", friday)[1] == ""  # solo en planes
