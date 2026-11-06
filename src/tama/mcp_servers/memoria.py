@@ -668,8 +668,9 @@ def with_date(texts: list[str], when: Any) -> list[str]:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
-        "con su nombre, y las fechas como las dijo: se calculan solas). Lo puntual con alguien "
+        "plan: lo que va a hacer, evento, salud, objeto, gusto) y observations (frases que "
+        "digan de quién hablan, con su nombre, y las fechas como las dijo: se calculan solas). "
+        "Lo puntual con alguien "
         "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
         "entidad con aliases: [nombre]."
     )
@@ -682,18 +683,24 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            added = with_date(as_list(entity.get("observations")), entity.get("fecha"))
+            kind = "plan" if type_ == "plan" else ""
+            when = entity.get("fecha")
+            if kind and when:
+                when = plan_day(str(when)) or when
+            added = with_date(as_list(entity.get("observations")), when)
             people = mentioned_entities(db, name)
             owner = find_entity(db, OWNER)
             if type_ in ("plan", "evento") and people and not find_entity(db, name):
                 # Algo puntual con alguien va en sus personas, no en una entidad nueva.
                 targets = people | ({owner["id"]} if owner else set())
-                add_obs(db, targets, added, source, kind="plan" if type_ == "plan" else "")
+                add_obs(db, targets, added, source, kind=kind)
                 saved += saved_ids(db, added)
                 updated.append(name)
                 continue
             entity_id, new = upsert_entity(db, name, type_)
-            add_obs(db, entity_id, added, source, kind="plan" if type_ == "plan" else "")
+            # Un plan es de Renzo aunque tenga su propia ficha: también va en la suya.
+            mine = {owner["id"]} if kind and owner else set()
+            add_obs(db, {entity_id} | mine, added, source, kind=kind)
             saved += saved_ids(db, added)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
@@ -717,6 +724,45 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             "update_observation"
         )
     return ". ".join(parts) or "No había nada que guardar."
+
+
+def plan_day(cuando: str, today: date | None = None) -> str:
+    """Día de un plan, siempre hacia adelante: "en marzo", "el sábado", "mañana", "2026-12-20"."""
+    cuando = cuando.strip()
+    if not cuando:
+        return ""
+    _, found = resolve_dates(cuando, today, future=True)
+    if found:
+        return found
+    moment = resolve_when(cuando)
+    return moment.date().isoformat() if moment else ""
+
+
+def save_plans(plans: list[str], cuando: str = "", con: Any = None, source: int | None = None):
+    """Guarda planes de Renzo enlazados a él y a quienes participan. Devuelve los ids y el día."""
+    day = plan_day(cuando)
+    texts = []
+    for plan in as_list(plans):
+        text = plan.strip().rstrip(".")
+        if not text:
+            continue
+        if day and not resolve_dates(text, future=True)[1]:
+            text = f"{text} el {spoken_date(day)}"
+        elif cuando.strip() and not day:
+            text = f"{text} ({cuando.strip()})"  # una fecha que no se entiende tampoco se pierde
+        texts.append(text)
+    with connect() as db:
+        owner = find_entity(db, OWNER)
+        targets = {owner["id"]} if owner else set()
+        for name in entity_names([con] if isinstance(con, str) else con):
+            targets.add(upsert_entity(db, name, "persona")[0])
+        if not targets:
+            targets.add(upsert_entity(db, OWNER.capitalize(), "persona")[0])
+        add_obs(db, targets, texts, source, kind="plan")
+        for entity_id in targets:
+            reindex(db, entity_id)
+        ids = saved_ids(db, texts)
+    return ids, day
 
 
 @server.tool(
@@ -1058,6 +1104,20 @@ def when_label(row: sqlite3.Row) -> str:
     return f"plan, fecha no indicada ({told})" if plan else f"fecha no indicada ({told})"
 
 
+def whose(row: sqlite3.Row) -> str:
+    """ "Lucía: " delante de un dato que no nombra a nadie, para que se sepa de quién es.
+
+    Un dato puede estar enlazado a Renzo y a otra persona: se nombra a la otra, que es la que
+    el texto omite. Lo que es solo de Renzo va sin nombre, como lo contó.
+    """
+    names = [n for n in (row["shown"] or "").split("|") if n]
+    text = normalize(row["content"])
+    if not names or any(word in text.split() for name in names for word in normalize(name).split()):
+        return ""
+    others = [n for n in names if normalize(n) != OWNER]
+    return f"{', '.join(others)}: " if others else ""
+
+
 def told_note(row: sqlite3.Row) -> str:
     """Lo que acompaña a un dato en las búsquedas: cuándo se contó y, si no trae fecha propia,
     que no la tiene. Así el modelo no confunde el día en que se contó con el día del hecho."""
@@ -1082,6 +1142,8 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
             "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at, o.kind,"
             " o.reason, (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
+            ", (SELECT group_concat(e.name, '|') FROM observation_entities l JOIN entities e"
+            " ON e.id = l.entity_id WHERE l.observation_id = o.id) AS shown"
             " FROM observations o ORDER BY o.occurred_at, o.id"
         ).fetchall()
     by_id = {r["id"]: r for r in rows}
@@ -1102,7 +1164,7 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         if row["reason"] == "corregido":
             right = by_id[row["superseded_by"]]["content"]
             state = f"corregido, no fue así: {right}"
-        lines.append(f"- {when_label(row)}: [o{row['id']}] {row['content']} ({state})")
+        lines.append(f"- {when_label(row)}: [o{row['id']}] {whose(row)}{row['content']} ({state})")
     if any(not has_date(row) for row in chosen):
         lines.insert(0, UNDATED_NOTE)
     return "\n".join(lines)
@@ -1463,13 +1525,27 @@ def delete_goal(objetivo: str) -> str:
 
 
 @server.tool(
-    description="Muestra las sugerencias que Tama tiene pendientes para Renzo.",
+    description=(
+        "Sugerencias que Tama preparó para Renzo, las pendientes primero. Úsala cuando pida una "
+        "sugerencia o un consejo, antes de proponer otra."
+    ),
     annotations=ToolAnnotations(read_only_hint=True),
 )
 def list_suggestions() -> str:
     with connect() as db:
-        rows = db.execute("SELECT text FROM suggestions ORDER BY id DESC LIMIT 5").fetchall()
-    return "\n".join(f"- {r['text']}" for r in rows) or "No hay sugerencias pendientes."
+        rows = db.execute(
+            "SELECT text, mentioned_at FROM suggestions"
+            " ORDER BY mentioned_at IS NOT NULL, id DESC LIMIT 5"
+        ).fetchall()
+    if not rows:
+        return "No hay sugerencias pendientes."
+    lines = [
+        f"- {r['text']}" + ("" if r["mentioned_at"] is None else " (ya se la mencionaste)")
+        for r in rows
+    ]
+    pending = sum(r["mentioned_at"] is None for r in rows)
+    head = f"{pending} pendientes; parte por ellas:" if pending else "Ninguna pendiente. Ya dichas:"
+    return "\n".join([head, *lines])
 
 
 @server.tool(description="Entrega una sugerencia pendiente y la marca como ya mencionada.")
@@ -1989,7 +2065,9 @@ def resolve_when(text: str, now: datetime | None = None) -> datetime | None:
     description=(
         "Agenda un recordatorio: Tama avisará sola en ese momento. Lleva texto y cuando (como lo "
         "dijo Renzo: 'en 2 minutos', 'mañana a las 9', 'el viernes a las 18'). urgente=true solo "
-        "si Renzo lo pide: avisa también de noche. Dile a Renzo la hora en que avisará."
+        "si Renzo lo pide: avisa también de noche. Dile a Renzo la hora en que avisará. Solo hay "
+        "avisos con hora: no puedes vigilar el clima, mensajes ni otras condiciones; si te "
+        "piden eso, dilo y ofrece un recordatorio a una hora."
     )
 )
 def crear_recordatorio(texto: str, cuando: str, urgente: bool = False) -> str:

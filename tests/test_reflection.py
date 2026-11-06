@@ -330,3 +330,14 @@ def test_ollama_failure_does_not_kill_the_thread():
     item.tick()
     wait(item)
     assert not item.busy
+
+
+def test_list_suggestions_puts_pending_first(tmp_path, monkeypatch):
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    memoria.add_suggestion("Retomar el portugués")
+    memoria.next_suggestion()
+    memoria.add_suggestion("Salir a trotar")
+    lines = memoria.list_suggestions().splitlines()
+    assert lines[0].startswith("1 pendientes")
+    assert lines[1] == "- Salir a trotar"
+    assert lines[2] == "- Retomar el portugués (ya se la mencionaste)"

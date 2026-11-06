@@ -217,7 +217,8 @@ def test_existing_relative_gets_its_short_alias():
         )
     memoria.ensure_owner("Renzo")
     memoria.create_entities([entity("Almuerzo", "plan", "Almuerzo con su esposa")])
-    assert links("Almuerzo con su esposa") == 2
+    # El plan, la esposa y Renzo (un plan siempre es también de Renzo).
+    assert links("Almuerzo con su esposa") == 3
 
 
 def test_no_match_shows_recent_facts_of_renzo():

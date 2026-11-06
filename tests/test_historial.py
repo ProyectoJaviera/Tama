@@ -338,3 +338,52 @@ def test_plan_entity_saves_plans():
     with memoria.connect() as db:
         assert db.execute("SELECT kind FROM observations").fetchone()[0] == "plan"
     assert "- plan, fecha no indicada" in memoria.linea_de_tiempo("Shrek")
+
+
+def test_plan_date_without_year_looks_forward():
+    assert memoria.dated(TODAY, None, 3, 3, future=True) == "2027-03-03"
+    assert memoria.dated(TODAY, None, 12, 20, future=True) == "2026-12-20"
+    assert memoria.dated(TODAY, None, 3, 3) == "2026-03-03"
+
+
+def test_plan_is_linked_to_renzo_and_says_its_date():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities(
+        [
+            {
+                "name": "Fiesta de disfraces",
+                "entityType": "plan",
+                "observations": ["Renzo se va a disfrazar de Shrek"],
+                "fecha": "el 20 de diciembre",
+            }
+        ]
+    )
+    assert "Shrek" in memoria.open_nodes(["Renzo"])
+    with memoria.connect() as db:
+        row = db.execute("SELECT kind, occurred_at FROM observations").fetchone()
+    assert row["kind"] == "plan" and row["occurred_at"][5:] == "12-20"
+    assert "plan para el 20 de diciembre de" in memoria.linea_de_tiempo("Shrek")
+    assert "plan para el 20 de diciembre de" in memoria.search_nodes("Shrek")
+
+
+def test_saved_plan_without_date_says_so():
+    memoria.ensure_owner("Renzo")
+    ids, day = memoria.save_plans(["Renzo va a aprender a tejer"])
+    assert ids and day == ""
+    assert "(plan; contado el" in memoria.search_nodes("tejer")
+
+
+def test_saved_plan_keeps_a_date_it_cannot_read():
+    memoria.ensure_owner("Renzo")
+    memoria.save_plans(["Renzo irá a la playa"], cuando="cuando haga calor", con=["Ana"])
+    text = memoria.open_nodes(["Ana"])
+    assert "Renzo irá a la playa (cuando haga calor)" in text
+
+
+def test_timeline_says_whose_fact_it_is():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Lucía", "persona", "Se muda a Temuco en marzo de 2026")])
+    memoria.create_entities([entity("Renzo", "persona", "Me fracturé el 2 de agosto de 2026")])
+    lines = events_of(memoria.linea_de_tiempo())
+    assert any("Lucía: Se muda a Temuco" in line for line in lines)
+    assert any("] Me fracturé" in line for line in lines)
