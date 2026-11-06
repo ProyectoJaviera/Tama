@@ -26,7 +26,11 @@ class OllamaClient:
         timeout: float = 300.0,
         transport: httpx.BaseTransport | None = None,
         api_key: str | None = None,
+        keep_alive: str | int | None = None,
     ) -> None:
+        # Cuánto deja Ollama el modelo en RAM tras cada petición. Si una petición no lo dice, Ollama
+        # usa sus 5 minutos y descarga el modelo aunque la precarga haya pedido más.
+        self.keep_alive = keep_alive
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else None
         # trust_env=False: Ollama no debe pasar por proxies del sistema.
         self._http = httpx.Client(
@@ -58,6 +62,8 @@ class OllamaClient:
     ) -> Iterator[dict[str, Any]]:
         """Chat en streaming: devuelve cada fragmento JSON tal como lo envía Ollama."""
         payload = _chat_payload(model, messages, stream=True, think=think)
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
         if format is not None:
             payload["format"] = format
         if tools:
@@ -109,6 +115,8 @@ class OllamaClient:
         `format` acepta "json" o un esquema JSON para forzar salida estructurada.
         """
         payload = _chat_payload(model, messages, stream=False, think=think)
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
         if format is not None:
             payload["format"] = format
         if tools:
@@ -129,11 +137,12 @@ class OllamaClient:
         return self._request("GET", "/api/ps").get("models", [])
 
     def load(
-        self, model: str, options: dict[str, Any] | None = None, keep_alive: str = "30m"
+        self, model: str, options: dict[str, Any] | None = None, keep_alive: str | None = None
     ) -> None:
         """Carga el modelo en RAM sin generar nada. `options` debe coincidir con las del chat
         (p. ej. `num_ctx`); si no, Ollama lo recarga en la primera petición."""
-        payload: dict[str, Any] = {"model": model, "keep_alive": keep_alive}
+        keep = keep_alive or self.keep_alive or "30m"
+        payload: dict[str, Any] = {"model": model, "keep_alive": keep}
         if options:
             payload["options"] = options
         self._request("POST", "/api/generate", payload)

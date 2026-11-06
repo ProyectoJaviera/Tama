@@ -517,6 +517,11 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         text = written.read_text(encoding="utf-8") if written else "No hay conversaciones ese día."
         return page(request, "diario_texto.html", text=text)
 
+    @app.get("/preparando", response_class=HTMLResponse)
+    def preparing() -> HTMLResponse:
+        """Sin red, avisa que el modelo local se está preparando; se consulta cada 2 s."""
+        return HTMLResponse(preparing_html(brain))
+
     @app.get("/estado", response_class=HTMLResponse)
     def status(request: Request) -> HTMLResponse:
         layers = [
@@ -538,6 +543,19 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             brain.focus,
         )
     return app
+
+
+def preparing_html(brain: Brain) -> str:
+    """El aviso de precarga: solo sin red, que es cuando la respuesta depende del modelo local."""
+    warmer, connectivity = brain.warmer, brain.connectivity
+    offline = connectivity is not None and not connectivity.online()
+    if warmer is None or not offline or not warmer.busy:
+        return '<div id="preparando"></div>'
+    return (
+        '<div id="preparando" class="preparando" hx-get="/preparando" hx-trigger="every 2s" '
+        f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
+        "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
+    )
 
 
 STARTING = """<!doctype html><html lang="es"><head><meta charset="utf-8">
@@ -590,6 +608,8 @@ def serve(settings: Settings) -> int:
             # El diario pendiente se escribe en la primera inactividad, no al abrir: así no le
             # quita el modelo local a la primera respuesta.
             brain.reflector.start()
+        if settings.local_preload:
+            brain.preload()
         if settings.connectivity_watch_s > 0:
             brain.watch_network(settings.connectivity_watch_s, settings.local_keep_warm)
         if brain.proactive is not None:

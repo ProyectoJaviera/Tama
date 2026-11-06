@@ -448,3 +448,25 @@ def test_an_error_in_the_turn_frees_the_chat(web):
     turn = client.post("/chat", data={"text": "hola"}).json()["turn"]
     assert any(e["kind"] == "error" and "roto" in e["text"] for e in events(client, turn))
     assert not client.app.state.session.busy()
+
+
+class BusyWarmer:
+    busy = True
+    context = None
+
+    def seconds(self):
+        return 12
+
+
+def test_chat_shows_preparing_only_offline_while_the_model_loads(web):
+    client, brain = web()
+    assert 'hx-get="/preparando"' in client.get("/").text
+    brain.warmer = BusyWarmer()
+    brain.connectivity = FakeConnectivity(online=False)
+    shown = client.get("/preparando").text
+    assert "preparando el modelo local… (12 s)" in shown and "every 2s" in shown
+    brain.connectivity = FakeConnectivity(online=True)
+    assert client.get("/preparando").text == '<div id="preparando"></div>'
+    brain.connectivity = FakeConnectivity(online=False)
+    brain.warmer.busy = False
+    assert "every" not in client.get("/preparando").text

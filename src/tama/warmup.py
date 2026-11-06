@@ -1,6 +1,5 @@
 """Precarga del modelo local para que la primera respuesta sin internet no espere la carga."""
 
-import contextlib
 import threading
 import time
 from collections.abc import Callable
@@ -30,6 +29,10 @@ class LocalWarmer:
         self._last: float | None = None
         self._lock = threading.Lock()
         self.thread: threading.Thread | None = None
+        self.started_at: float | None = None
+        self.ready = False
+        """Si la última precarga terminó bien: el modelo quedó en RAM."""
+        self.failed = ""
         self.context: Callable[[], tuple[list[dict], list[dict] | None]] | None = None
         """Da los mensajes y herramientas del próximo turno; lo define la CLI durante el chat."""
 
@@ -41,28 +44,44 @@ class LocalWarmer:
             if busy or (self._last is not None and now - self._last < self._min_interval):
                 return False
             self._last = now
+            self.started_at = now
+            self.ready, self.failed = False, ""
             self.thread = threading.Thread(target=self._load, name="tama-precarga", daemon=True)
             self.thread.start()
             return True
 
+    @property
+    def busy(self) -> bool:
+        return self.thread is not None and self.thread.is_alive()
+
+    def seconds(self) -> int:
+        """Segundos desde que empezó la precarga en curso."""
+        return int(self._clock() - self.started_at) if self.started_at is not None else 0
+
     def _load(self) -> None:
         # Si Ollama no responde, la cascada lo avisará en el siguiente turno.
-        with contextlib.suppress(OllamaError):
-            if self.context is not None:
-                messages, tools = self.context()
-            elif self._system_prompt:
-                messages, tools = [{"role": "system", "content": self._system_prompt}], None
-            else:
-                self._client.load(self._model, self._options)
-                return
-            # En CPU, procesar la identidad, las herramientas y la conversación toma varios
-            # segundos. Una petición de 1 token con el mismo prefijo que tendrá el próximo turno
-            # lo deja en la caché de Ollama, y la primera respuesta real lo reusa.
-            self._client.chat(
-                self._model,
-                [*messages, {"role": "user", "content": "."}],
-                tools=tools,
-                think=False,
-                options={**self._options, "num_predict": 1},
-                keep_alive="30m",
-            )
+        try:
+            self._send()
+            self.ready = True
+        except OllamaError as exc:
+            self.failed = str(exc)
+
+    def _send(self) -> None:
+        if self.context is not None:
+            messages, tools = self.context()
+        elif self._system_prompt:
+            messages, tools = [{"role": "system", "content": self._system_prompt}], None
+        else:
+            self._client.load(self._model, self._options)
+            return
+        # En CPU, procesar la identidad, las herramientas y la conversación toma varios
+        # segundos. Una petición de 1 token con el mismo prefijo que tendrá el próximo turno
+        # lo deja en la caché de Ollama, y la primera respuesta real lo reusa.
+        self._client.chat(
+            self._model,
+            [*messages, {"role": "user", "content": "."}],
+            tools=tools,
+            think=False,
+            options={**self._options, "num_predict": 1},
+            keep_alive=getattr(self._client, "keep_alive", None) or "30m",
+        )

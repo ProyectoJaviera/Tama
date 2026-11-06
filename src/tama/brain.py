@@ -35,6 +35,10 @@ class Brain:
     memory_dir: Path = Path("memoria")
     _stop: threading.Event = field(default_factory=threading.Event)
 
+    def preload(self) -> bool:
+        """Precarga el modelo local en segundo plano, al abrir Tama. False si ya estaba en curso."""
+        return self.warmer.warm() if self.warmer is not None else False
+
     def watch_network(self, interval: float, keep_warm: bool = False) -> None:
         """Vigila la conexión en segundo plano: al detectar un corte, precarga el modelo local.
 
@@ -62,6 +66,12 @@ class Brain:
         self.store.close()
 
 
+def keep_alive(settings: Settings) -> str | int:
+    """keep_alive de Ollama: "-1" o "0" van como número; "30m", tal cual."""
+    value = settings.local_keep_alive.strip()
+    return int(value) if value.lstrip("-").isdigit() else value
+
+
 def local_options(settings: Settings) -> dict:
     """Opciones del modelo local: las mismas al precargar, conversar y reflexionar."""
     options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
@@ -81,7 +91,9 @@ def build(
     `force_offline` simula no tener internet y `only` deja solo las capas nombradas (evals).
     """
     store = EventStore(settings.events_db)
-    local = OllamaClient(settings.ollama_host, timeout=settings.timeout)
+    local = OllamaClient(
+        settings.ollama_host, timeout=settings.timeout, keep_alive=keep_alive(settings)
+    )
     # La nube de Ollama pasa por el daemon local (sesión de `ollama signin`), salvo que haya
     # OLLAMA_API_KEY: entonces se habla directo con ollama.com.
     cloud_key = settings.ollama_api_key

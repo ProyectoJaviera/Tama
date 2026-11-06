@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     connectivity_watch_s: float = 5.0
     # Mantener el modelo local siempre cargado en RAM (útil si sobra memoria).
     local_keep_warm: bool = False
+    # Al abrir Tama se precarga el modelo local en segundo plano, haya red o no: si se corta, la
+    # primera respuesta no espera la carga. Sin red, la web dice "preparando" mientras tanto.
+    local_preload: bool = True
+    # Cuánto queda el modelo local en RAM tras cada petición (chat, precarga y reflexión). -1 lo
+    # deja cargado hasta que se cierre Ollama, así al volver a abrir Tama ya está listo (usa
+    # ~5 GB de RAM). Acepta duraciones de Ollama: "30m", "2h"; 0 lo descarga al tiro.
+    local_keep_alive: str = "-1"
     # La capa local busca en la memoria con las palabras del mensaje (ADR 0003).
     local_auto_recall: bool = True
 
