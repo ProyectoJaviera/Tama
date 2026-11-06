@@ -734,13 +734,25 @@ def plan_day(cuando: str, today: date | None = None) -> str:
     _, found = resolve_dates(cuando, today, future=True)
     if found:
         return found
-    moment = resolve_when(cuando)
+    now = None
+    if today is not None:
+        now = datetime.combine(today, datetime.min.time(), tzinfo=local_now().tzinfo)
+    moment = resolve_when(cuando, now)
     return moment.date().isoformat() if moment else ""
 
 
-def save_plans(plans: list[str], cuando: str = "", con: Any = None, source: int | None = None):
-    """Guarda planes de Renzo enlazados a él y a quienes participan. Devuelve los ids y el día."""
-    day = plan_day(cuando)
+def save_plans(
+    plans: list[str],
+    cuando: str = "",
+    con: Any = None,
+    source: int | None = None,
+    today: date | None = None,
+):
+    """Guarda planes de Renzo enlazados a él y a quienes participan. Devuelve los ids y el día.
+
+    `today` es el día en que Renzo lo dijo: "el sábado" se cuenta desde ahí.
+    """
+    day = plan_day(cuando, today)
     texts = []
     for plan in as_list(plans):
         text = plan.strip().rstrip(".")
@@ -2592,6 +2604,15 @@ def export_graph(target: Path) -> int:
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     return len(rows)
+
+
+def plan_texts() -> list[str]:
+    """Planes ya guardados y vigentes: la reflexión no debe repetirlos."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT content FROM observations WHERE kind = 'plan' AND valid = 1 ORDER BY id"
+        ).fetchall()
+    return [r["content"] for r in rows]
 
 
 if __name__ == "__main__":
