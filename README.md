@@ -90,7 +90,8 @@ privada, y `tailscale serve` publica Tama solo dentro de ella, con HTTPS y certi
    `TAMA_NTFY_URL=http://127.0.0.1:8090` (en Docker: `http://ntfy:80`), `TAMA_NTFY_TOPIC` (largo y
    aleatorio) y `TAMA_NTFY_PUBLIC_URL=https://<nombre del PC>:8443`. Con iPhone, además
    `TAMA_NTFY_UPSTREAM=https://ntfy.sh` (solo despierta la app; el texto no sale del PC).
-4. `docker compose --profile ntfy up -d` y abre Tama (`uv run tama web` o `docker compose up -d`).
+4. Levanta ntfy y Tama: `docker compose --profile ntfy up -d ntfy` y `uv run tama web`, o ambos en
+   Docker con `docker compose --profile ntfy up -d`.
 5. En el celular abre `https://<nombre del PC>`, instálala ("Agregar a la pantalla principal") y,
    en la app ntfy, agrega el servidor `https://<nombre del PC>:8443` y suscríbete al tópico.
 

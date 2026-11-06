@@ -62,8 +62,8 @@ def guide(settings: Settings, name: str = "", topic: str = "") -> str:
    (Con Tama en Docker: TAMA_NTFY_URL=http://ntfy:80)
 
 4. Levanta ntfy (en Docker) y Tama:
-   docker compose --profile ntfy up -d
-   uv run tama web          (o docker compose up -d)
+   docker compose --profile ntfy up -d ntfy     (solo ntfy; Tama con: uv run tama web)
+   docker compose --profile ntfy up -d          (o ntfy y Tama, ambos en Docker)
 
 5. En el celular:
    - Abre https://{name} con Tailscale conectado, también con datos móviles.

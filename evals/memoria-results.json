@@ -3,14 +3,14 @@
     "capa": "nube",
     "sin_red": false,
     "fecha": "2026-11-06",
-    "hechos": 9,
+    "hechos": 10,
     "total_hechos": 10,
-    "guardados": 9,
+    "guardados": 10,
     "negativos": 3,
     "total_negativos": 3,
     "tokens_prompt_max": 2433,
     "calidad": {
-      "entidades": 11,
+      "entidades": 12,
       "duplicadas": [
         "mama de renzo / renzo"
       ],
@@ -71,8 +71,8 @@
       },
       {
         "pregunta": "¿Cuál es mi proyecto de este trimestre?",
-        "ok": false,
-        "respuesta": "Tengo anotado que estás trabajando en el proyecto Faro junto a Tomás. También mencionaste que empezaste a aprender portugués y que estás armando una huerta en el balcón.",
+        "ok": true,
+        "respuesta": "Tu proyecto para este trimestre es construir un reloj con Arduino.",
         "herramientas": [
           "search_nodes"
         ],
@@ -92,7 +92,7 @@
       {
         "pregunta": "¿Cómo se llama el proyecto en que trabajo con Tomás?",
         "ok": true,
-        "respuesta": "Se llama proyecto Faro.",
+        "respuesta": "El proyecto en el que trabajas con Tomás se llama Faro.",
         "herramientas": [
           "search_nodes"
         ],
@@ -102,7 +102,7 @@
       {
         "pregunta": "¿Qué idioma estoy aprendiendo?",
         "ok": true,
-        "respuesta": "Estás aprendiendo portugués en las tardes.",
+        "respuesta": "Estás aprendiendo portugués por las tardes.",
         "herramientas": [
           "search_nodes"
         ],
@@ -122,7 +122,7 @@
       {
         "pregunta": "¿Cómo se llama mi dentista?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, dímelo ahora y lo recuerdo.",
+        "respuesta": "No lo sé, no tengo anotado el nombre de tu dentista.",
         "herramientas": [
           "search_nodes"
         ],
@@ -132,7 +132,7 @@
       {
         "pregunta": "¿En qué año me casé?",
         "ok": true,
-        "respuesta": "No tengo ese dato guardado. Si quieres, me lo puedes contar y lo recordaré.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, cuéntame y lo recuerdo para la próxima.",
         "herramientas": [
           "search_nodes"
         ],
@@ -142,7 +142,7 @@
       {
         "pregunta": "¿Cuál es mi color favorito?",
         "ok": true,
-        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes contar y lo recuerdo.",
+        "respuesta": "No tengo ese dato anotado. Si quieres, me lo puedes decir ahora y lo recuerdo.",
         "herramientas": [
           "search_nodes"
         ],

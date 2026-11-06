@@ -46,7 +46,40 @@ Login y usuarios (S10), voz y cambios al modelo local (las pruebas del modelo lo
 - Evals sin regresión en la nube, sin Claude: herramientas, memoria y conversación.
 
 ## Pasos de la demo
-(se completan al cierre)
+Con una memoria de demo aparte (`demo-s9\`): tus datos no se tocan. Todo en PowerShell, desde
+`D:\Estudio\IA\Proyecto_Tama\Tama-s9`.
+
+En el PC:
+1. Instala Tailscale (https://tailscale.com/download/windows) e inicia sesión. En
+   https://login.tailscale.com/admin/dns activa MagicDNS y HTTPS Certificates.
+2. `uv run tama celular`: muestra el nombre del PC en Tailscale y las líneas para el `.env`. Copia
+   a tu `.env` las de `TAMA_WEB_TAILSCALE_HOST`, `TAMA_WEB_TAILSCALE_USER` (tu correo de
+   Tailscale), `TAMA_NTFY_URL`, `TAMA_NTFY_TOPIC` y `TAMA_NTFY_PUBLIC_URL`. Si tu celular es un
+   iPhone, agrega también `TAMA_NTFY_UPSTREAM=https://ntfy.sh`.
+3. Publica Tama y ntfy dentro de Tailscale y levanta ntfy:
+   ```powershell
+   tailscale serve --bg --https=443 http://127.0.0.1:8765
+   tailscale serve --bg --https=8443 http://127.0.0.1:8090
+   docker compose --profile ntfy up -d ntfy
+   ```
+4. Abre Tama con la memoria de demo:
+   ```powershell
+   $env:TAMA_DATA_DIR="demo-s9\data"; $env:TAMA_MEMORY_DIR="demo-s9\memoria"; $env:TAMA_WORKDIR="demo-s9	rabajo"
+   uv run tama web
+   ```
+   En el PC, http://127.0.0.1:8765 sigue funcionando igual que antes.
+
+En el celular, con el WiFi apagado (solo datos móviles):
+5. Instala la app Tailscale, entra con la misma cuenta y conéctate.
+6. Abre `https://<nombre del PC>` (el que mostró `tama celular`). Instálala: en Chrome, menú >
+   "Agregar a la pantalla principal"; en Safari, Compartir > "Agregar a inicio". Ábrela desde el
+   ícono del huevo.
+7. Conversa: "hola Tama" y "recuérdame en 2 minutos tomar agua". Revisa Memoria, Objetivos y
+   Avisos: todo debe caber en la pantalla.
+8. Instala la app ntfy, agrega el servidor `https://<nombre del PC>:8443` y suscríbete al tópico de
+   `TAMA_NTFY_TOPIC`. En Tama, Estado > "Enviar aviso de prueba": debe llegar en segundos. A los 2
+   minutos llega también el recordatorio del agua.
+9. Al terminar: `tailscale serve reset` deja de publicar Tama (opcional) y puedes borrar `demo-s9\`.
 
 ## Criterio de cierre
 - Tests y CI en verde.
