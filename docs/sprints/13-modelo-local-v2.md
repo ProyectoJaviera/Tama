@@ -14,8 +14,11 @@ entonces.
 2. Planes futuros: `python -m evals.pulido planes --capas local --offline`. El modelo debe llamar
    `guardar_plan` con la fecha si la hay.
 3. Sugerencias y avisos: `python -m evals.pulido sugerencias avisos --capas local --offline`.
-4. Arranque sin red, en frío tras reiniciar el PC (no solo tras descargar el modelo):
-   `bench/cold_start.py`, meta menos de 30 s hasta la primera respuesta.
+4. Arranque sin red: `bench/cold_start.py` en frío (tras reiniciar el PC, no solo tras descargar el
+   modelo) y `--tibio`. Meta: menos de 30 s desde abrir Tama hasta la primera respuesta. Medición
+   previa al arreglo de keep_alive (2026-11-05, solo descargando el modelo): q4_K_M 51 s y q8_0
+   78 s, casi todo en la precarga (carga + prompt).
+5. Planes en la reflexión, en local: `python -m evals.pulido planes-reflexion --capas local`.
 
 ## Reglas
 - Las mismas de `XX-modelo-local.md`: sin Claude, modelos descargados solo con el OK de Renzo y

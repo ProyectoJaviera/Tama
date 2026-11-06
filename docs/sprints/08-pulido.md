@@ -15,8 +15,9 @@ puede revisar completa.
    futura si la hay. La reflexión revisa la conversación en busca de planes no guardados. Lo decide
    el modelo, sin regex de intención.
 3. Arranque sin red: Tama precarga el modelo local en segundo plano al abrirse y lo mantiene cargado
-   (keep_alive). La web muestra "preparando" mientras tanto. Meta: responde en menos de 30 s tras
-   abrir, sin red.
+   (keep_alive) en el chat, la precarga y la reflexión. La web muestra "preparando" mientras tanto.
+   Aquí solo se arregla el código, con tests; la meta de responder en menos de 30 s tras abrir sin
+   red se mide en `13-modelo-local-v2.md`.
 4. `/memoria`: todos los datos de una ficha, con paginación, y la ficha se pide por su nombre (no
    por número), en el chat y en la web.
 5. Arrastre del S4:
@@ -34,8 +35,8 @@ Voz, remoto/PWA, borrar modelos descartados y la calidad del modelo local para c
   paginación y búsqueda por nombre de `/memoria`; de quién es cada dato; registro de cada pasada.
 - `python -m evals.pulido` en la nube y sin Claude: historial con un evento sin fecha, planes
   futuros (varios ejemplos), sugerencias pendientes y avisos que no se pueden dar.
-- `python -m evals.pulido planes-reflexion`: la reflexión, en local, encuentra planes no guardados.
-- Arranque sin red: `bench/cold_start.py`, en frío y con el modelo ya cargado.
+- La revisión de planes de la reflexión: tests con modelo simulado; su calidad, con la nube
+  (`python -m evals.pulido planes-reflexion`).
 - Sin regresión: herramientas, memoria, conversación y reflexión.
 
 ## Pasos de la demo
@@ -43,6 +44,8 @@ Voz, remoto/PWA, borrar modelos descartados y la calidad del modelo local para c
 
 ## Criterio de cierre
 - Tests y CI en verde.
-- Evals del sprint en la nube sin Claude; reflexión en local. Sin regresión en las anteriores.
+- Evals del sprint solo en la nube y sin Claude. Sin regresión en las anteriores.
+- Ninguna prueba de calidad ni de velocidad del modelo local (decisión de Renzo, 2026-11-06): todo
+  eso queda anotado en `13-modelo-local-v2.md`, incluido el arranque en frío.
 - Ningún dato antiguo se pierde (migraciones sin borrar nada).
 - Demo de Renzo con una memoria separada de la suya.
