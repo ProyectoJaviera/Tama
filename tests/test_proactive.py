@@ -437,3 +437,23 @@ def test_phone_guide_uses_the_tailscale_name_and_a_long_topic():
     assert topic.startswith("tama-") and len(topic) >= 30
     kept = celular.guide(Settings(ntfy_topic="tama-ya-tengo"), name="x.ts.net")
     assert "TAMA_NTFY_TOPIC=tama-ya-tengo" in kept
+
+
+def test_phone_guide_points_at_wrong_env_lines(monkeypatch):
+    from tama import celular
+    from tama.config import Settings
+
+    monkeypatch.setenv("TAMA_NTFY_PUBLIC_URL", "https://mal.ts.net:8443")
+    settings = Settings(
+        web_tailscale_host="desktop-1.100.1.2.3.ts.net", web_tailscale_user="renzo@gmal.com"
+    )
+    problems = celular.check_env(settings, "desktop-1.tail9.ts.net", "renzo@gmail.com")
+    assert "Pon: TAMA_WEB_TAILSCALE_HOST=desktop-1.tail9.ts.net" in problems[0]
+    assert "Pon: TAMA_WEB_TAILSCALE_USER=renzo@gmail.com" in problems[1]
+    assert "Pon: TAMA_NTFY_PUBLIC_URL=https://desktop-1.tail9.ts.net:8443" in problems[2]
+    monkeypatch.setenv("TAMA_NTFY_PUBLIC_URL", "https://desktop-1.tail9.ts.net:8443")
+    good = Settings(
+        web_tailscale_host="desktop-1.tail9.ts.net", web_tailscale_user="renzo@gmail.com"
+    )
+    assert celular.check_env(good, "desktop-1.tail9.ts.net", "renzo@gmail.com") == []
+    assert celular.check_env(settings, "", "") == []  # sin Tailscale no hay con qué comparar

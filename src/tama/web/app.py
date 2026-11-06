@@ -199,11 +199,12 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     async def only_localhost(request: Request, call_next):
         # Evita que un sitio externo llegue al servidor con un dominio propio (DNS rebinding).
         # Desde el celular solo vale el nombre del PC en Tailscale, por `tailscale serve`.
-        host = request.headers.get("host", "").rsplit(":", 1)[0]
-        if host not in LOCAL_HOSTS and not from_tailscale(request, host, settings):
-            return PlainTextResponse("Solo localhost o Tailscale", status_code=403)
-        if not tailscale_user_allowed(request, settings):
-            return PlainTextResponse("Esta cuenta de Tailscale no tiene acceso", status_code=403)
+        refused = rejection(request, settings)
+        if refused:
+            message, detail = refused
+            # El detalle (con lo esperado) va solo a la consola del PC, no a quien pregunta.
+            print(f"Tama rechazó una conexión: {detail}", file=sys.stderr, flush=True)
+            return PlainTextResponse(message, status_code=403)
         return await call_next(request)
 
     @app.get("/sw.js")
@@ -619,18 +620,39 @@ def ntfy_state(brain: Brain) -> str:
     return f"activos, a {engine.ntfy_url}"
 
 
-def tailscale_user_allowed(request: Request, settings: Settings) -> bool:
-    """Si llega por Tailscale con otra cuenta que la configurada, se rechaza (venga como venga el
-    nombre del host)."""
+def rejection(request: Request, settings: Settings) -> tuple[str, str] | None:
+    """Por qué se rechaza una petición: (mensaje para quien pregunta, detalle para la consola).
+
+    En el PC vale localhost. Desde el celular, solo el nombre del PC en Tailscale, por
+    `tailscale serve` (que agrega la cuenta de quien abre Tama) y, si se configuró, de esa cuenta.
+    El mensaje dice la causa sin mostrar lo configurado.
+    """
+    host = request.headers.get("host", "").rsplit(":", 1)[0].rstrip(".").lower()
     user = request.headers.get(TAILSCALE_USER, "").strip().lower()
+    expected = settings.web_tailscale_host.strip().rstrip(".").lower()
     allowed = settings.web_tailscale_user.strip().lower()
-    return not user or not allowed or user == allowed
-
-
-def from_tailscale(request: Request, host: str, settings: Settings) -> bool:
-    """La petición llegó por `tailscale serve` al nombre del PC en Tailscale."""
-    expected = settings.web_tailscale_host.strip().lower()
-    return bool(expected) and host.lower() == expected and bool(request.headers.get(TAILSCALE_USER))
+    if host not in LOCAL_HOSTS:
+        if not user:
+            return (
+                "Tama solo acepta conexiones desde el PC o por tailscale serve.",
+                f"host {host!r} sin la cabecera de tailscale serve",
+            )
+        if not expected:
+            return (
+                "Falta TAMA_WEB_TAILSCALE_HOST en el .env de Tama (y reiniciarla).",
+                f"llegó por Tailscale a {host!r}, pero TAMA_WEB_TAILSCALE_HOST está vacío",
+            )
+        if host != expected:
+            return (
+                f"El nombre {host} no coincide con TAMA_WEB_TAILSCALE_HOST en el .env de Tama.",
+                f"host {host!r}; TAMA_WEB_TAILSCALE_HOST={expected!r}",
+            )
+    if user and allowed and user != allowed:
+        return (
+            "La cuenta de Tailscale de este dispositivo no es la de TAMA_WEB_TAILSCALE_USER.",
+            f"cuenta {user!r}; TAMA_WEB_TAILSCALE_USER={allowed!r}",
+        )
+    return None
 
 
 STARTING = """<!doctype html><html lang="es"><head><meta charset="utf-8">

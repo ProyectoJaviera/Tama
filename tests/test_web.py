@@ -594,3 +594,26 @@ def test_status_page_sends_a_test_notice(web):
     assert client.post("/estado/aviso-prueba").text == "Aviso de prueba enviado."
     reply = client.post("/chat", data={"text": "/aviso-prueba"}).json()["reply"]
     assert reply == "Aviso de prueba enviado."
+
+
+def test_rejection_says_why_without_showing_the_settings(remote, web, capsys):
+    client = remote(user="renzo@example.com")
+    login = {"Tailscale-User-Login": "renzo@example.com"}
+    no_header = client.get("/")
+    assert no_header.text == "Tama solo acepta conexiones desde el PC o por tailscale serve."
+    other = TestClient(client.app, base_url="https://otro.tail1234.ts.net").get("/", headers=login)
+    assert "otro.tail1234.ts.net no coincide con TAMA_WEB_TAILSCALE_HOST" in other.text
+    assert TS_HOST not in other.text
+    wrong = client.get("/", headers={"Tailscale-User-Login": "otra@example.com"})
+    assert "no es la de TAMA_WEB_TAILSCALE_USER" in wrong.text and "renzo@" not in wrong.text
+    assert f"TAMA_WEB_TAILSCALE_HOST='{TS_HOST}'" in capsys.readouterr().err  # solo en el PC
+    unset, _ = web()
+    empty = TestClient(unset.app, base_url=f"https://{TS_HOST}").get("/", headers=login)
+    assert empty.text.startswith("Falta TAMA_WEB_TAILSCALE_HOST")
+
+
+def test_host_with_trailing_dot_or_capitals_is_the_same(remote):
+    client = remote()
+    login = {"Tailscale-User-Login": "renzo@example.com"}
+    upper = TestClient(client.app, base_url=f"https://{TS_HOST.upper()}.")
+    assert upper.get("/", headers=login).status_code == 200

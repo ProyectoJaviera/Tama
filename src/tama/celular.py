@@ -10,24 +10,71 @@ import os
 import secrets
 import shutil
 import subprocess
+from pathlib import Path
 
 from tama.config import Settings
 
 NTFY_HTTPS_PORT = 8443
 
 
-def tailscale_name() -> str:
-    """Nombre del PC en Tailscale (mi-pc.tail1234.ts.net), o "" si Tailscale no está a mano."""
+WINDOWS_TAILSCALE = Path("C:/Program Files/Tailscale/tailscale.exe")
+
+
+def tailscale_info() -> tuple[str, str]:
+    """Nombre del PC en Tailscale (mi-pc.tail1234.ts.net) y la cuenta con que entró.
+
+    Vacíos si Tailscale no está instalado o no responde.
+    """
     exe = shutil.which("tailscale")
+    if not exe and WINDOWS_TAILSCALE.exists():
+        exe = str(WINDOWS_TAILSCALE)
     if not exe:
-        return ""
+        return "", ""
     try:
         out = subprocess.run(
             [exe, "status", "--json"], capture_output=True, text=True, timeout=10, check=False
         ).stdout
-        return json.loads(out).get("Self", {}).get("DNSName", "").rstrip(".")
+        data = json.loads(out)
     except (OSError, ValueError, subprocess.SubprocessError):
-        return ""
+        return "", ""
+    me = data.get("Self", {})
+    user = (data.get("User") or {}).get(str(me.get("UserID", "")), {})
+    return me.get("DNSName", "").rstrip("."), user.get("LoginName", "")
+
+
+def check_env(settings: Settings, name: str, login: str) -> list[str]:
+    """Diferencias entre el .env y lo que dice Tailscale: la causa típica de un rechazo."""
+    problems = []
+    host = settings.web_tailscale_host.strip().rstrip(".").lower()
+    if name and host != name.lower():
+        problems.append(
+            f"TAMA_WEB_TAILSCALE_HOST dice {host or '(vacío)'}, pero el PC en Tailscale es "
+            f"{name}. Pon: TAMA_WEB_TAILSCALE_HOST={name}"
+        )
+    allowed = settings.web_tailscale_user.strip().lower()
+    if login and allowed and allowed != login.lower():
+        problems.append(
+            f"TAMA_WEB_TAILSCALE_USER dice {allowed}, pero la cuenta de Tailscale es {login}. "
+            f"Pon: TAMA_WEB_TAILSCALE_USER={login}"
+        )
+    public = settings_public_url()
+    if name and public and name.lower() not in public.lower():
+        problems.append(
+            f"TAMA_NTFY_PUBLIC_URL no usa {name}. Pon: "
+            f"TAMA_NTFY_PUBLIC_URL=https://{name}:{NTFY_HTTPS_PORT}"
+        )
+    return problems
+
+
+def settings_public_url() -> str:
+    """TAMA_NTFY_PUBLIC_URL: la lee docker compose, no Tama; aquí solo se revisa."""
+    from dotenv import dotenv_values
+
+    return (
+        os.environ.get("TAMA_NTFY_PUBLIC_URL")
+        or dotenv_values(".env").get("TAMA_NTFY_PUBLIC_URL", "")
+        or ""
+    )
 
 
 def new_topic() -> str:
@@ -86,5 +133,13 @@ def settings_ntfy_port() -> int:
 
 
 def main(settings: Settings) -> int:
-    print(guide(settings, tailscale_name()))
+    name, login = tailscale_info()
+    problems = check_env(settings, name, login)
+    if problems:
+        print("Revisa tu .env (y reinicia Tama después de cambiarlo):")
+        print("\n".join(f"- {p}" for p in problems))
+        print()
+    elif name and settings.web_tailscale_host:
+        print("Tu .env coincide con Tailscale.\n")
+    print(guide(settings, name))
     return 0
