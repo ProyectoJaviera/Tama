@@ -96,9 +96,11 @@ Tama prueba tres capas en orden y usa la primera que responda:
 
 Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
 completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
-fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar. Durante el chat revisa la red en
-segundo plano y, al detectar un corte, precarga el modelo local para que la primera respuesta
-sin red no espere la carga.
+fuera por 5 minutos. Sin internet, Tama va directo a la capa local sin esperar. Al abrirse, Tama precarga el modelo
+local en segundo plano (haya red o no) y lo deja cargado (`TAMA_LOCAL_KEEP_ALIVE`): si la red se
+corta, la primera respuesta no espera la carga. Sin red, la web dice "preparando el modelo local"
+mientras tanto. Durante el chat revisa la red en segundo plano y vuelve a precargar si detecta un
+corte.
 Sin claves y sin sesión de Ollama, todo funciona igual con la capa local.
 
 Ollama debe estar encendido en el host (la app de Ollama se inicia con Windows; si no,
@@ -133,7 +135,9 @@ Tama recuerda entre sesiones, sin base de datos vectorial:
 - **Grafo** (`data/memoria.db`): personas, proyectos y gustos, con observaciones fechadas. Tama
   guarda lo que le cuentas y lo busca cuando hace falta; lo contradicho deja de usarse, no se borra.
 - **Conversaciones** (`data/events.db`): "¿de qué hablamos ayer?".
-- `/memoria` muestra lo vigente, `/memoria historial <tema>` da la línea de tiempo completa, `/olvidar <tema>` busca por palabras y borra lo que elijas (con confirmación) y
+- `/memoria` lista las fichas; `/memoria Lucía` muestra todos sus datos por páginas (`/memoria
+  Lucía 2`), pedida por su nombre; en la web, `/memoria/ficha/Lucía`. `/memoria historial <tema>`
+  da la línea de tiempo completa, con "fecha no indicada" en lo que no tiene fecha, `/olvidar <tema>` busca por palabras y borra lo que elijas (con confirmación) y
   `tama memoria export` vuelca el grafo a `memoria/grafo.jsonl`.
 
 `memoria/` y `data/` tienen datos personales: nunca van a un repositorio público. En Docker viven
@@ -142,8 +146,11 @@ en los volúmenes `tama-memoria` y `tama-data`.
 - `/diario` escribe el diario de hoy y `/diario AAAA-MM-DD` muestra el de esa fecha, en
   `memoria/diario/`.
 - Tras 20 minutos sin actividad, si hay RAM libre, Tama reflexiona con el modelo local y sin red:
-  fusiona duplicados, marca lo reemplazado (nunca lo que ya ocurrió) y deja hasta 2 sugerencias. Si
-  duda, te pregunta. Se cancela apenas escribes.
+  fusiona duplicados, marca lo reemplazado (nunca lo que ya ocurrió), guarda los planes que le
+  contaste y no quedaron guardados, y deja hasta 2 sugerencias. Si duda, te pregunta. Se cancela
+  apenas escribes. Cada pasada queda en `events.db`, aunque no cambie nada.
+- Los planes ("me voy a disfrazar de Shrek", "el sábado voy a la playa") son un tipo de dato
+  propio, con su fecha futura si la dijiste.
 
 ## Instalación sin internet (en otra máquina)
 
@@ -196,6 +203,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
 | `TAMA_CONNECTIVITY_WATCH_S` | `5` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
 | `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
+| `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
+| `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
 | `TAMA_WORKDIR` | `data/trabajo` (Docker: `/trabajo`) | Carpeta del servidor de archivos |
 | `TAMA_MEMORY_DIR` | `memoria` (Docker: `/memoria`) | Perfil y export del grafo |
