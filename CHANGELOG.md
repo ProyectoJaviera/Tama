@@ -6,6 +6,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 9 (celular): Tama se instala como app (PWA) con manifest, íconos y un service worker que
+  solo guarda la interfaz; diseño usable en pantalla chica. Acceso desde el celular por Tailscale
+  (`tailscale serve`, HTTPS) sin abrir puertos: Tama acepta su nombre de Tailscale solo por
+  `tailscale serve` y de la cuenta configurada (`TAMA_WEB_TAILSCALE_HOST`,
+  `TAMA_WEB_TAILSCALE_USER`) y sigue escuchando en 127.0.0.1. Avisos al celular por el ntfy propio
+  vía Tailscale, aviso de prueba en Estado y `/aviso-prueba`, y `tama celular` con los pasos.
 - Sprint 8 (pulido): la línea de tiempo y las búsquedas dicen "fecha no indicada" en cada dato sin
   fecha, y la línea de tiempo nombra de quién es cada dato; los planes son un tipo de dato propio,
   enlazado a Renzo y con su fecha futura ("el sábado", "en marzo"), y la reflexión guarda los que

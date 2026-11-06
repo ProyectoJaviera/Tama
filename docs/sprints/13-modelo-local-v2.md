@@ -20,6 +20,10 @@ entonces.
    78 s, casi todo en la precarga (carga + prompt).
 5. Planes en la reflexión, en local: `python -m evals.pulido planes-reflexion --capas local`.
 
+### Del Sprint 9 (celular)
+1. Conversar desde el celular (por Tailscale en la casa) con el PC sin internet: responde la capa
+   local; medir el tiempo de la primera respuesta en la PWA.
+
 ## Reglas
 - Las mismas de `XX-modelo-local.md`: sin Claude, modelos descargados solo con el OK de Renzo y
   resultado en un ADR.
