@@ -2,7 +2,7 @@
   "nube": {
     "fechas": {
       "ok": true,
-      "respuesta": "Tu historial médico es el siguiente:\n\n- 3 de marzo de 2026: Te operaron la rodilla.\n- 2 de agosto de 2026: Te fracturaste la muñeca.\n- Fecha no indicada: Tuviste una alergia fuerte a la penicilina.",
+      "respuesta": "Tu historial médico es el siguiente: el 3 de marzo de 2026 te operaron la rodilla y el 2 de agosto de 2026 te fracturaste la muñeca. Además, en fecha no indicada, tuviste una alergia fuerte a la penicilina.",
       "herramientas": [
         "linea_de_tiempo"
       ]
@@ -16,7 +16,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo se va a disfrazar de Shrek para la fiesta de la oficina",
+              "Renzo se disfrazará de Shrek para la fiesta de la oficina",
               "plan",
               "2026-11-06"
             ]
@@ -42,7 +42,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo irá a la playa con Frida el sábado 7 de noviembre de 2026",
+              "Renzo irá a la playa con Frida este sábado 7 de noviembre de 2026.",
               "plan",
               "2026-11-07"
             ]
@@ -55,7 +55,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo va al concierto de Los Bunkers el 20 de diciembre.",
+              "Renzo irá al concierto de Los Bunkers el 20 de diciembre.",
               "plan",
               "2026-12-20"
             ]
@@ -81,7 +81,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo va a almorzar con su mamá el 7 de noviembre de 2026.",
+              "Renzo va a almorzar con su mamá el 7 de noviembre de 2026",
               "plan",
               "2026-11-07"
             ]
@@ -100,7 +100,7 @@
     },
     "sugerencias": {
       "ok": true,
-      "respuesta": "Tengo una pendiente: podrías retomar tus clases de portugués, ya que llevas tres semanas sin avanzar. Me parece buena idea para que no pierdas el ritmo que traías.",
+      "respuesta": "Tienes una sugerencia pendiente: retomar las clases de portugués, ya que llevas tres semanas sin avanzar. Creo que sería bueno que vuelvas a empezar para no perder el ritmo.",
       "herramientas": [
         "list_suggestions"
       ]
@@ -112,12 +112,12 @@
         {
           "caso": "Avísame cuando empiece a llover.",
           "ok": true,
-          "respuesta": "No puedo monitorear el clima en tiempo real para avisarte exactamente cuando empiece a llover. Si quieres, puedo dejarte un recordatorio a una hora específica para que revises el pronóstico."
+          "respuesta": "No puedo monitorear el clima en tiempo real para avisarte exactamente cuando empiece a llover. Si quieres, puedo programar un recordatorio a una hora específica para que revises el pronóstico."
         },
         {
           "caso": "Avísame si mi hermana me escribe un mensaje.",
           "ok": true,
-          "respuesta": "No puedo vigilar tus mensajes ni avisarte cuando alguien te escriba. Lo que puedo hacer es dejarte un recordatorio a una hora específica para que revises tu teléfono."
+          "respuesta": "No puedo monitorear tus mensajes ni aplicaciones externas. Si quieres, puedo crearte un recordatorio para que revises el teléfono a una hora específica."
         }
       ]
     },
