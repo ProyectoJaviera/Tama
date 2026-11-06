@@ -152,17 +152,37 @@ class Engine:
     def _push(self, text: str) -> None:
         if not self.ntfy_url or not self.ntfy_topic:
             return
+        self.ntfy_error = self._send_ntfy(text)
+        if self.ntfy_error:
+            log.debug("ntfy no respondió: %s", self.ntfy_error)
+
+    def _send_ntfy(self, text: str) -> str:
+        """Publica en el tópico de ntfy; devuelve el error, o "" si salió bien."""
         try:
-            self.post(
+            response = self.post(
                 f"{self.ntfy_url}/{self.ntfy_topic}",
                 content=text.encode("utf-8"),
                 headers={"Title": "Tama"},
                 timeout=5,
             )
-            self.ntfy_error = ""
         except httpx.HTTPError as exc:
-            self.ntfy_error = str(exc) or type(exc).__name__
-            log.debug("ntfy no respondió: %s", exc)
+            return str(exc) or type(exc).__name__
+        status = getattr(response, "status_code", 200)
+        return f"ntfy respondió {status}" if status >= 400 else ""
+
+    def test_push(self) -> str:
+        """Aviso de prueba por ntfy, pedido por Renzo: no cuenta en el tope ni queda en Avisos."""
+        if not self.ntfy_url or not self.ntfy_topic:
+            return (
+                "ntfy no está configurado: define TAMA_NTFY_URL y TAMA_NTFY_TOPIC en .env "
+                "(`uv run tama celular` muestra cómo)."
+            )
+        self.ntfy_error = self._send_ntfy(
+            "Aviso de prueba: si lo ves en el celular, ntfy funciona."
+        )
+        if self.ntfy_error:
+            return f"No pude enviar el aviso de prueba: {self.ntfy_error}"
+        return "Aviso de prueba enviado. Debería llegarte al celular en unos segundos."
 
     def start(self, every_s: float = 20.0) -> None:
         def loop() -> None:

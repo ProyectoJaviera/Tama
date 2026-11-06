@@ -36,8 +36,8 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 HERE = Path(__file__).parent
-# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
 CARD_PAGE = 20  # datos por página en la ficha de la web
+# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
 STATIC_VERSION = hashlib.sha256(
     b"".join(p.read_bytes() for p in sorted((HERE / "static").iterdir()) if p.is_file())
 ).hexdigest()[:10]
@@ -49,6 +49,9 @@ NOTICE_LABELS = {
     "silenciado": "no se repite",
 }
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
+# La agrega `tailscale serve` con la cuenta de quien abre Tama; nadie fuera de Tailscale la envía,
+# porque Tama solo escucha en 127.0.0.1.
+TAILSCALE_USER = "tailscale-user-login"
 END = object()
 
 
@@ -195,10 +198,28 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     @app.middleware("http")
     async def only_localhost(request: Request, call_next):
         # Evita que un sitio externo llegue al servidor con un dominio propio (DNS rebinding).
+        # Desde el celular solo vale el nombre del PC en Tailscale, por `tailscale serve`.
         host = request.headers.get("host", "").rsplit(":", 1)[0]
-        if host not in LOCAL_HOSTS:
-            return PlainTextResponse("Solo localhost", status_code=403)
+        if host not in LOCAL_HOSTS and not from_tailscale(request, host, settings):
+            return PlainTextResponse("Solo localhost o Tailscale", status_code=403)
+        if not tailscale_user_allowed(request, settings):
+            return PlainTextResponse("Esta cuenta de Tailscale no tiene acceso", status_code=403)
         return await call_next(request)
+
+    @app.get("/sw.js")
+    def service_worker() -> Response:
+        """En la raíz, para controlar todo el sitio; solo guarda la interfaz (ver static/sw.js)."""
+        text = (HERE / "static" / "sw.js").read_text(encoding="utf-8")
+        return Response(
+            text.replace("__VERSION__", STATIC_VERSION),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @app.get("/manifest.webmanifest")
+    def manifest() -> Response:
+        text = (HERE / "static" / "manifest.webmanifest").read_text(encoding="utf-8")
+        return Response(text, media_type="application/manifest+json")
 
     def check_csrf(request: Request) -> None:
         if not secrets.compare_digest(request.headers.get("x-csrf-token", ""), csrf):
@@ -552,8 +573,17 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         ]
         tools = brain.tools.status() if brain.tools is not None else []
         return page(
-            request, "estado.html", layers=layers, tools=tools, pending=memoria.pending_list()
+            request,
+            "estado.html",
+            layers=layers,
+            tools=tools,
+            pending=memoria.pending_list(),
+            ntfy=ntfy_state(brain),
         )
+
+    @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
+    def test_notice() -> HTMLResponse:
+        return HTMLResponse(escape(commands.test_notice_text(brain)))
 
     if brain.warmer is not None:
         # La precarga usa el mismo prefijo que tendrá el próximo turno: sin red, la primera
@@ -578,6 +608,29 @@ def preparing_html(brain: Brain) -> str:
         f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
         "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
     )
+
+
+def ntfy_state(brain: Brain) -> str:
+    engine = brain.proactive
+    if engine is None or not engine.ntfy_url or not engine.ntfy_topic:
+        return "sin configurar (TAMA_NTFY_URL y TAMA_NTFY_TOPIC)"
+    if engine.ntfy_error:
+        return f"falló el último envío: {engine.ntfy_error}"
+    return f"activos, a {engine.ntfy_url}"
+
+
+def tailscale_user_allowed(request: Request, settings: Settings) -> bool:
+    """Si llega por Tailscale con otra cuenta que la configurada, se rechaza (venga como venga el
+    nombre del host)."""
+    user = request.headers.get(TAILSCALE_USER, "").strip().lower()
+    allowed = settings.web_tailscale_user.strip().lower()
+    return not user or not allowed or user == allowed
+
+
+def from_tailscale(request: Request, host: str, settings: Settings) -> bool:
+    """La petición llegó por `tailscale serve` al nombre del PC en Tailscale."""
+    expected = settings.web_tailscale_host.strip().lower()
+    return bool(expected) and host.lower() == expected and bool(request.headers.get(TAILSCALE_USER))
 
 
 STARTING = """<!doctype html><html lang="es"><head><meta charset="utf-8">

@@ -146,3 +146,28 @@ def test_bold_marks_render_as_bold_without_html(site, page, tmp_path):
     assert page.inner_text(".assistant strong") == "Iquique"
     assert page.locator(".assistant b").count() == 0
     assert "<b>no</b>" in page.inner_text(".assistant")
+
+
+@pytest.fixture
+def phone():
+    with sync_api.sync_playwright() as playwright:
+        browser = launch(playwright)
+        context = browser.new_context(**playwright.devices["Pixel 7"])
+        yield context.new_page()
+        browser.close()
+
+
+def test_pages_fit_a_phone_screen_and_the_app_installs(site, phone):
+    url, _ = site
+    memoria.create_entities(
+        [{"name": "Ana", "entityType": "persona", "observations": ["Vive en Talca " * 12]}]
+    )
+    for path in ("/", "/memoria", "/memoria/ficha/Ana", "/objetivos", "/avisos", "/estado"):
+        phone.goto(url + path)
+        wide = phone.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+        assert wide <= 0, f"{path} se sale {wide} px de la pantalla"
+    phone.goto(url)
+    say(phone, "hola")
+    phone.wait_for_selector(".assistant:has-text('Hola, Renzo.')")
+    scope = phone.evaluate("navigator.serviceWorker.ready.then(r => r.scope)")
+    assert scope == url + "/"

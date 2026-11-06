@@ -43,11 +43,18 @@ services:
       start_period: 10s
       retries: 3
 
-  # Avisos al celular sin depender de internet: el teléfono se suscribe por el mismo WiFi.
+  # Avisos al celular con un servidor propio: el texto nunca pasa por ntfy.sh. El teléfono se
+  # suscribe por el mismo WiFi (sin internet) o, fuera de la casa, por Tailscale (`tama celular`).
   ntfy:
     profiles: ["ntfy"]
     image: binwiederhier/ntfy:v2.11.0
     command: ["serve"]
+    environment:
+      # La dirección que usa el celular (https://<pc>.ts.net:8443 con `tailscale serve`).
+      NTFY_BASE_URL: ${TAMA_NTFY_PUBLIC_URL:-}
+      NTFY_BEHIND_PROXY: "true"
+      # Solo para iPhone: https://ntfy.sh despierta la app con un identificador, nunca el texto.
+      NTFY_UPSTREAM_BASE_URL: ${TAMA_NTFY_UPSTREAM:-}
     ports:
       - "${TAMA_NTFY_PORT:-8090}:80"
     volumes:

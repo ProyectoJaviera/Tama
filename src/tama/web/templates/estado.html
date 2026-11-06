@@ -8,4 +8,10 @@
 {% else %}<p class="muted">Sin herramientas activas.</p>{% endfor %}
 <h2>Sugerencias pendientes</h2>
 {% for s in pending %}<div class="card">{{ s }}</div>{% else %}<p class="muted">Ninguna.</p>{% endfor %}
+<h2>Celular</h2>
+<p class="muted">Avisos por ntfy: {{ ntfy }}</p>
+<form hx-post="/estado/aviso-prueba" hx-target="#aviso-prueba">
+  <button type="submit">Enviar aviso de prueba</button>
+  <span id="aviso-prueba" class="muted"></span>
+</form>
 {% endblock %}

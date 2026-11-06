@@ -52,6 +52,7 @@ h2 { font-size: 1.05rem; margin: 20px 0 8px; }
 
 #log {
   height: calc(100vh - 170px);
+  height: calc(100dvh - 170px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -200,3 +201,27 @@ button.plain.on, button.plain.on:disabled {
 .choices button { text-align: left; }
 
 .preparando { color: var(--dim); font-size: 0.85rem; margin: 4px 0 8px; }
+
+/* Celular: menú en una línea que se desliza, menos márgenes y nada más ancho que la pantalla. */
+@media (max-width: 640px) {
+  header {
+    gap: 4px 14px;
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  header strong { display: none; }
+  /* Cada campo a lo ancho y los botones debajo; el chat sigue en una sola línea. */
+  form.row > input, form.row > select { flex: 1 1 100%; }
+  #chat-form > input { flex: 1 1 0; }
+  main {
+    padding: 10px 10px max(10px, env(safe-area-inset-bottom));
+  }
+  #log { height: calc(100dvh - 150px); }
+  .user, .assistant { max-width: 92%; }
+  input, textarea, select { min-width: 0; }
+  form.row > button, .row > button { flex: none; }
+  pre, .command, .notice { font-size: 0.85rem; }
+  dialog { max-width: calc(100vw - 24px); }
+  #toasts { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); }
+  .banner-row span { min-width: 0; }
+}

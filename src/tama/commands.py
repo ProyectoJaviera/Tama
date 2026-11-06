@@ -24,6 +24,7 @@ COMMANDS = {
     "/avisos": "últimos avisos; con `resumen`, el balance semanal",
     "/silencio": "pausa los avisos por N horas (por defecto 2); `no` los reactiva",
     "/resumen": "el resumen de hoy",
+    "/aviso-prueba": "manda un aviso de prueba al celular por ntfy",
     "/herramientas": "estado de las herramientas",
     "/proveedor": "capas, herramientas y sugerencias",
     "/estado": "lo mismo que /proveedor",
@@ -168,6 +169,12 @@ def silence_text(args: str) -> str:
     return f"Silencio por {hours} horas: solo pasan los urgentes."
 
 
+def test_notice_text(brain: Brain) -> str:
+    if brain.proactive is None:
+        return "Los avisos están apagados (TAMA_PROACTIVE=false)."
+    return brain.proactive.test_push()
+
+
 def closest(name: str) -> str:
     """Comando desconocido: sugiere el más parecido."""
     found = get_close_matches(name, COMMANDS, n=1, cutoff=0.6)
@@ -232,6 +239,8 @@ def run(brain: Brain, text: str, memory_dir: Path) -> str:
         return silence_text(args)
     if name == "/resumen":
         return morning_summary(memoria.local_now())
+    if name == "/aviso-prueba":
+        return test_notice_text(brain)
     if name == "/ayuda":
         return HELP
     return closest(name)

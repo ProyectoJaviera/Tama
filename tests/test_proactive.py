@@ -401,3 +401,39 @@ def test_update_reminder_tells_the_exact_time(monkeypatch):
     remind(WEDNESDAY + timedelta(minutes=5), text="Sacar la basura")
     text = memoria.update_reminder(1, texto="Sacar la basura y la orgánica")
     assert "avisaré hoy 10:05" in text and "orgánica" in text
+
+
+def test_test_notice_goes_to_ntfy_without_counting_as_a_notice():
+    sent = []
+    item = engine(
+        ntfy_url="http://127.0.0.1:8090",
+        ntfy_topic="tama-abc",
+        post=lambda url, **kwargs: sent.append((url, kwargs["content"])),
+    )
+    assert item.test_push().startswith("Aviso de prueba enviado")
+    assert sent[0][0] == "http://127.0.0.1:8090/tama-abc" and b"prueba" in sent[0][1]
+    assert memoria.list_notices() == []
+
+
+def test_test_notice_explains_what_is_missing_or_failing():
+    assert "TAMA_NTFY_URL" in engine().test_push()
+
+    class Refused:
+        status_code = 403
+
+    item = engine(ntfy_url="http://127.0.0.1:8090", ntfy_topic="x", post=lambda *a, **k: Refused())
+    assert item.test_push() == "No pude enviar el aviso de prueba: ntfy respondió 403"
+    assert item.ntfy_error == "ntfy respondió 403"
+
+
+def test_phone_guide_uses_the_tailscale_name_and_a_long_topic():
+    from tama import celular
+    from tama.config import Settings
+
+    text = celular.guide(Settings(ntfy_topic=""), name="mi-pc.tail1.ts.net")
+    assert "tailscale serve --bg --https=443 http://127.0.0.1:8765" in text
+    assert "TAMA_WEB_TAILSCALE_HOST=mi-pc.tail1.ts.net" in text
+    topic = next(line for line in text.splitlines() if "TAMA_NTFY_TOPIC=" in line).split("=")[1]
+    assert topic.startswith("tama-") and len(topic) >= 30
+    kept = celular.guide(Settings(ntfy_topic="tama-ya-tengo"), name="x.ts.net")
+    assert "TAMA_NTFY_TOPIC=tama-ya-tengo" in kept

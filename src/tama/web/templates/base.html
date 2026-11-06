@@ -2,9 +2,15 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Tama</title>
   <link rel="stylesheet" href="/static/style.css?v={{ v }}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#2f6b5e">
+  <link rel="icon" href="/static/icono-192.png">
+  <link rel="apple-touch-icon" href="/static/icono-apple-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Tama">
   <script src="/static/htmx.min.js?v={{ v }}" defer></script>
 </head>
 <body data-csrf="{{ csrf }}" hx-headers='{"X-CSRF-Token": "{{ csrf }}"}'>
@@ -28,6 +34,7 @@
     </div>
   </dialog>
   <script src="/static/avisos.js?v={{ v }}"></script>
+  <script src="/static/pwa.js?v={{ v }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
