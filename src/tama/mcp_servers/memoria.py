@@ -434,7 +434,7 @@ def dated(today: date, year: str | None, month: int, day: int) -> str:
 
 def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
-    today = today or date.today()
+    today = today or local_now().date()
     found = ""
 
     def shift(days: int) -> str:
@@ -514,7 +514,7 @@ def add_obs(
                     now(),
                     source,
                     "estado" if state else "evento",
-                    when or date.today().isoformat(),
+                    when or local_now().date().isoformat(),
                 ),
             ).lastrowid
             added += 1
@@ -632,7 +632,9 @@ def entity_type(value: str) -> str:
 
 def shown_at(iso: str) -> str:
     """Fecha y hora locales: entre dos versiones de un dato, vale la más reciente."""
-    return datetime.fromisoformat(iso).astimezone().strftime("%Y-%m-%d %H:%M")
+    # En la zona de Tama, no la del sistema: en un servidor en UTC el día cambiaría antes.
+    zone = local_now().tzinfo
+    return datetime.fromisoformat(iso).astimezone(zone).strftime("%Y-%m-%d %H:%M")
 
 
 def fts_query(text: str) -> str:
