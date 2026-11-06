@@ -1,6 +1,6 @@
 # Último sprint de la versión: modelo local
 
-Estado: en curso (banco hecho; falta la demo sin red). Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Va después del S6 y antes de la pausa de uso real.
+Estado: cerrado (demo sin red aprobada por Renzo, 2026-11-05). Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Va después del S6 y antes de la pausa de uso real.
 
 ## Objetivo
 Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10400F, 32 GB, sin GPU), un modelo cargado a la vez y sin internet.
@@ -56,7 +56,17 @@ ministral-3:8b lo falla en las tres. Detalle en `bench/local/TABLA.md`.
 7. Fíjate en el primer token de cada respuesta (la línea gris): salvo la primera, debería
    quedar en segundos.
 
+## Cierre
+- Modelo local por defecto, para conversar y para el fondo: `qwen3:4b-instruct-2507-q8_0` (ADR 0004), con 10 hilos de
+  CPU (`TAMA_NUM_THREAD`).
+- Última medición con q8_0, 3 rondas sin red: historial médico 2/2 en las tres, rectificación 3/3
+  en las tres y corrección 4, 4 y 5 de 5.
+- Tercera demo de Renzo con la memoria vacía: dentista con la fecha bien calculada, rodilla
+  afirmada → negada → afirmada quedó con lo último que dijo.
+
 ## Pendiente
-- Fijar `qwen3:4b-instruct-2507-q8_0` como modelo por defecto e instalarlo, con el OK de Renzo.
-- Guardar planes futuros en la corrección (q8_0 3,3 de 5).
-- Borrar los modelos descartados (~110 GB), con el OK de Renzo.
+- Al contar el historial, el modelo a veces resume sin decir "fecha no indicada", aunque la línea
+  de tiempo lo trae.
+- A veces no guarda planes futuros ("me voy a disfrazar de Shrek").
+- Sin red, la primera respuesta necesita ~2 minutos de precarga al iniciar.
+- Borrar los modelos descartados (~110 GB), solo con el OK de Renzo.

@@ -1,6 +1,6 @@
 # 0004. Modelo local de la versión: chat y tareas de fondo
 
-- Estado: propuesto (Renzo hizo la demo sin red el 2026-11-03; falta su OK)
+- Estado: aceptado (demo sin red aprobada por Renzo, 2026-11-05)
 - Fecha: 2026-11-03
 - Decisores: Renzo
 - Reemplaza a: [0001](0001-modelo-local.md)
