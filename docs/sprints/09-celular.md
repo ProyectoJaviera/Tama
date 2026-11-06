@@ -64,7 +64,7 @@ En el PC:
    ```
 4. Abre Tama con la memoria de demo:
    ```powershell
-   $env:TAMA_DATA_DIR="demo-s9\data"; $env:TAMA_MEMORY_DIR="demo-s9\memoria"; $env:TAMA_WORKDIR="demo-s9	rabajo"
+   $env:TAMA_DATA_DIR="demo-s9\data"; $env:TAMA_MEMORY_DIR="demo-s9\memoria"; $env:TAMA_WORKDIR="demo-s9\trabajo"
    uv run tama web
    ```
    En el PC, http://127.0.0.1:8765 sigue funcionando igual que antes.
