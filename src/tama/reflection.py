@@ -244,7 +244,11 @@ def retire_contradictions(thinker: Thinker) -> list[str]:
             else:
                 replaced.append((listed[old - 1]["id"], listed[new - 1]["id"]))
         if memoria.retire_observations(replaced):
-            done.append(f"{entity['name']}: {len(replaced)} datos ya no vigentes")
+            n = len(replaced)
+            done.append(
+                f"{entity['name']}: {n} "
+                + ("dato ya no vigente" if n == 1 else "datos ya no vigentes")
+            )
         memoria.mark_reviewed(entity["id"])
     return done
 

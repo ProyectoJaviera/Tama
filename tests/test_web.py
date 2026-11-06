@@ -99,7 +99,7 @@ def test_commands_run_without_the_model(web, tmp_path):
         [{"name": "Renzo", "entityType": "persona", "observations": ["Toma té"]}]
     )
     memory = client.post("/chat", data={"text": "/memoria Renzo"}).json()["reply"]
-    assert memory.startswith("Renzo (persona), 1 datos") and "Toma té" in memory
+    assert memory.startswith("Renzo (persona), 1 dato:") and "Toma té" in memory
     timeline = client.post("/chat", data={"text": "/memoria historial salud"}).json()["reply"]
     assert "linea_de_tiempo" in timeline and "salud" in timeline
     assert "Capas" in client.post("/chat", data={"text": "/estado"}).json()["reply"]
@@ -492,3 +492,10 @@ def test_card_is_opened_by_name_with_pages(web):
     assert "<h2>Perfil</h2>" in full and "25 datos" in full
     assert "No encontré" in client.get("/memoria/ficha/Nadie").text
     assert 'href="/memoria/ficha/Luc%C3%ADa"' in client.get("/memoria").text
+
+
+def test_card_counts_say_dato_in_singular(web):
+    client, _ = web()
+    memoria.create_entities([{"name": "Ana", "entityType": "persona", "observations": ["Toma té"]}])
+    assert "1 dato<" in client.get("/memoria").text
+    assert "1 dato<" in client.get("/memoria/ficha/Ana", headers={"hx-request": "true"}).text

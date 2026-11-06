@@ -39,6 +39,11 @@ def canonical(text: str) -> str:
     return ALIASES.get(name.lower(), name.lower()) + space + args.strip()
 
 
+def facts(count: int) -> str:
+    """ "1 dato", "3 datos"."""
+    return f"{count} dato" + ("" if count == 1 else "s")
+
+
 def split_page(args: str) -> tuple[str, int]:
     """`Lucía 2` → ("Lucía", 2); sin número, la página 1."""
     words = args.split()
@@ -55,7 +60,7 @@ def cards_text(page: int) -> str:
     last = memoria.pages(len(cards), CARDS_PAGE)
     page = min(max(1, page), last)
     shown = cards[(page - 1) * CARDS_PAGE : page * CARDS_PAGE]
-    lines = [f"- {c['name']} ({c['type']}): {c['facts']} datos" for c in shown]
+    lines = [f"- {c['name']} ({c['type']}): {facts(c['facts'])}" for c in shown]
     lines.append("Para ver una ficha entera: /memoria <nombre>.")
     if last > 1:
         lines.append(
@@ -72,7 +77,7 @@ def card_text(name: str, page: int) -> str:
         return f"No encontré una ficha llamada «{name}». Con /memoria ves la lista."
     first = (data["page"] - 1) * FACTS_PAGE
     shown = f"{first + 1}-{first + len(data['facts'])} de " if data["pages"] > 1 else ""
-    lines = [f"{data['name']} ({data['type']}), {shown}{data['total']} datos:"]
+    lines = [f"{data['name']} ({data['type']}), {shown}{facts(data['total'])}:"]
     for fact in data["facts"]:
         lines.append(f"- {fact['text']} ({fact['label']})")
         if fact["before"]:

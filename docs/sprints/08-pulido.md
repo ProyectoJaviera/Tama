@@ -1,6 +1,6 @@
 # Sprint 8: Pulido de la v1
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-06)
 
 ## Objetivo
 Cerrar los pendientes que dejaron los sprints anteriores antes del uso real: fechas que no se
@@ -80,3 +80,22 @@ planes con chequeo de duplicados, 3 rondas en la nube: 7/7 en las tres, sin dupl
   eso queda anotado en `13-modelo-local-v2.md`, incluido el arranque en frío.
 - Ningún dato antiguo se pierde (migraciones sin borrar nada).
 - Demo de Renzo con una memoria separada de la suya.
+
+## Cierre
+Evals solo en la nube y sin Claude; ninguna prueba del modelo local (van en
+`13-modelo-local-v2.md`).
+
+- Sprint 8: fecha no indicada ok; planes 7/7 en 3 rondas, sin duplicados (incluido uno que no es
+  plan); sugerencias pendientes ok; avisos imposibles 2/2; planes en la reflexión 3/3, sin planes
+  de más.
+- Sin regresión: herramientas 23/23, memoria 9/10 y 3/3 sin inventar, historial médico, corrección
+  y objetivos ok, rectificación 3/3, conversación 20/20 (media 4,9).
+- Tests: 460 en verde. CI en verde.
+- Tras la demo: un plan enviado dos veces en un turno queda una sola vez, y "1 dato" en singular.
+
+Pendiente:
+
+- El prompt de la nube subió de 2.344 a 2.433 tokens (descripciones de planes y avisos); la meta de
+  ~2.000 ya no se cumplía.
+- Arranque sin red en menos de 30 s, calidad de planes y fechas en local: `13-modelo-local-v2.md`.
+- La corrección de duplicados no repara datos guardados antes (p. ej., la memoria `demo-s8`).

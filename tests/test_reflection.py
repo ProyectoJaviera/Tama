@@ -126,7 +126,7 @@ def test_contradiction_is_marked_not_deleted():
     think, client = thinker(
         {"reemplazados": [{"antiguo": 1, "nuevo": 2}]}, {"antiguo_sigue_cierto": False}
     )
-    assert retire_contradictions(think) == ["Vale: 1 datos ya no vigentes"]
+    assert retire_contradictions(think) == ["Vale: 1 dato ya no vigente"]
     assert "1." in client.prompts[0]
     assert "- [o1]" not in memoria.search_nodes("Vale")
     with memoria.connect() as db:

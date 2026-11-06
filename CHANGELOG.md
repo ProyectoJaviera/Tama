@@ -14,6 +14,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   `/memoria` lista las fichas y muestra una entera por páginas, pedida por su nombre, también en
   la web; las sugerencias pendientes van primero; Tama no promete avisos que no puede dar; cada
   pasada de la reflexión queda en events.db. Evals en `python -m evals.pulido`.
+  Tras la demo: un plan enviado dos veces en un turno queda una sola vez, como plan, y los
+  contadores dicen "1 dato" en singular.
 - Modelo local por defecto: `qwen3:4b-instruct-2507-q8_0`, para conversar y para las tareas de fondo (ADR 0004).
   Fechas en palabras, "fecha no indicada" en la línea de tiempo, lo último que dice Renzo gana
   sobre una retractación anterior, precarga al iniciar sin red y el chat web nunca queda

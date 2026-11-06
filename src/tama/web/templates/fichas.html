@@ -1,7 +1,7 @@
 <ul class="cards">
   {% for c in cards %}
   <li><a href="/memoria/ficha/{{ c.name|urlencode }}" hx-get="/memoria/ficha/{{ c.name|urlencode }}" hx-target="#ficha" hx-push-url="true">{{ c.name }}</a>
-    <span class="muted">{{ c.type }} · {{ c.facts }} datos</span></li>
+    <span class="muted">{{ c.type }} · {{ c.facts }} dato{{ "" if c.facts == 1 else "s" }}</span></li>
   {% else %}
   <li class="muted">No hay fichas con esa búsqueda.</li>
   {% endfor %}

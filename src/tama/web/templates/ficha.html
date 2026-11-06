@@ -1,5 +1,5 @@
 <div class="card" id="ficha-actual">
-  <h2>{{ card.name }} <span class="muted">{{ card.type }} · {{ card.total }} datos</span></h2>
+  <h2>{{ card.name }} <span class="muted">{{ card.type }} · {{ card.total }} dato{{ "" if card.total == 1 else "s" }}</span></h2>
   {% if card.page == 1 %}{% for r in card.relations %}<div class="muted">relación: {{ r }}</div>{% endfor %}{% endif %}
   {% for f in card.facts %}
   <div class="card">

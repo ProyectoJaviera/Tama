@@ -184,7 +184,8 @@ def test_memory_command_lists_cards_and_pages_a_card_by_name(tmp_path, monkeypat
     memoria.create_entities([{"name": "Bruno", "entityType": "mascota", "observations": ["Perro"]}])
     brain = SimpleNamespace(tools=object())
     listing = commands.memory_text(brain)
-    assert "- Lucía (persona): 12 datos" in listing and "- Bruno (mascota): 1 datos" in listing
+    assert "- Lucía (persona): 12 datos" in listing
+    assert "- Bruno (mascota): 1 dato\n" in listing
     first = commands.memory_text(brain, "lucia")
     assert first.startswith("Lucía (persona), 1-10 de 12 datos:")
     assert "Página 1 de 2: /memoria Lucía 2" in first
