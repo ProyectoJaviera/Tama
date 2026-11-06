@@ -23,6 +23,11 @@ def valid(content):
     return row and row[0]
 
 
+def events_of(timeline):
+    """Las líneas de la línea de tiempo, sin la indicación de arriba."""
+    return [line for line in timeline.splitlines() if line.startswith("- ")]
+
+
 def first_id():
     with memoria.connect() as db:
         return f"o{db.execute('SELECT MAX(id) FROM observations').fetchone()[0]}"
@@ -81,7 +86,7 @@ def test_health_facts_are_events_that_stay_valid_and_in_order():
     memoria.update_observation([first], "Ya no me duele el brazo")
     assert valid("Me duele mucho el brazo") == 1
     assert valid("Ya no me duele el brazo") == 1
-    lines = memoria.linea_de_tiempo("salud brazo").splitlines()
+    lines = events_of(memoria.linea_de_tiempo("salud brazo"))
     assert "Me duele mucho" in lines[0] and "Ya no me duele" in lines[1]
     with memoria.connect() as db:
         kinds = {r[0] for r in db.execute("SELECT kind FROM observations")}
@@ -135,7 +140,7 @@ def test_alias_links_a_name_to_the_existing_person():
 
 
 def test_new_facts_are_events_by_default():
-    memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
+    memoria.create_entities([entity("Halloween", "evento", "Fue de Shrek")])
     with memoria.connect() as db:
         assert db.execute("SELECT kind FROM observations").fetchone()[0] == "evento"
 
@@ -154,7 +159,7 @@ def test_timeline_keeps_everything_in_order():
     memoria.create_entities([entity("Renzo", "persona", "Tuvo alergia el 2026-01-10")])
     memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
     memoria.update_observation([first_id()], "Irá de piratas")
-    lines = memoria.linea_de_tiempo().splitlines()
+    lines = events_of(memoria.linea_de_tiempo())
     assert "Tuvo alergia" in lines[0] and "Se operó" in lines[1]
     assert any("Irá de Shrek" in line and "reemplazado por" in line for line in lines)
 
@@ -196,7 +201,7 @@ def test_timeline_follows_the_whole_chain():
 
 def test_timeline_gives_one_event_per_line():
     memoria.create_entities([entity("Renzo", "persona", "Le duele el pie", "Le duele el brazo")])
-    assert len(memoria.linea_de_tiempo("salud").splitlines()) == 2
+    assert len(events_of(memoria.linea_de_tiempo("salud"))) == 2
 
 
 def test_fact_does_not_link_to_a_plan_by_mention():
@@ -286,6 +291,50 @@ def test_a_date_sent_apart_is_kept():
             }
         ]
     )
-    assert "3 de marzo de 2026 [o1] Me operaron de la rodilla el 3 de marzo de 2026" in (
+    assert "- 3 de marzo de 2026: [o1] Me operaron de la rodilla el 3 de marzo de 2026" in (
         memoria.linea_de_tiempo("Renzo")
     )
+
+
+def test_every_undated_fact_says_so_in_the_timeline():
+    memoria.create_entities(
+        [
+            entity("Renzo", "persona", "El 2 de agosto de 2026 me fracturé la muñeca"),
+            entity("Renzo", "persona", "Me quebré un dedo del pie jugando fútbol"),
+            entity("Renzo", "persona", "Tuve varicela de niño"),
+        ]
+    )
+    timeline = memoria.linea_de_tiempo("Renzo")
+    assert timeline.splitlines()[0] == memoria.UNDATED_NOTE
+    lines = events_of(timeline)
+    undated = [line for line in lines if "fractur" not in line]
+    assert len(undated) == 2
+    assert all(line.startswith("- fecha no indicada (contado el ") for line in undated)
+    dated = next(line for line in lines if "fractur" in line)
+    assert dated.startswith("- 2 de agosto de 2026:") and "no indicada" not in dated
+
+
+def test_timeline_with_only_dated_facts_has_no_note():
+    memoria.create_entities([entity("Renzo", "persona", "El 2 de agosto de 2026 me fracturé")])
+    assert memoria.UNDATED_NOTE not in memoria.linea_de_tiempo("salud")
+
+
+def test_search_does_not_pass_the_day_told_as_the_date():
+    memoria.create_entities(
+        [entity("Renzo", "persona", "Me operaron de la rodilla", "El 3 de marzo de 2026 viajó")]
+    )
+    text = memoria.search_nodes("rodilla")
+    assert "Me operaron de la rodilla (fecha no indicada; contado el" in text
+    assert "viajó (contado el" in text
+
+
+def test_undated_note_is_stripped_when_copied_back():
+    copied = "[o3] Me operaron (fecha no indicada; contado el 6 de noviembre de 2026)"
+    assert memoria.without_date(copied) == "Me operaron"
+
+
+def test_plan_entity_saves_plans():
+    memoria.create_entities([entity("Halloween", "plan", "Irá de Shrek")])
+    with memoria.connect() as db:
+        assert db.execute("SELECT kind FROM observations").fetchone()[0] == "plan"
+    assert "- plan, fecha no indicada" in memoria.linea_de_tiempo("Shrek")

@@ -208,6 +208,11 @@ HEALTH_WORDS = (
     "enferm",
 )
 MAX_TIMELINE = 30
+# Va antes de una línea de tiempo con datos sin fecha: el modelo tendía a callarlo al resumir.
+UNDATED_NOTE = (
+    "Al contarlo, repite la fecha de cada línea tal como está; donde dice «fecha no indicada», "
+    "dilo así, sin poner otra."
+)
 MONTHS = (
     "enero",
     "febrero",
@@ -237,7 +242,7 @@ SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
-SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|contado el [^)]*)\)\s*$")
+SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|[^()]*contado el [^)]*)\)\s*$")
 ENTITY_TYPES = (
     "persona",
     "mascota",
@@ -556,7 +561,7 @@ def recent_observations(
 ) -> list[str]:
     """Hechos vigentes: primero los que coinciden con la búsqueda, luego los más nuevos."""
     rows = db.execute(
-        "SELECT o.id, o.content, o.created_at FROM observations o"
+        "SELECT o.id, o.content, o.created_at, o.kind, o.occurred_at FROM observations o"
         " JOIN observation_entities l ON l.observation_id = o.id"
         " WHERE l.entity_id = ? AND o.valid = 1 ORDER BY o.created_at DESC, o.id DESC",
         (entity_id,),
@@ -565,8 +570,7 @@ def recent_observations(
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
     chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
-        f"[o{r['id']}] {r['content']} (contado el {spoken_date(shown_at(r['created_at']))})"
-        f"{earlier_versions(db, r['id'])}"
+        f"[o{r['id']}] {r['content']} ({told_note(r)}){earlier_versions(db, r['id'])}"
         for r in chosen
     ]
 
@@ -684,12 +688,12 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if type_ in ("plan", "evento") and people and not find_entity(db, name):
                 # Algo puntual con alguien va en sus personas, no en una entidad nueva.
                 targets = people | ({owner["id"]} if owner else set())
-                add_obs(db, targets, added, source)
+                add_obs(db, targets, added, source, kind="plan" if type_ == "plan" else "")
                 saved += saved_ids(db, added)
                 updated.append(name)
                 continue
             entity_id, new = upsert_entity(db, name, type_)
-            add_obs(db, entity_id, added, source)
+            add_obs(db, entity_id, added, source, kind="plan" if type_ == "plan" else "")
             saved += saved_ids(db, added)
             older += same_topic(db, entity_id, added)
             for alias in entity.get("aliases") or []:
@@ -1039,11 +1043,29 @@ def with_chain(ids: set[int], rows: list[sqlite3.Row]) -> set[int]:
     return result
 
 
+def has_date(row: sqlite3.Row) -> bool:
+    """Si Renzo dio la fecha del hecho; si no, occurred_at es solo el día en que lo contó."""
+    return bool(resolve_dates(row["content"])[1])
+
+
 def when_label(row: sqlite3.Row) -> str:
     """La fecha en palabras; si Renzo no dio ninguna, se dice en vez de inventarla."""
-    if resolve_dates(row["content"])[1]:
-        return spoken_date(row["occurred_at"])
-    return f"fecha no indicada (contado el {spoken_date(row['occurred_at'])})"
+    plan = row["kind"] == "plan"
+    if has_date(row):
+        day = spoken_date(row["occurred_at"])
+        return f"plan para el {day}" if plan else day
+    told = f"contado el {spoken_date(row['occurred_at'])}"
+    return f"plan, fecha no indicada ({told})" if plan else f"fecha no indicada ({told})"
+
+
+def told_note(row: sqlite3.Row) -> str:
+    """Lo que acompaña a un dato en las búsquedas: cuándo se contó y, si no trae fecha propia,
+    que no la tiene. Así el modelo no confunde el día en que se contó con el día del hecho."""
+    told = f"contado el {spoken_date(shown_at(row['created_at']))}"
+    if row["kind"] == "plan":
+        when = f"plan para el {spoken_date(row['occurred_at'])}" if has_date(row) else "plan"
+        return f"{when}; {told}"
+    return told if has_date(row) else f"fecha no indicada; {told}"
 
 
 @server.tool(
@@ -1057,7 +1079,7 @@ def when_label(row: sqlite3.Row) -> str:
 def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
     with connect() as db:
         rows = db.execute(
-            "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at,"
+            "SELECT o.id, o.content, o.valid, o.superseded_by, o.occurred_at, o.kind,"
             " o.reason, (SELECT group_concat(e.norm || ' ' || e.type) FROM observation_entities l"
             " JOIN entities e ON e.id = l.entity_id WHERE l.observation_id = o.id) AS names"
             " FROM observations o ORDER BY o.occurred_at, o.id"
@@ -1080,7 +1102,9 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         if row["reason"] == "corregido":
             right = by_id[row["superseded_by"]]["content"]
             state = f"corregido, no fue así: {right}"
-        lines.append(f"{when_label(row)} [o{row['id']}] {row['content']} ({state})")
+        lines.append(f"- {when_label(row)}: [o{row['id']}] {row['content']} ({state})")
+    if any(not has_date(row) for row in chosen):
+        lines.insert(0, UNDATED_NOTE)
     return "\n".join(lines)
 
 
