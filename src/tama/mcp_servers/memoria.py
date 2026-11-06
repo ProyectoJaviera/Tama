@@ -422,17 +422,22 @@ def spoken_date(iso: str) -> str:
     return f"{day.day} de {MONTHS[day.month - 1]} de {day.year}"
 
 
-def dated(today: date, year: str | None, month: int, day: int) -> str:
-    """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas."""
+def dated(today: date, year: str | None, month: int, day: int, future: bool = False) -> str:
+    """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas.
+
+    Un plan (`future`) siempre mira hacia adelante: "el 3 de marzo" es el próximo 3 de marzo.
+    """
     if year:
         return date(int(year), month, day).isoformat()
     result = date(today.year, month, day)
-    if result > today + timedelta(days=SOON_DAYS):
+    if future and result < today:
+        result = date(today.year + 1, month, day)
+    elif not future and result > today + timedelta(days=SOON_DAYS):
         result = date(today.year - 1, month, day)
     return result.isoformat()
 
 
-def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
+def resolve_dates(text: str, today: date | None = None, future: bool = False) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
     today = today or local_now().date()
     found = ""
@@ -457,10 +462,10 @@ def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     month_only = MONTH_ONLY.search(text)
     if absolute:
         month = MONTHS.index(absolute.group(2).lower()) + 1
-        found = dated(today, absolute.group(3), month, int(absolute.group(1)))
+        found = dated(today, absolute.group(3), month, int(absolute.group(1)), future)
     elif month_only:
         month = MONTHS.index(month_only.group(1).lower()) + 1
-        found = dated(today, month_only.group(2), month, 1)
+        found = dated(today, month_only.group(2), month, 1, future)
     iso = ISO_DATE.search(text)
     return text, found or (iso.group(0) if iso else "")
 
@@ -493,17 +498,21 @@ def add_obs(
 ) -> int:
     """Guarda hechos enlazados a las entidades; uno repetido solo suma los enlaces que le falten.
 
-    Todo es un evento, salvo lo que el modelo marca como estado al corregir un dato.
+    Todo es un evento, salvo lo que el modelo marca como estado al corregir un dato, o como plan
+    (algo que Renzo va a hacer, con su fecha futura si la dijo).
     """
     entities = {entity_ids} if isinstance(entity_ids, int) else entity_ids
     added = 0
+    plan = kind == "plan"
     for content in contents:
-        text, when = resolve_dates(content.strip())
+        text, when = resolve_dates(content.strip(), future=plan)
         if not text:
             continue
         repeated = same_fact(db, text)
         if repeated:
             observation_id = repeated
+            if plan:
+                db.execute("UPDATE observations SET kind = 'plan' WHERE id = ?", (repeated,))
         else:
             state = kind == "estado" and not is_health(db, entities, text)
             observation_id = db.execute(
@@ -513,7 +522,7 @@ def add_obs(
                     text,
                     now(),
                     source,
-                    "estado" if state else "evento",
+                    "plan" if plan else "estado" if state else "evento",
                     when or local_now().date().isoformat(),
                 ),
             ).lastrowid
