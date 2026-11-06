@@ -1891,8 +1891,38 @@ def list_cards(query: str = "") -> list[dict[str, Any]]:
         return cards
 
 
-def card(entity_id: int) -> dict[str, Any] | None:
-    """Una ficha completa: datos vigentes con su historial."""
+def find_card(ref: str) -> int | None:
+    """Id de una ficha pedida por su nombre (o alias, o algo parecido), o por su número."""
+    ref = ref.strip()
+    with connect() as db:
+        if ref.isdigit():
+            row = db.execute("SELECT id FROM entities WHERE id = ?", (int(ref),)).fetchone()
+            if row:
+                return row["id"]
+        row = find_entity(db, ref)
+        if row:
+            return row["id"]
+        names = dict(db.execute("SELECT norm, entity_id FROM aliases").fetchall())
+        names.update(dict(db.execute("SELECT norm, id FROM entities").fetchall()))
+        close = get_close_matches(normalize(ref), names, n=1, cutoff=0.75)
+        if close:
+            return names[close[0]]
+        match = fts_query(ref)
+        found = (
+            match
+            and db.execute(
+                "SELECT entity_id FROM search WHERE search MATCH ? ORDER BY rank LIMIT 1", (match,)
+            ).fetchone()
+        )
+        return int(found[0]) if found else None
+
+
+def pages(total: int, size: int) -> int:
+    return max(1, -(-total // size))
+
+
+def card(entity_id: int, page: int = 1, size: int = 0) -> dict[str, Any] | None:
+    """Una ficha: datos vigentes con su historial. Con `size`, solo esa página de datos."""
     with connect() as db:
         row = db.execute("SELECT * FROM entities WHERE id = ?", (entity_id,)).fetchone()
         if row is None:
@@ -1903,17 +1933,27 @@ def card(entity_id: int) -> dict[str, Any] | None:
             " ORDER BY o.created_at DESC, o.id DESC",
             (entity_id,),
         ).fetchall()
+        total = len(facts)
+        last = pages(total, size) if size else 1
+        page = min(max(1, page), last)
+        if size:
+            facts = facts[(page - 1) * size : page * size]
         return {
             "id": row["id"],
             "name": row["name"],
             "type": row["type"],
             "owner": row["norm"] == OWNER,
+            "total": total,
+            "page": page,
+            "pages": last,
+            "relations": relations_of(db, entity_id),
             "facts": [
                 {
                     "id": f["id"],
                     "text": f["content"],
                     "when": shown_at(f["created_at"]),
                     "kind": f["kind"],
+                    "label": told_note(f),
                     "before": earlier_versions(db, f["id"]).replace("\n  antes: ", ""),
                 }
                 for f in facts

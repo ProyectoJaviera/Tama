@@ -245,10 +245,11 @@ class Brain:
         self.tools = Tools()
 
 
-def test_memoria_with_a_name_shows_the_whole_card():
-    brain = Brain()
-    cli.show_memory(brain, "Renzo")
-    assert brain.tools.calls == [("open_nodes", {"names": ["Renzo"]})]
+def test_memoria_with_a_name_shows_the_whole_card(capsys):
+    facts = [f"Dato número {i}" for i in range(8)]
+    memoria.create_entities([entity("Renzo", "persona", *facts)])
+    cli.show_memory(Brain(), "Renzo")
+    assert capsys.readouterr().out.count("Dato número") == 8
 
 
 def test_open_nodes_shows_all_facts():

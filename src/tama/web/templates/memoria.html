@@ -10,7 +10,7 @@
 <input type="search" name="q" value="{{ q }}" placeholder="Buscar en la memoria" aria-label="Buscar"
   hx-get="/memoria" hx-trigger="keyup changed delay:300ms" hx-target="#fichas">
 <div id="fichas">{% include "fichas.html" %}</div>
-<div id="ficha"></div>
+<div id="ficha">{% if card %}{% include "ficha.html" %}{% endif %}</div>
 <h2>Línea de tiempo</h2>
 <form class="row" hx-get="/memoria/linea" hx-target="#linea">
   <input name="tema" placeholder="Tema (por ejemplo, salud)" aria-label="Tema">

@@ -95,8 +95,11 @@ def test_chat_streams_text_and_grey_line(web):
 def test_commands_run_without_the_model(web, tmp_path):
     client, brain = web()
     brain.tools.call = lambda name, args: ToolOutcome(True, f"{name}: {args}")
+    memoria.create_entities(
+        [{"name": "Renzo", "entityType": "persona", "observations": ["Toma té"]}]
+    )
     memory = client.post("/chat", data={"text": "/memoria Renzo"}).json()["reply"]
-    assert "open_nodes" in memory and "Renzo" in memory
+    assert memory.startswith("Renzo (persona), 1 datos") and "Toma té" in memory
     timeline = client.post("/chat", data={"text": "/memoria historial salud"}).json()["reply"]
     assert "linea_de_tiempo" in timeline and "salud" in timeline
     assert "Capas" in client.post("/chat", data={"text": "/estado"}).json()["reply"]
@@ -470,3 +473,22 @@ def test_chat_shows_preparing_only_offline_while_the_model_loads(web):
     brain.connectivity = FakeConnectivity(online=False)
     brain.warmer.busy = False
     assert "every" not in client.get("/preparando").text
+
+
+def seed_many(name, count):
+    facts = [f"Dato número {n} de {name}" for n in range(1, count + 1)]
+    memoria.create_entities([{"name": name, "entityType": "persona", "observations": facts}])
+
+
+def test_card_is_opened_by_name_with_pages(web):
+    client, _ = web()
+    seed_many("Lucía", 25)
+    first = client.get("/memoria/ficha/Luc%C3%ADa", headers={"hx-request": "true"}).text
+    assert "25 datos" in first and "Página 1 de 2" in first and "Siguiente" in first
+    second = client.get("/memoria/ficha/lucia?pagina=2", headers={"hx-request": "true"}).text
+    assert "Página 2 de 2" in second and "Anterior" in second
+    assert second.count('name="texto" value="Dato número') == 5
+    full = client.get("/memoria/ficha/Lucía").text  # enlace directo: la pestaña con la ficha
+    assert "<h2>Perfil</h2>" in full and "25 datos" in full
+    assert "No encontré" in client.get("/memoria/ficha/Nadie").text
+    assert 'href="/memoria/ficha/Luc%C3%ADa"' in client.get("/memoria").text

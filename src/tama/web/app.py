@@ -37,6 +37,7 @@ from tama.reflection import diary_path, write_diary
 
 HERE = Path(__file__).parent
 # Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
+CARD_PAGE = 20  # datos por página en la ficha de la web
 STATIC_VERSION = hashlib.sha256(
     b"".join(p.read_bytes() for p in sorted((HERE / "static").iterdir()) if p.is_file())
 ).hexdigest()[:10]
@@ -332,6 +333,21 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             limit=MAX_PROFILE_CHARS,
         )
 
+    def memory_page(request: Request, entity_id: int, number: int) -> HTMLResponse:
+        """La pestaña Memoria con una ficha ya abierta: se puede enlazar por su nombre."""
+        found = memoria.card(entity_id, number, CARD_PAGE)
+        others = [c for c in memoria.list_cards() if c["id"] != entity_id]
+        return page(
+            request,
+            "memoria.html",
+            cards=memoria.list_cards(),
+            q="",
+            profile=read_profile(),
+            limit=MAX_PROFILE_CHARS,
+            card=found,
+            others=others,
+        )
+
     @app.post("/memoria/perfil", dependencies=[Depends(check_csrf)])
     def save_profile(request: Request, texto: str = Form("")) -> HTMLResponse:
         if len(texto.strip()) > MAX_PROFILE_CHARS:
@@ -340,16 +356,22 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         profile_path().write_text(texto.strip() + "\n", encoding="utf-8")
         return HTMLResponse("<p class='ok'>Perfil guardado.</p>")
 
-    def show_card(request: Request, entity_id: int) -> HTMLResponse:
-        found = memoria.card(entity_id)
+    def show_card(request: Request, entity_id: int, number: int = 1) -> HTMLResponse:
+        found = memoria.card(entity_id, number, CARD_PAGE)
         if found is None:
             return HTMLResponse("<p>Esa ficha ya no existe.</p>")
         others = [c for c in memoria.list_cards() if c["id"] != entity_id]
         return page(request, "ficha.html", card=found, others=others)
 
-    @app.get("/memoria/ficha/{entity_id}", response_class=HTMLResponse)
-    def card_detail(request: Request, entity_id: int) -> HTMLResponse:
-        return show_card(request, entity_id)
+    @app.get("/memoria/ficha/{ref}", response_class=HTMLResponse)
+    def card_detail(request: Request, ref: str, pagina: int = 1) -> HTMLResponse:
+        """La ficha se pide por su nombre (/memoria/ficha/Lucía); el número también sirve."""
+        entity_id = memoria.find_card(ref)
+        if entity_id is None:
+            return HTMLResponse(f"<p>No encontré una ficha llamada «{escape(ref)}».</p>")
+        if not request.headers.get("hx-request"):
+            return memory_page(request, entity_id, pagina)
+        return show_card(request, entity_id, pagina)
 
     @app.get("/memoria/linea", response_class=PlainTextResponse)
     def timeline(tema: str = "") -> str:
