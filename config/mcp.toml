@@ -10,7 +10,7 @@ herramientas = ["get_current_time"]
 siempre = ["get_current_time"]
 
 [servidores.tiempo.descripciones]
-get_current_time = "Da la fecha y la hora actuales (zona America/Santiago). Úsala cada vez que las necesites: nunca las supongas."
+get_current_time = "Da la fecha y la hora actuales (zona America/Santiago). Úsala cada vez que las necesites: nunca las supongas. Para guardar algo con fecha relativa (\"hace tres días\") no hace falta: create_entities la calcula."
 
 [servidores.memoria]
 comando = ["python", "-m", "tama.mcp_servers.memoria"]

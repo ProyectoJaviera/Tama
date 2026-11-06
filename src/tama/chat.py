@@ -10,9 +10,58 @@ from tama import agent, history
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.mcp_servers import memoria, notas
-from tama.providers import Error, Message, ToolCall
+from tama.providers import Error, Message, Text, ToolCall
 
 EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
+
+
+# Voseo que el modelo local se cuela aunque la identidad pide tutear. Solo formas que no existen
+# al tutear: es estilo, no interpretación del mensaje (regla 3).
+VOSEO = {
+    "querés": "quieres",
+    "tenés": "tienes",
+    "podés": "puedes",
+    "sabés": "sabes",
+    "hacés": "haces",
+    "decís": "dices",
+    "sentís": "sientes",
+    "necesitás": "necesitas",
+    "preferís": "prefieres",
+    "pensás": "piensas",
+    "contás": "cuentas",
+    "creés": "crees",
+}
+VOSEO_WORD = re.compile(r"\b(" + "|".join(VOSEO) + r")\b", re.IGNORECASE)
+
+
+def tutear(text: str) -> str:
+    def swap(match: re.Match) -> str:
+        found = match.group(0)
+        plain = VOSEO[found.lower()]
+        return plain.capitalize() if found[0].isupper() else plain
+
+    return VOSEO_WORD.sub(swap, text)
+
+
+def whole_words(events: Iterator[agent.AgentEvent]) -> Iterator[agent.AgentEvent]:
+    """Junta los fragmentos de texto hasta tener palabras completas y les quita el voseo."""
+    pending = ""
+    for event in events:
+        if isinstance(event, Text):
+            pending += event.text
+            cut = max(pending.rfind(c) for c in " \n.,;:?!")
+            if cut >= 0:
+                ready, pending = pending[: cut + 1], pending[cut + 1 :]
+                yield Text(tutear(ready))
+            continue
+        if pending:
+            yield Text(tutear(pending))
+            pending = ""
+        if isinstance(event, agent.FinalAnswer):
+            event = agent.FinalAnswer(tutear(event.text), event.trace)
+        yield event
+    if pending:
+        yield Text(tutear(pending))
 
 
 def without_emojis(text: str) -> str:
@@ -80,13 +129,15 @@ def run_turn(
     if brain.tools is not None:
         brain.tools.current_event = event_id
     answered: Answered | None = None
-    for event in agent.run_turn(
-        brain.cascade,
-        brain.tools,
-        history.trim(messages, max_tokens),
-        confirm,
-        max_tools,
-        focus=brain.focus,
+    for event in whole_words(
+        agent.run_turn(
+            brain.cascade,
+            brain.tools,
+            history.trim(messages, max_tokens),
+            confirm,
+            max_tools,
+            focus=brain.focus,
+        )
     ):
         if isinstance(event, Switch):
             brain.store.log(

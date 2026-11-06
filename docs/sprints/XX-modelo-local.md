@@ -1,6 +1,6 @@
 # Último sprint de la versión: modelo local
 
-Estado: pendiente. Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Va después del S6 y antes de la pausa de uso real.
+Estado: cerrado (demo sin red aprobada por Renzo, 2026-11-05). Por decisión de Renzo, estas pruebas se hacen al final de la versión, para elegir el mejor modelo para todas las tareas. Va después del S6 y antes de la pausa de uso real.
 
 ## Objetivo
 Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10400F, 32 GB, sin GPU), un modelo cargado a la vez y sin internet.
@@ -23,3 +23,50 @@ Elegir el modelo local (o los modelos, por tarea) con datos, en CPU y RAM (i5-10
 - Los modelos se descargan solo con aprobación de Renzo y al instalar, nunca en ejecución.
 - Las evals no usan la capa de Claude.
 - El resultado queda en un ADR, junto a `docs/adr/0001-modelo-local.md`.
+
+## Resultado del banco (2026-11-02 y 2026-11-03)
+`bench/local_suite.py` probó 22 modelos sin red y solo en CPU; los tres mejores con rondas
+repetidas (`bench/rounds.py`). Tabla en `bench/local/TABLA.md` y decisión propuesta en
+`docs/adr/0004-modelo-local-final.md`.
+
+- `update_observation` acepta las entidades como texto o mapa: la rectificación del actual pasó
+  de 0 a 1,8 de 3, y la del mismo modelo en q8_0, a 3 de 3.
+- Propuesta: `qwen3:4b-instruct-2507-q8_0` para todo (memoria 9, rectificación 3 de 3, la mejor
+  reflexión, ~12 s por respuesta). Alternativa: `ministral-3:8b` para el chat (corrige mejor,
+  ~22 s por respuesta).
+- Los MoE de ~18 GB no caben con margen bajo 28 GB de RAM usada. Ningún modelo abre grupos.
+
+## Tras la demo de Renzo (2026-11-03)
+Renzo probó q8_0 y ministral-3:8b sin red. Arreglos: el recuerdo automático ya no cambia el
+inicio del prompt (primer token de 55-80 s a 3-20 s), 10 hilos de CPU (`TAMA_NUM_THREAD`), los
+datos de salud nuevos se guardan aunque no haya nada parecido, la corrección dice lo que ahora vale
+y las negritas se ven bien en la web. q8_0 pasa el historial médico 2 de 2 en tres rondas;
+ministral-3:8b lo falla en las tres. Detalle en `bench/local/TABLA.md`.
+
+## Pasos de la demo (sin red)
+1. Desde `Tama-s7`, con Ollama abierto, desconecta el cable o el WiFi.
+2. En PowerShell: `$env:TAMA_LOCAL_MODEL="qwen3:4b-instruct-2507-q8_0"; uv run tama web` y abre
+   http://127.0.0.1:8765. Sin red, Tama precarga el modelo al iniciar: espera ~2 min antes del
+   primer mensaje (si escribes antes, verás "Tama está pensando…" con los segundos).
+3. Cuéntale "mi hermana se muda a Temuco en marzo", y luego "en verdad se muda a Valdivia".
+4. Cuéntale "hace tres días fui al dentista por una muela" y "el 2 de agosto me fracturé la
+   muñeca"; luego pregunta "cuéntame mi historial médico, en orden".
+5. "Me operaron de la rodilla" y después "me equivoqué, nunca me operaron de la rodilla".
+6. Mira el Administrador de tareas mientras responde: la CPU debería subir cerca del 85%.
+7. Fíjate en el primer token de cada respuesta (la línea gris): salvo la primera, debería
+   quedar en segundos.
+
+## Cierre
+- Modelo local por defecto, para conversar y para el fondo: `qwen3:4b-instruct-2507-q8_0` (ADR 0004), con 10 hilos de
+  CPU (`TAMA_NUM_THREAD`).
+- Última medición con q8_0, 3 rondas sin red: historial médico 2/2 en las tres, rectificación 3/3
+  en las tres y corrección 4, 4 y 5 de 5.
+- Tercera demo de Renzo con la memoria vacía: dentista con la fecha bien calculada, rodilla
+  afirmada → negada → afirmada quedó con lo último que dijo.
+
+## Pendiente
+- Al contar el historial, el modelo a veces resume sin decir "fecha no indicada", aunque la línea
+  de tiempo lo trae.
+- A veces no guarda planes futuros ("me voy a disfrazar de Shrek").
+- Sin red, la primera respuesta necesita ~2 minutos de precarga al iniciar.
+- Borrar los modelos descartados (~110 GB), solo con el OK de Renzo.

@@ -59,12 +59,17 @@ def test_unknown_id_is_an_explicit_error_and_changes_nothing():
     assert rows() == [("Shrek", 1)]
 
 
-def test_already_retired_id_is_an_error():
+def test_retired_id_updates_its_current_version():
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     old = ids_of("Halloween")
     memoria.update_observation(old, "Piratas")
+    memoria.update_observation(old, "Vaqueros")
+    assert [c for c, valid in rows() if valid] == ["Vaqueros"]
+
+
+def test_unknown_id_is_an_error():
     with pytest.raises(ToolError, match="vigente"):
-        memoria.update_observation(old, "Vaqueros")
+        memoria.update_observation(["o99"], "Vaqueros")
 
 
 def test_update_without_ids_is_an_error():
@@ -78,10 +83,12 @@ def test_update_is_not_destructive():
     assert not (annotations and annotations.destructive_hint)
 
 
-def test_search_shows_id_date_and_time():
+def test_search_says_when_it_was_told_in_words():
+    # Una fecha como 2026-11-01 la leían los modelos locales como el 11: va en palabras.
     memoria.create_entities([entity("Halloween", "plan", "Shrek")])
     assert re.search(
-        r"\[o\d+\] Shrek \(\d{4}-\d{2}-\d{2} \d{2}:\d{2}\)", memoria.search_nodes("Halloween")
+        r"\[o\d+\] Shrek \(contado el \d{1,2} de [a-z]+ de \d{4}\)",
+        memoria.search_nodes("Halloween"),
     )
 
 
@@ -424,3 +431,44 @@ def test_skipped_layers_are_reported():
     answered = next(e for e in events if isinstance(e, Answered))
     assert answered.provider == "local"
     assert answered.skipped == ("nube: sin internet",)
+
+
+def test_update_accepts_entities_as_text_or_empty_object():
+    memoria.create_entities([entity("Pablo", "persona", "Vive en Talca")])
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Osorno", "Pablo, Osorno", True)
+    assert rows() == [("Vive en Talca", 0), ("Pablo vive en Osorno", 1)]
+    assert "Osorno" in memoria.search_nodes("Osorno")
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Valdivia", {})
+    assert rows()[-1] == ("Pablo vive en Valdivia", 1)
+
+
+def test_update_accepts_entities_as_a_name_to_type_map():
+    memoria.create_entities([entity("Pablo", "persona", "Vive en Talca")])
+    memoria.update_observation(ids_of("Pablo"), "Pablo vive en Osorno", {"Pablo": "persona"}, True)
+    assert rows() == [("Vive en Talca", 0), ("Pablo vive en Osorno", 1)]
+
+
+def test_voseo_becomes_tu_even_split_across_fragments():
+    events = [Text("¿Qu"), Text("erés que te "), Text("ayude? Tenés"), Text(" razón.")]
+    out = list(chat.whole_words(iter([*events, Done(1, 1)])))
+    text = "".join(e.text for e in out if isinstance(e, Text))
+    assert text == "¿Quieres que te ayude? Tienes razón."
+    assert chat.tutear("Si querés, podés") == "Si quieres, puedes"
+    assert chat.tutear("Quieres saber") == "Quieres saber"
+
+
+def test_affirm_retract_and_affirm_again_ends_with_the_last_word():
+    memoria.create_entities([entity("Renzo", "persona", "Me operaron de la rodilla")])
+    first = ids_of("Renzo")
+    memoria.update_observation(first, "Nunca me operaron de la rodilla", None, True)
+    # El modelo vuelve a usar el id viejo, que ya no vale: se reemplaza la retractación.
+    text = memoria.update_observation(first, "Me operaron de la rodilla", None, False)
+    assert "Ahora vale: «Me operaron de la rodilla»" in text
+    assert "Dejó de valer: «Nunca me operaron de la rodilla»" in text
+    current = [content for content, valid in rows() if valid]
+    assert current == ["Me operaron de la rodilla"]
+
+
+def test_dates_the_model_writes_as_numbers_are_kept_in_words():
+    memoria.create_entities([entity("Renzo", "persona", "Fui al dentista el 2026-11-01")])
+    assert rows()[-1][0] == "Fui al dentista el 1 de noviembre de 2026"

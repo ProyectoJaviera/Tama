@@ -1,0 +1,35 @@
+{
+  "modelo": "bonsai-2:9b",
+  "rendimiento": {
+    "carga_s": 5.9,
+    "prompt_tps": 14.1,
+    "gen_tps": 8.1,
+    "ram_gb": 2.9,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 9.3,
+    "ram_pico_gb": 10.8,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 5.3,
+    "ram_pico_gb": 11.6,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 20.2,
+    "ram_pico_gb": 10.3,
+    "abre_grupos": 0,
+    "correctos": "18/22",
+    "pct": "81.8%",
+    "ttft_p50": 8.4375,
+    "voseo": 0
+  }
+}

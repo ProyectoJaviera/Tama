@@ -1,0 +1,11 @@
+{
+  "modelo": "nimble-v3:9b",
+  "rendimiento": {
+    "carga_s": 0.0,
+    "prompt_tps": 0.0,
+    "gen_tps": 0.0,
+    "ram_gb": 0,
+    "herramientas_10": "0/0",
+    "error": "\"nimble-v3:9b\" does not support chat"
+  }
+}

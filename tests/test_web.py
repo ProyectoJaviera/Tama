@@ -356,7 +356,7 @@ def test_cancel_command_asks_first(web):
     assert "No se canceló" in no["reply"]
     client.post("/chat", data={"text": "/cancelar sacar la ropa"})
     client.post("/chat/comando/confirmar", data={"respuesta": "si"})
-    assert "cancelado" in client.post("/chat", data={"text": "/recordatorio"}).json()["reply"]
+    assert not memoria.is_pending(1)
     again = client.post("/chat", data={"text": "/cancelar sacar la ropa"}).json()
     assert "ya estaba cancelado" in again["reply"] and "confirm" not in again
 
@@ -399,3 +399,52 @@ def test_choice_buttons_return_only_while_pending(web):
     memoria.cancel_one(1)
     page = client.get("/").text
     assert 'data-command="/cancelar 2"' in page and 'data-command="/cancelar 1"' not in page
+
+
+class Stuck(Provider):
+    """Un modelo que no termina hasta que se le avisa."""
+
+    def __init__(self):
+        super().__init__()
+        self.release = threading.Event()
+
+    def stream_chat(self, messages, tools=None):
+        self.release.wait(5)
+        yield from [Text("listo"), Done(1, 1)]
+
+
+def stuck_web(web):
+    client, brain = web()
+    provider = Stuck()
+    brain.cascade.layers[0].provider = provider
+    return client, brain, provider
+
+
+def test_second_message_while_answering_says_why(web):
+    client, _, provider = stuck_web(web)
+    assert client.post("/chat", data={"text": "hola"}).status_code == 200
+    busy = client.post("/chat", data={"text": "otra"})
+    assert busy.status_code == 409 and "mensaje anterior" in busy.json()["detail"]
+    provider.release.set()
+
+
+def test_a_turn_past_the_limit_no_longer_blocks_the_chat(web):
+    client, _, provider = stuck_web(web)
+    session = client.app.state.session
+    session.turn_limit_s = 0.2
+    first = client.post("/chat", data={"text": "hola"}).json()["turn"]
+    time.sleep(0.3)
+    second = client.post("/chat", data={"text": "otra"}).json()["turn"]
+    session.finish(first)  # el turno viejo termina tarde y no libera el nuevo
+    assert session._current[0] == second
+    provider.release.set()
+
+
+def test_an_error_in_the_turn_frees_the_chat(web):
+    client, brain = web()
+    brain.cascade.layers[0].provider.stream_chat = lambda *a, **k: (_ for _ in ()).throw(
+        RuntimeError("roto")
+    )
+    turn = client.post("/chat", data={"text": "hola"}).json()["turn"]
+    assert any(e["kind"] == "error" and "roto" in e["text"] for e in events(client, turn))
+    assert not client.app.state.session.busy()

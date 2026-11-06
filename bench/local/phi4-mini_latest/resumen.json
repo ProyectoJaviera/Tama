@@ -1,0 +1,35 @@
+{
+  "modelo": "phi4-mini:latest",
+  "rendimiento": {
+    "carga_s": 4.7,
+    "prompt_tps": 88.9,
+    "gen_tps": 10.1,
+    "ram_gb": 2.9,
+    "herramientas_10": "2/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 1.6,
+    "ram_pico_gb": 11.5,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 1.9,
+    "ram_pico_gb": 13.1,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 2.8,
+    "ram_pico_gb": 11.7,
+    "abre_grupos": 0,
+    "correctos": "5/22",
+    "pct": "22.7%",
+    "ttft_p50": 0.4919999999983702,
+    "voseo": 0
+  }
+}

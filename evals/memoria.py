@@ -315,6 +315,7 @@ def run_history(layer: str, offline: bool) -> dict[str, Any]:
     question = "Cuéntame mi historial médico, en orden."
     turn = ask(brain, [{"role": "system", "content": system}], question, *limits)
     brain.close()
+    print(f"[{layer}] {question} -> {turn['herramientas']}: {turn['respuesta']}", flush=True)
     answer = normalize(turn["respuesta"])
     where = [answer.find(word) for word in MEDICAL_ORDER]
     return {

@@ -67,9 +67,10 @@ def test_manage_goals_infers_the_action():
     assert "Correr 10K" in memoria.manage_goals(estado="pausado", accion="ver")
 
 
-def test_update_rejects_entities_that_are_not_a_list():
+def test_update_rejects_entities_that_are_not_names():
+    # Texto y mapas se aceptan (así los mandan los modelos locales); un número no.
     with pytest.raises(ToolError, match="create_entities"):
-        memoria.update_observation(["o1"], "Algo", "Renzo")
+        memoria.update_observation(["o1"], "Algo", 5)
 
 
 def test_update_accepts_empty_entities():

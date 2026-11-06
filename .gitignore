@@ -40,3 +40,5 @@ vendor/wheels/
 
 # Carpeta de trabajo montada en Docker
 trabajo/
+# Memoria vacía para las demos sin red
+demo-limpia/

@@ -1,0 +1,35 @@
+{
+  "modelo": "granite4:tiny-h",
+  "rendimiento": {
+    "carga_s": 0.1,
+    "prompt_tps": 128.8,
+    "gen_tps": 24.9,
+    "ram_gb": 4.1,
+    "herramientas_10": "9/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 1.4,
+    "ram_pico_gb": 12.3,
+    "abre_grupos": 0,
+    "checks": "2/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 4.1,
+    "ram_pico_gb": 14.9,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 4.9,
+    "ram_pico_gb": 13.7,
+    "abre_grupos": 0,
+    "correctos": "17/22",
+    "pct": "77.3%",
+    "ttft_p50": 0.7819999999992433,
+    "voseo": 0
+  }
+}

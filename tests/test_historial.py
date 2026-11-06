@@ -31,12 +31,14 @@ def first_id():
 @pytest.mark.parametrize(
     ("text", "expected", "when"),
     [
-        ("Almuerza mañana", "Almuerza el 2026-11-01", "2026-11-01"),
-        ("Fue ayer al médico", "Fue el 2026-10-30 al médico", "2026-10-30"),
-        ("Fui hace tres días", "Fui el 2026-10-28", "2026-10-28"),
+        ("Almuerza mañana", "Almuerza el 1 de noviembre de 2026", "2026-11-01"),
+        ("Fue ayer al médico", "Fue el 30 de octubre de 2026 al médico", "2026-10-30"),
+        ("Fui hace tres días", "Fui el 28 de octubre de 2026", "2026-10-28"),
+        ("Fui la semana pasada", "Fui la semana pasada", ""),
+        ("El 2 de agosto me fracturé", "El 2 de agosto me fracturé", "2026-08-02"),
         ("Corre en la mañana", "Corre en la mañana", ""),
         ("El 3 de marzo de 2026 fue", "El 3 de marzo de 2026 fue", "2026-03-03"),
-        ("Pasado mañana viaja", "el 2026-11-02 viaja", "2026-11-02"),
+        ("Pasado mañana viaja", "el 2 de noviembre de 2026 viaja", "2026-11-02"),
         ("En mayo tuve alergia", "En mayo tuve alergia", "2026-05-01"),
         ("Me mudé en mayo de 2024", "Me mudé en mayo de 2024", "2024-05-01"),
         ("Viajo en diciembre", "Viajo en diciembre", "2026-12-01"),
@@ -254,3 +256,36 @@ def test_memoria_historial_command():
     brain = Brain()
     cli.show_memory(brain, "historial salud")
     assert brain.tools.calls == [("linea_de_tiempo", {"tema": "salud"})]
+
+
+def test_timeline_shows_dates_in_words_and_no_invented_date():
+    from datetime import timedelta
+
+    memoria.create_entities(
+        [
+            entity("Renzo", "persona", "Fui al dentista por una muela hace tres días"),
+            entity("Renzo", "persona", "Me operaron de la rodilla"),
+        ]
+    )
+    today = memoria.local_now().date()
+    dentist = (today - timedelta(days=3)).isoformat()
+    timeline = memoria.linea_de_tiempo("Renzo")
+    assert memoria.spoken_date(dentist) in timeline and dentist not in timeline
+    told = memoria.spoken_date(today.isoformat())
+    assert f"fecha no indicada (contado el {told})" in timeline
+
+
+def test_a_date_sent_apart_is_kept():
+    memoria.create_entities(
+        [
+            {
+                "name": "Renzo",
+                "entityType": "persona",
+                "observations": ["Me operaron de la rodilla"],
+                "fecha": "2026-03-03",
+            }
+        ]
+    )
+    assert "3 de marzo de 2026 [o1] Me operaron de la rodilla el 3 de marzo de 2026" in (
+        memoria.linea_de_tiempo("Renzo")
+    )

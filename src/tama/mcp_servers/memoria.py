@@ -160,8 +160,9 @@ GOAL_STATES = ("activo", "pausado", "logrado", "descartado")
 NO_SUGGESTION = "Nada pendiente."
 NO_GOALS = "No hay objetivos en ese estado."
 SEARCH_NOTE = (
-    "Si el mensaje de Renzo niega o corrige uno de estos datos, antes de responder llama "
-    "update_observation con su id y error=true, aunque lo nuevo ya esté anotado."
+    "Esto es lo guardado; buscar no cambia nada. Si Renzo cuenta algo distinto, antes de "
+    "responder llama update_observation con el id (error=true solo si dice que nunca fue cierto), "
+    "aunque lo nuevo ya esté anotado. No digas que cambiaste algo sin esa llamada."
 )
 MIN_SIMILARITY = 0.75
 MAX_ENTITIES = 5
@@ -236,7 +237,7 @@ SAME_FACT = 0.92
 OWNER = "renzo"
 # Lo que muestran las búsquedas alrededor de un dato: el modelo a veces lo copia con el texto.
 SHOWN_ID = re.compile(r"^\s*\[o\d+\]\s*")
-SHOWN_DATE = re.compile(r"\s*\(\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?\)\s*$")
+SHOWN_DATE = re.compile(r"\s*\((\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?|contado el [^)]*)\)\s*$")
 ENTITY_TYPES = (
     "persona",
     "mascota",
@@ -415,6 +416,12 @@ def as_list(value: Any) -> list[str]:
     return [value] if isinstance(value, str) else [str(item) for item in value]
 
 
+def spoken_date(iso: str) -> str:
+    """2026-11-01 → "1 de noviembre de 2026". Los modelos locales leían 2026-11-01 como el 11."""
+    day = date.fromisoformat(iso[:10])
+    return f"{day.day} de {MONTHS[day.month - 1]} de {day.year}"
+
+
 def dated(today: date, year: str | None, month: int, day: int) -> str:
     """Sin año, lo más probable es el pasado cercano, salvo un plan de las próximas semanas."""
     if year:
@@ -427,19 +434,21 @@ def dated(today: date, year: str | None, month: int, day: int) -> str:
 
 def resolve_dates(text: str, today: date | None = None) -> tuple[str, str]:
     """Cambia fechas relativas por absolutas y devuelve el texto y la fecha que menciona."""
-    today = today or date.today()
+    today = today or local_now().date()
     found = ""
 
     def shift(days: int) -> str:
         nonlocal found
         found = (today + timedelta(days=days)).isoformat()
-        return found
+        return spoken_date(found)
 
     def ago(match: re.Match) -> str:
         amount = match.group(1).lower()
         return "el " + shift(-(int(amount) if amount.isdigit() else NUMBERS[amount]))
 
     text = AGO.sub(ago, text)
+    # Una fecha que el modelo ya escribió como 2026-11-04 también queda en palabras.
+    text = ISO_DATE.sub(lambda m: spoken_date(m.group(0)), text)
     for word, days in RELATIVE.items():
         pattern = rf"(?<!\bla )(?<!\besta )\b{word}\b"
         if re.search(pattern, text, flags=re.IGNORECASE):
@@ -505,7 +514,7 @@ def add_obs(
                     now(),
                     source,
                     "estado" if state else "evento",
-                    when or date.today().isoformat(),
+                    when or local_now().date().isoformat(),
                 ),
             ).lastrowid
             added += 1
@@ -547,7 +556,8 @@ def recent_observations(
     matching = [r for r in rows if any(w in normalize(r["content"]) for w in wanted)]
     chosen = (matching + [r for r in rows if r not in matching])[:limit]
     return [
-        f"[o{r['id']}] {r['content']} ({shown_at(r['created_at'])}){earlier_versions(db, r['id'])}"
+        f"[o{r['id']}] {r['content']} (contado el {spoken_date(shown_at(r['created_at']))})"
+        f"{earlier_versions(db, r['id'])}"
         for r in chosen
     ]
 
@@ -622,11 +632,23 @@ def entity_type(value: str) -> str:
 
 def shown_at(iso: str) -> str:
     """Fecha y hora locales: entre dos versiones de un dato, vale la más reciente."""
-    return datetime.fromisoformat(iso).astimezone().strftime("%Y-%m-%d %H:%M")
+    # En la zona de Tama, no la del sistema: en un servidor en UTC el día cambiaría antes.
+    zone = local_now().tzinfo
+    return datetime.fromisoformat(iso).astimezone(zone).strftime("%Y-%m-%d %H:%M")
 
 
 def fts_query(text: str) -> str:
     return " OR ".join(f'"{w}"*' for w in re.findall(r"\w+", text, flags=re.UNICODE))
+
+
+def with_date(texts: list[str], when: Any) -> list[str]:
+    """Los modelos locales mandan la fecha aparte ("fecha": "2026-03-03"): se suma a cada frase
+    que no traiga una, para que no se pierda."""
+    when = str(when or "").strip()
+    if not when:
+        return texts
+    spoken = spoken_date(when) if ISO_DATE.fullmatch(when[:10]) and len(when) <= 10 else when
+    return [t if resolve_dates(t)[1] else f"{t.rstrip('.')} el {spoken}" for t in texts]
 
 
 @server.tool(
@@ -647,7 +669,7 @@ def create_entities(entities: list[dict[str, Any]], source: int | None = None) -
             if not name:
                 continue
             type_ = entity_type(str(entity.get("entityType") or "objeto"))
-            added = as_list(entity.get("observations"))
+            added = with_date(as_list(entity.get("observations")), entity.get("fecha"))
             people = mentioned_entities(db, name)
             owner = find_entity(db, OWNER)
             if type_ in ("plan", "evento") and people and not find_entity(db, name):
@@ -839,7 +861,12 @@ def update_observation(
     error: bool = False,
     source: int | None = None,
 ) -> str:
-    # El modelo a veces manda {} cuando no tiene entidades que agregar.
+    # Los modelos chicos mandan {} cuando no hay entidades, un mapa {"Pablo": "persona"} o un
+    # texto con nombres separados por comas en vez de una lista: se aceptan antes de reclamar.
+    if isinstance(entidades, dict):
+        entidades = [entidades] if "name" in entidades else list(entidades) or None
+    elif isinstance(entidades, str):
+        entidades = [name.strip() for name in entidades.split(",") if name.strip()]
     if entidades and not isinstance(entidades, list):
         raise ToolError(
             "entidades debe ser una lista de nombres. Si es un dato nuevo que no reemplaza a "
@@ -847,8 +874,14 @@ def update_observation(
         )
     numbers = [int(i) for i in re.findall(r"\d+", " ".join(str(i) for i in ids))]
     if not numbers or not nueva.strip():
-        raise ToolError("Faltan ids o el dato nuevo: busca con search_nodes y reintenta.")
+        raise ToolError(
+            "Faltan ids o el dato nuevo. Si es un dato nuevo que no reemplaza a otro, guárdalo "
+            "con create_entities; si reemplaza a uno, busca su id con search_nodes y reintenta."
+        )
     with connect() as db:
+        # Un id ya reemplazado apunta a su versión vigente: "me operaron" sobre una retractación
+        # ("nunca me operaron") debe reemplazar la retractación, que es lo que hoy vale.
+        numbers = list(dict.fromkeys(current_version(db, n) for n in numbers))
         marks = ",".join("?" * len(numbers))
         found = db.execute(
             f"SELECT * FROM observations WHERE valid = 1 AND id IN ({marks})", numbers
@@ -867,7 +900,9 @@ def update_observation(
         states = [
             r["id"]
             for r in found
-            if error or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
+            if error
+            or is_retraction(db, r["id"])
+            or not is_health(db, linked_entities(db, [r["id"]]), r["content"])
         ]
         replaced = ",".join("?" * len(states))
         db.execute(f"UPDATE observations SET valid = 0 WHERE id IN ({replaced})", states)
@@ -881,7 +916,14 @@ def update_observation(
         for entity_id in linked:
             reindex(db, entity_id)
         others = related_facts(db, nueva, numbers)
-    text = f"Corregido: {len(states)} datos antiguos dejaron de estar vigentes."
+    # Lo que ahora es cierto va primero: los modelos chicos responden con lo último que leen.
+    replaced = "; ".join(f"«{r['content']}»" for r in found if r["id"] in states)
+    text = (
+        f"Corregido. Ahora vale: «{resolve_dates(nueva.strip())[0]}». Responde según esto. "
+        f"Dejó de valer: {replaced or 'nada'}."
+    )
+    if error:
+        text += " Lo anterior nunca fue cierto: respóndele a Renzo sin darlo por hecho."
     if len(states) < len(numbers):
         text += (
             " Los de salud siguen vigentes como historia: si nunca fueron ciertos, repite con "
@@ -891,6 +933,29 @@ def update_observation(
         text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
         text += " Si alguno quedó antiguo, corrígelo con update_observation."
     return text
+
+
+def is_retraction(db: sqlite3.Connection, number: int) -> bool:
+    """Un dato que corrigió a otro que nunca fue cierto ("nunca me operaron") no es historia de
+    salud: si Renzo vuelve a afirmar lo contrario, se reemplaza."""
+    row = db.execute(
+        "SELECT 1 FROM observations WHERE superseded_by = ? AND reason = 'corregido'", (number,)
+    ).fetchone()
+    return row is not None
+
+
+def current_version(db: sqlite3.Connection, number: int) -> int:
+    """Sigue la cadena de reemplazos hasta el dato vigente; si no hay, deja el mismo id."""
+    seen = {number}
+    row = db.execute("SELECT valid, superseded_by FROM observations WHERE id = ?", (number,))
+    row = row.fetchone()
+    while row is not None and not row["valid"] and row["superseded_by"] not in (None, *seen):
+        number = row["superseded_by"]
+        seen.add(number)
+        row = db.execute(
+            "SELECT valid, superseded_by FROM observations WHERE id = ?", (number,)
+        ).fetchone()
+    return number
 
 
 def saved_ids(db: sqlite3.Connection, texts: list[str]) -> list[str]:
@@ -965,6 +1030,13 @@ def with_chain(ids: set[int], rows: list[sqlite3.Row]) -> set[int]:
     return result
 
 
+def when_label(row: sqlite3.Row) -> str:
+    """La fecha en palabras; si Renzo no dio ninguna, se dice en vez de inventarla."""
+    if resolve_dates(row["content"])[1]:
+        return spoken_date(row["occurred_at"])
+    return f"fecha no indicada (contado el {spoken_date(row['occurred_at'])})"
+
+
 @server.tool(
     description=(
         "Historial en orden cronológico, incluidos los datos antiguos. Úsala para preguntas de "
@@ -999,7 +1071,7 @@ def linea_de_tiempo(tema: str = "", desde: str = "", hasta: str = "") -> str:
         if row["reason"] == "corregido":
             right = by_id[row["superseded_by"]]["content"]
             state = f"corregido, no fue así: {right}"
-        lines.append(f"{row['occurred_at']} [o{row['id']}] {row['content']} ({state})")
+        lines.append(f"{when_label(row)} [o{row['id']}] {row['content']} ({state})")
     return "\n".join(lines)
 
 

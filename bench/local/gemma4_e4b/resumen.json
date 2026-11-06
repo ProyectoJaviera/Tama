@@ -1,0 +1,35 @@
+{
+  "modelo": "gemma4:e4b",
+  "rendimiento": {
+    "carga_s": 10.9,
+    "prompt_tps": 66.8,
+    "gen_tps": 10.8,
+    "ram_gb": 1.8,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 5.3,
+    "ram_pico_gb": 15.6,
+    "abre_grupos": 0,
+    "checks": "4/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 3.9,
+    "ram_pico_gb": 16.8,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 2.1,
+    "ram_pico_gb": 15.4,
+    "abre_grupos": 0,
+    "correctos": "17/22",
+    "pct": "77.3%",
+    "ttft_p50": 0.6565000000000509,
+    "voseo": 0
+  }
+}

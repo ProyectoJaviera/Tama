@@ -48,6 +48,20 @@
     answer("no");
   });
 
+  // Algunos modelos marcan **negritas**: se muestran como negrita, sin usar innerHTML.
+  function emphasize(item) {
+    const parts = item.textContent.split(/\*\*(.+?)\*\*/s);
+    if (parts.length < 2) return;
+    item.replaceChildren(
+      ...parts.map((part, i) => {
+        if (i % 2 === 0) return document.createTextNode(part);
+        const strong = document.createElement("strong");
+        strong.textContent = part;
+        return strong;
+      }),
+    );
+  }
+
   function addTool(event) {
     const box = document.createElement("details");
     box.className = "tool";
@@ -64,8 +78,20 @@
     const source = new EventSource("/chat/" + turnId + "/eventos");
     let reply = null;
     let tool = null;
+    // Sin red, el modelo local puede tardar en empezar: se muestra que sigue trabajando.
+    const started = Date.now();
+    const waiting = add("line", "Tama está pensando…");
+    const clock = setInterval(() => {
+      const seconds = Math.round((Date.now() - started) / 1000);
+      waiting.textContent = "Tama está pensando… " + seconds + " s";
+    }, 1000);
+    const stopWaiting = () => {
+      clearInterval(clock);
+      waiting.remove();
+    };
     source.onmessage = (message) => {
       const event = JSON.parse(message.data);
+      if (event.kind !== "confirm") stopWaiting();
       if (event.kind === "text") {
         reply = reply || add("assistant", "");
         reply.textContent += event.text;
@@ -92,6 +118,8 @@
       }
     };
     source.addEventListener("end", () => {
+      stopWaiting();
+      log.querySelectorAll(".assistant").forEach(emphasize);
       source.close();
       button.disabled = false;
       input.focus();
@@ -132,7 +160,8 @@
     add("user", text);
     const response = await post("/chat", { text: text });
     if (!response.ok) {
-      add("error", "Tama aún está respondiendo.");
+      const problem = await response.json().catch(() => ({}));
+      add("error", problem.detail || "Tama aún está respondiendo.");
       button.disabled = false;
       return;
     }
@@ -153,5 +182,6 @@
     turnId = result.turn;
     follow();
   });
+  log.querySelectorAll(".assistant").forEach(emphasize);
   log.scrollTop = log.scrollHeight;
 })();

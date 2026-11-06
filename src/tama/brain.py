@@ -42,6 +42,9 @@ class Brain:
         """
         if self.connectivity is None:
             return
+        # Si Tama arranca ya sin red no hay "corte" que detectar: se precarga de una vez.
+        if self.warmer is not None and not self.connectivity.online():
+            self.warmer.warm()
         tick = self.warmer.warm if keep_warm and self.warmer else None
         if tick:
             tick()
@@ -57,6 +60,14 @@ class Brain:
             self.tools.close()
         self.local.close()
         self.store.close()
+
+
+def local_options(settings: Settings) -> dict:
+    """Opciones del modelo local: las mismas al precargar, conversar y reflexionar."""
+    options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
+    if settings.num_thread:
+        options["num_thread"] = settings.num_thread
+    return options
 
 
 def build(
@@ -93,12 +104,12 @@ def build(
     warmer = LocalWarmer(
         local,
         settings.local_model,
-        {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu},
+        local_options(settings),
         system_prompt=session_prompt(settings.memory_dir, store),
     )
     connectivity = Connectivity(probe, ttl=settings.connectivity_ttl_s, on_offline=warmer.warm)
     local_provider = OllamaLocalProvider(
-        local, settings.local_model, settings.num_ctx, settings.num_gpu
+        local, settings.local_model, settings.num_ctx, settings.num_gpu, settings.num_thread
     )
     layers = [
         Layer(
@@ -165,7 +176,7 @@ def build_proactive(settings: Settings) -> Engine:
 
 def thinker(settings: Settings, client: OllamaClient, cancel: threading.Event) -> Thinker:
     # El mismo modelo del chat: así la reflexión nunca obliga a cargar un segundo modelo.
-    options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
+    options = local_options(settings)
     return Thinker(client, settings.local_model, options, cancel)
 
 

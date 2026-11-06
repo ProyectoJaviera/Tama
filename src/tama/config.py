@@ -16,13 +16,17 @@ class Settings(BaseSettings):
     ollama_host: str = Field(
         "http://127.0.0.1:11434", validation_alias=AliasChoices("TAMA_OLLAMA_HOST", "OLLAMA_HOST")
     )
-    local_model: str = "qwen3:4b-instruct-2507-q4_K_M"
-    background_model: str = "qwen3:4b"
+    local_model: str = "qwen3:4b-instruct-2507-q8_0"
+    background_model: str = "qwen3:4b-instruct-2507-q8_0"
     think: bool = False
     # Siempre explícito: si no, Ollama usa su default (puede ser enorme y llenar la RAM).
     num_ctx: int = 8192
     # 0 = solo CPU y RAM. La GPU de este PC (GTX 660, 2 GB) no sirve para modelos.
     num_gpu: int = 0
+    # Hilos de CPU para el modelo local. Ollama usa solo los 6 núcleos físicos del i5-10400F;
+    # con 10 de sus 12 hilos lee el prompt ~35% más rápido y escribe ~20% más rápido (ADR 0004).
+    # 0 deja que Ollama decida.
+    num_thread: int = 10
     timeout: float = 300.0
     user_name: str = "Renzo"
     data_dir: Path = Path("data")
@@ -79,6 +83,8 @@ class Settings(BaseSettings):
     web_host: str = "127.0.0.1"
     web_port: int = 8765
     web_confirm_timeout_s: float = 120.0
+    # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
+    web_turn_limit_s: float = 600.0
 
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True

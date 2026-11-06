@@ -1,0 +1,11 @@
+{
+  "modelo": "gemma4:31b",
+  "rendimiento": {
+    "carga_s": 41.2,
+    "prompt_tps": 9.8,
+    "gen_tps": 2.7,
+    "ram_gb": 15.2,
+    "herramientas_10": "10/10",
+    "error": null
+  }
+}

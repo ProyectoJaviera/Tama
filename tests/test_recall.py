@@ -60,12 +60,14 @@ def test_recall_is_capped():
     assert len(text) <= MAX_AUTO_RECALL_CHARS + len("De tu memoria:\n")
 
 
-def test_local_provider_adds_recall_to_system_prompt():
+def test_local_provider_adds_recall_next_to_the_last_message():
     local, client = provider("De tu memoria:\nBruno")
     messages = [{"role": "system", "content": "Eres Tama."}, {"role": "user", "content": "x"}]
     assert list(local.stream_chat(messages)) == [Text("ok"), Done(0, 0)]
-    assert client.messages[0]["content"] == "Eres Tama.\n\nDe tu memoria:\nBruno"
-    assert messages[0]["content"] == "Eres Tama."  # no toca el historial
+    # El inicio del prompt no cambia, para que Ollama reutilice lo ya procesado.
+    assert client.messages[0]["content"] == "Eres Tama."
+    assert client.messages[-1]["content"] == "De tu memoria:\nBruno\n\nx"
+    assert messages[-1]["content"] == "x"  # no toca el historial
 
 
 def test_local_provider_without_matches_keeps_prompt():

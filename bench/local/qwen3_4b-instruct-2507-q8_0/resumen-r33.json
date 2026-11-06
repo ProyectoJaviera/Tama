@@ -1,0 +1,24 @@
+{
+  "modelo": "qwen3:4b-instruct-2507-q8_0",
+  "correccion": {
+    "estado": "ok",
+    "minutos": 4.3,
+    "ram_pico_gb": 16.9,
+    "abre_grupos": 0,
+    "checks": "5/5"
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 3.6,
+    "ram_pico_gb": 17.1,
+    "abre_grupos": 0,
+    "checks": "2/2"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 6.4,
+    "ram_pico_gb": 19.5,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  }
+}

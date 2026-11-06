@@ -6,6 +6,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Modelo local por defecto: `qwen3:4b-instruct-2507-q8_0`, para conversar y para las tareas de fondo (ADR 0004).
+  Fechas en palabras, "fecha no indicada" en la línea de tiempo, lo último que dice Renzo gana
+  sobre una retractación anterior, precarga al iniciar sin red y el chat web nunca queda
+  bloqueado.
+- Sprint final: banco del modelo local (`bench/local_suite.py`) con todas las evals sin red y solo
+  CPU, comparación de 22 modelos en `bench/local/TABLA.md` (ADR 0004) y repeticiones con
+  `bench/rounds.py`.
+- El recuerdo automático va junto al último mensaje: el prompt local ya no cambia al inicio y
+  Ollama reutiliza lo procesado (primer token de ~1 min a pocos segundos). `TAMA_NUM_THREAD`
+  (10 por defecto) usa más hilos de CPU. Las negritas de los modelos se ven en la web.
+- `update_observation` acepta las entidades como texto o como mapa, como las mandan los modelos
+  locales: la rectificación sin red dejó de fallar siempre.
 - Sprint 6: motor proactivo con recordatorios, resumen matutino y seguimiento de objetivos, Silencio
   Operativo, campana en la web, avisos en la CLI y ntfy autoalojado opcional. Comandos
   `/recordatorios`, `/avisos`, `/silencio` y `/resumen`. Se pueden renombrar fichas.

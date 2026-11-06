@@ -1,0 +1,35 @@
+{
+  "modelo": "nemotron-3.5-bolt:e4b",
+  "rendimiento": {
+    "carga_s": 12.8,
+    "prompt_tps": 68.8,
+    "gen_tps": 6.5,
+    "ram_gb": 2.7,
+    "herramientas_10": "10/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 5.3,
+    "ram_pico_gb": 17.2,
+    "abre_grupos": 0,
+    "checks": "3/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 5.5,
+    "ram_pico_gb": 18.8,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 3.9,
+    "ram_pico_gb": 17.5,
+    "abre_grupos": 0,
+    "correctos": "18/22",
+    "pct": "81.8%",
+    "ttft_p50": 0.6485000000029686,
+    "voseo": 2
+  }
+}

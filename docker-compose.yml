@@ -16,7 +16,7 @@ services:
         required: false
     environment:
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
-      TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      TAMA_LOCAL_MODEL: ${TAMA_LOCAL_MODEL:-qwen3:4b-instruct-2507-q8_0}
       TAMA_THINK: ${TAMA_THINK:-false}
       TAMA_WEB_HOST: 0.0.0.0
       TAMA_WEB_PORT: ${TAMA_WEB_PORT:-8765}

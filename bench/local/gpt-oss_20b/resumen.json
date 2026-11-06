@@ -1,0 +1,103 @@
+{
+  "modelo": "gpt-oss:20b",
+  "rendimiento": {
+    "carga_s": 22.8,
+    "prompt_tps": 39.4,
+    "gen_tps": 6.9,
+    "ram_gb": 12.9,
+    "herramientas_10": "9/10",
+    "error": null
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 15.4,
+    "ram_pico_gb": 20.9,
+    "abre_grupos": 0,
+    "checks": "2/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 18.0,
+    "ram_pico_gb": 21.9,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 12.2,
+    "ram_pico_gb": 20.3,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 8.64849999999933,
+    "voseo": 1
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 22.4,
+    "ram_pico_gb": 21.0,
+    "abre_grupos": 0,
+    "hechos": "8/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2026
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 13.5,
+    "ram_pico_gb": 20.6,
+    "abre_grupos": 0,
+    "checks": "3/4"
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 9.7,
+    "ram_pico_gb": 23.8,
+    "abre_grupos": 0,
+    "recordatorios": "12/12"
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 15.3,
+    "ram_pico_gb": 20.7,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "0/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 1.1,
+    "ram_pico_gb": 20.7,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      5,
+      5
+    ]
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 6.9,
+    "ram_pico_gb": 20.0,
+    "abre_grupos": 0,
+    "checks": "2/2"
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 14.4,
+    "ram_pico_gb": 19.9,
+    "abre_grupos": 0,
+    "puntaje_medio": 4.720833333333333,
+    "aprobados": "19/20",
+    "errores": 0,
+    "ttft_p50": 13.719000000004598,
+    "total_p50": 26.278596600001038
+  },
+  "sin_red": {
+    "estado": "ok",
+    "minutos": 2.9,
+    "ram_pico_gb": 19.8,
+    "abre_grupos": 0,
+    "casos": "5/5"
+  }
+}

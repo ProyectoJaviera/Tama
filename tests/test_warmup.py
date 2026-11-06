@@ -159,3 +159,23 @@ def test_connectivity_rechecks_sooner_while_offline():
     assert connectivity.online() is False
     clock.now += 10  # sin red no se esperan los 30 s para notar que volvió
     assert connectivity.online() is True
+
+
+class CountingWarmer:
+    def __init__(self):
+        self.calls = 0
+
+    def warm(self):
+        self.calls += 1
+
+
+def test_starting_offline_preloads_the_local_model():
+    from tama.brain import Brain
+    from tests.fakes import FakeConnectivity
+
+    for online, expected in ((False, 1), (True, 0)):
+        warmer = CountingWarmer()
+        brain = Brain(None, None, None, FakeConnectivity(online), warmer, None)
+        brain.watch_network(3600)
+        brain._stop.set()
+        assert warmer.calls == expected

@@ -1,0 +1,103 @@
+{
+  "modelo": "qwen3:4b-instruct-2507-q4_K_M",
+  "rendimiento": {
+    "carga_s": 3.1,
+    "prompt_tps": 71.6,
+    "gen_tps": 8.8,
+    "ram_gb": 3.0,
+    "herramientas_10": "9/10",
+    "error": null
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 18.9,
+    "ram_pico_gb": 20.5,
+    "abre_grupos": 0,
+    "hechos": "9/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2961
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 7.5,
+    "ram_pico_gb": 13.5,
+    "abre_grupos": 0,
+    "checks": "5/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 7.9,
+    "ram_pico_gb": 16.2,
+    "abre_grupos": 0,
+    "correctas": "0/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 5.1,
+    "ram_pico_gb": 14.6,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 1.905999999999949,
+    "voseo": 2
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 2.5,
+    "ram_pico_gb": 10.7,
+    "abre_grupos": 0,
+    "checks": "2/4"
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 3.4,
+    "ram_pico_gb": 13.6,
+    "abre_grupos": 0,
+    "recordatorios": "11/12"
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 3.0,
+    "ram_pico_gb": 10.9,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "3/3"
+  },
+  "diario": {
+    "estado": "ok",
+    "minutos": 0.4,
+    "ram_pico_gb": 10.9,
+    "abre_grupos": 0,
+    "juez": [
+      5,
+      5,
+      5
+    ]
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 4.9,
+    "ram_pico_gb": 11.8,
+    "abre_grupos": 0,
+    "checks": "2/2"
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 5.1,
+    "ram_pico_gb": 12.3,
+    "abre_grupos": 0,
+    "puntaje_medio": 4.716666666666667,
+    "aprobados": "17/20",
+    "errores": 0,
+    "ttft_p50": 1.0319999999992433,
+    "total_p50": 9.573906100005843
+  },
+  "sin_red": {
+    "estado": "ok",
+    "minutos": 1.2,
+    "ram_pico_gb": 12.5,
+    "abre_grupos": 0,
+    "casos": "5/5"
+  }
+}

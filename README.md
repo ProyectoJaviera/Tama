@@ -44,8 +44,7 @@ Todo lo que se descarga se descarga aquí; Tama nunca descarga nada al arrancar.
 
 ```powershell
 # 1. Ollama nativo + modelos (Q4). Ver docs/adr/0001-modelo-local.md
-ollama pull qwen3:4b-instruct-2507-q4_K_M   # modelo principal
-ollama pull qwen3:4b                      # tareas de fondo
+ollama pull qwen3:4b-instruct-2507-q8_0   # modelo local para conversar y para las tareas de fondo (ADR 0004)
 
 # 2. Tama
 git clone https://github.com/ProyectoJaviera/Tama.git
@@ -165,7 +164,7 @@ En la máquina sin internet:
 ```powershell
 # 1. Instalar Ollama con el instalador copiado
 # 2. Copiar la carpeta de modelos a %USERPROFILE%\.ollama\models y reiniciar Ollama
-ollama list                         # deben aparecer qwen3:4b-instruct-2507-q4_K_M y qwen3:4b
+ollama list                         # debe aparecer qwen3:4b-instruct-2507-q8_0
 # 3. Cargar la imagen y arrancar (desde una copia del repo)
 docker load -i tama-0.1.0.tar
 docker compose up -d --no-build
@@ -179,9 +178,10 @@ Variables en `.env` (ver `.env.example`):
 |---|---|---|
 | `OLLAMA_HOST` | Compose: `http://host.docker.internal:11434` | Dirección de Ollama |
 | `TAMA_OLLAMA_HOST` | `http://127.0.0.1:11434` | Igual, pero con prioridad (fuera de Docker) |
-| `TAMA_LOCAL_MODEL` | `qwen3:4b-instruct-2507-q4_K_M` | Modelo local |
+| `TAMA_LOCAL_MODEL` | `qwen3:4b-instruct-2507-q8_0` | Modelo local (ADR 0004) |
 | `TAMA_NUM_CTX` | `8192` | Contexto por petición (siempre explícito) |
 | `TAMA_NUM_GPU` | `0` | Capas en GPU; 0 = solo CPU y RAM |
+| `TAMA_NUM_THREAD` | `10` | Hilos de CPU del modelo local; 0 = los que decida Ollama |
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |

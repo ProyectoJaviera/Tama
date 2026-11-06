@@ -1,0 +1,45 @@
+{
+  "modelo": "ministral-3:8b",
+  "memoria": {
+    "estado": "ok",
+    "minutos": 45.1,
+    "ram_pico_gb": 21.7,
+    "abre_grupos": 0,
+    "hechos": "10/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 2529
+  },
+  "correccion": {
+    "estado": "ok",
+    "minutos": 12.3,
+    "ram_pico_gb": 22.0,
+    "abre_grupos": 0,
+    "checks": "4/5"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 7.2,
+    "ram_pico_gb": 22.9,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 7.5,
+    "ram_pico_gb": 21.2,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 2.2655000000013388,
+    "voseo": 0
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 7.1,
+    "ram_pico_gb": 21.1,
+    "abre_grupos": 0,
+    "duplicados": "4/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "1/3"
+  }
+}

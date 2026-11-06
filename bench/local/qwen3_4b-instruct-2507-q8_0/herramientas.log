@@ -1,0 +1,42 @@
+[local sin red] hora: ok
+[local sin red] hora-ciudad: ok
+[local sin red] nota-banco: FALLA: faltó create_note {'*': 'banco'} (llamó ['crear_recordatorio'])
+[local sin red] nota-titulo: ok
+[local sin red] buscar-impresora: ok
+[local sin red] buscar-dentista: FALLA: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
+[local sin red] notas-recientes: ok
+[local sin red] leer-plan: ok
+[local sin red] listar-archivos: ok
+[local sin red] archivo-presupuesto: ok
+[local sin red] crear-archivo: ok
+[local sin red] cadena-tareas: ok
+[local sin red] cadena-viaje: ok
+[local sin red] cadena-hora-nota: ok
+[local sin red] borrar-dentista: ok
+[local sin red] reemplazar-plan: ok
+[local sin red] editar-viaje: ok
+[local sin red] saludo: ok
+[local sin red] opinion: ok
+[local sin red] chiste: ok
+[local sin red] explicacion: ok
+[local sin red] gracias: ok
+# Evals de herramientas
+
+Generado por `uv run python -m evals.tools`. Servidores MCP reales con datos de ejemplo;
+las acciones destructivas nunca se confirman (cuenta como correcto que el modelo pida la
+herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por capa.
+
+| Capa | Correctos | % | Primer token p50 | Voseo |
+|---|---:|---:|---:|---:|
+| nube | 23/23 | 100% | 0.4 s | 0 |
+| claude | 23/23 | 100% | 0.6 s | 0 |
+| local | 21/23 | 91% | 1.8 s | 2 |
+| local (sin red) | 20/22 | 91% | 2.0 s | 3 |
+
+## Fallos
+
+- `local` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
+- `local` · cadena-hora-nota: faltó create_note {'*': 'estudi'} (llamó ['get_current_time'])
+- `local (sin red)` · nota-banco: faltó create_note {'*': 'banco'} (llamó ['crear_recordatorio'])
+- `local (sin red)` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
+

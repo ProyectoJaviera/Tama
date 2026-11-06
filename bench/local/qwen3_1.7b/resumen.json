@@ -1,0 +1,11 @@
+{
+  "modelo": "qwen3:1.7b",
+  "rendimiento": {
+    "carga_s": 2.9,
+    "prompt_tps": 169.4,
+    "gen_tps": 18.9,
+    "ram_gb": 1.8,
+    "herramientas_10": "7/10",
+    "error": null
+  }
+}
