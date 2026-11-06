@@ -399,3 +399,11 @@ def test_review_plans_only_reads_new_messages_and_skips_saved_plans():
     assert "- Renzo se va a disfrazar de Shrek" in client.prompts[0]
     assert len(memoria.plan_texts()) == 1
     assert review_plans(thinker()[0], store) == []  # sin mensajes nuevos, no consulta al modelo
+
+
+def test_json_wrapped_in_a_code_block_is_read():
+    from tama.reflection import parse_json
+
+    assert parse_json('```json\n{"planes": []}\n```') == {"planes": []}
+    assert parse_json("no sé") == {}
+    assert parse_json("[1, 2]") == {}

@@ -173,10 +173,20 @@ class Thinker:
         return "".join(parts).strip()
 
     def json(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
-        try:
-            return json.loads(self.text(system, user, 300, schema))
-        except json.JSONDecodeError:
-            return {}
+        return parse_json(self.text(system, user, 300, schema))
+
+
+def parse_json(text: str) -> dict[str, Any]:
+    """El objeto JSON de una respuesta. Algunos modelos lo envuelven en ```json aunque se les pida
+    un formato: se toma lo que va entre la primera llave y la última."""
+    start, end = text.find("{"), text.rfind("}")
+    if start < 0 or end < start:
+        return {}
+    try:
+        found = json.loads(text[start : end + 1])
+    except json.JSONDecodeError:
+        return {}
+    return found if isinstance(found, dict) else {}
 
 
 def unify_entities(thinker: Thinker) -> list[str]:

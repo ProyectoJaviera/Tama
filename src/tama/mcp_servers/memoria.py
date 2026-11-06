@@ -686,9 +686,9 @@ def with_date(texts: list[str], when: Any) -> list[str]:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan: lo que va a hacer, evento, salud, objeto, gusto) y observations (frases que "
-        "digan de quién hablan, con su nombre, y las fechas como las dijo: se calculan solas). "
-        "Lo puntual con alguien "
+        "plan: lo que va a hacer, también un evento futuro, evento, salud, objeto, gusto) y "
+        "observations (frases que digan de quién hablan, con su nombre, y las fechas como las "
+        "dijo: se calculan solas). Lo puntual con alguien "
         "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
         "entidad con aliases: [nombre]."
     )
