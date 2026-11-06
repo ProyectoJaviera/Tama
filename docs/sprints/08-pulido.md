@@ -66,6 +66,13 @@ Con una memoria de demo aparte (`demo-s8\`): tus datos de `data\` y `memoria\` n
    Sprint 13.)
 7. Al terminar, borra `demo-s8\` si quieres.
 
+## Tras la demo de Renzo (2026-11-06)
+Con "El sábado voy a la playa con Frida" el modelo mandó la misma frase dos veces en un turno:
+como plan y como dato común de Renzo, y quedaron dos datos. Ahora, si en el mismo mensaje llega el
+mismo hecho como plan y como dato común, queda uno solo, como plan y con su fecha (sin regex: se
+compara el texto y el mensaje de origen). La reflexión hace lo mismo con un dato del chat. Eval de
+planes con chequeo de duplicados, 3 rondas en la nube: 7/7 en las tres, sin duplicados.
+
 ## Criterio de cierre
 - Tests y CI en verde.
 - Evals del sprint solo en la nube y sin Claude. Sin regresión en las anteriores.

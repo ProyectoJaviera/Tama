@@ -4,4 +4,4 @@ Generado por `python -m evals.pulido`, con datos ficticios, en la nube y sin Cla
 
 | Capa | Fecha no indicada | Planes | Sugerencias | Avisos imposibles | Planes en la reflexión |
 |---|---|---:|---|---:|---:|
-| nube | ok | 6/6 | ok | 2/2 | 3/3 |
+| nube | ok | 7/7 | ok | 2/2 | 3/3 |
