@@ -171,3 +171,17 @@ def test_pages_fit_a_phone_screen_and_the_app_installs(site, phone):
     phone.wait_for_selector(".assistant:has-text('Hola, Renzo.')")
     scope = phone.evaluate("navigator.serviceWorker.ready.then(r => r.scope)")
     assert scope == url + "/"
+
+
+def test_a_notice_missed_while_asleep_shows_when_the_page_comes_back(site, page):
+    url, _ = site
+    memoria.list_notices()  # crea la base antes de que la página y el test la usen a la vez
+    page.goto(url)
+    page.wait_for_timeout(300)
+    assert page.locator("#banner").is_hidden()
+    # Llega mientras la página estaba suspendida: se guarda, pero no le llega por SSE.
+    memoria.save_notice(memoria.local_now(), "recordatorio", "r1", "tomar agua", "pedido por Renzo")
+    page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    page.wait_for_selector("#banner:has-text('Recordatorio: tomar agua')")
+    assert page.inner_text("#avisos-n") == "(1)"
+    assert page.outside == []

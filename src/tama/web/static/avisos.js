@@ -98,11 +98,28 @@
     setTimeout(() => toast.remove(), 60000);
   }
 
-  const source = new EventSource("/avisos/eventos");
-  source.onmessage = (message) => {
-    notify(JSON.parse(message.data));
+  // En vivo por SSE. El celular suspende la página con la pantalla apagada o en segundo plano, y
+  // un aviso que llega entonces se pierde: al reconectar, al volver a la pantalla y cada minuto
+  // se vuelve a preguntar por lo pendiente (la campana y la franja siempre quedan al día).
+  let source = null;
+  function connect() {
+    source = new EventSource("/avisos/eventos");
+    source.onopen = update;
+    source.onmessage = (message) => {
+      notify(JSON.parse(message.data));
+      update();
+    };
+  }
+  connect();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (source.readyState === EventSource.CLOSED) connect();
     update();
-  };
+  });
+  setInterval(() => {
+    if (document.visibilityState === "visible") update();
+  }, 60000);
 
   document.addEventListener("htmx:confirm", (event) => {
     if (!event.detail.question) return;
