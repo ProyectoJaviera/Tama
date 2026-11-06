@@ -40,7 +40,31 @@ Voz, remoto/PWA, borrar modelos descartados y la calidad del modelo local para c
 - Sin regresión: herramientas, memoria, conversación y reflexión.
 
 ## Pasos de la demo
-(se completan al cierre)
+Con una memoria de demo aparte (`demo-s8\`): tus datos de `data\` y `memoria\` no se tocan.
+
+1. En PowerShell, desde `D:\Estudio\IA\Proyecto_Tama\Tama-s8`, con Ollama abierto:
+   ```powershell
+   $env:TAMA_DATA_DIR="demo-s8\data"; $env:TAMA_MEMORY_DIR="demo-s8\memoria"; $env:TAMA_WORKDIR="demo-s8\trabajo"
+   uv run tama web
+   ```
+   Abre http://127.0.0.1:8765. Al abrir, Tama precarga el modelo local en segundo plano (la CPU
+   sube uno o dos minutos) y lo deja cargado.
+2. Fechas: cuéntale "El 3 de marzo me operaron de la rodilla" y luego "Una vez tuve alergia a la
+   penicilina". Escribe `/memoria historial salud`: la alergia dice "fecha no indicada". Pregunta
+   "cuéntame mi historial médico, en orden": la alergia debe salir sin fecha inventada.
+3. Planes: "El sábado voy a la playa con Ana" y "Me voy a disfrazar de Shrek para la fiesta de la
+   oficina". Escribe `/memoria Renzo`: los dos aparecen como plan, el de la playa "para el 7 de
+   noviembre de 2026" y el de Shrek sin fecha.
+4. `/memoria` lista las fichas. `/memoria Ana` (o `/memoria ana`, o con un error de tipeo) abre
+   la ficha por su nombre. En la pestaña Memoria, un clic en una ficha deja la dirección
+   `/memoria/ficha/Ana`; con más de 20 datos aparecen Anterior y Siguiente.
+5. Avisos: "Avísame cuando empiece a llover": Tama debe decir que no puede y ofrecer un
+   recordatorio a una hora.
+6. Opcional, sin red: cierra Tama (Ctrl+C), escribe `ollama stop qwen3:4b-instruct-2507-q8_0`,
+   desconecta el WiFi y vuelve a abrir con el paso 1. En el chat aparece "Sin internet: preparando
+   el modelo local… (N s)" hasta que esté listo. (El tiempo no se mide en este sprint: va en el
+   Sprint 13.)
+7. Al terminar, borra `demo-s8\` si quieres.
 
 ## Criterio de cierre
 - Tests y CI en verde.
