@@ -398,3 +398,45 @@ def test_plan_on_a_weekday_gets_its_date():
     )
     assert memoria.resolve_dates("Irá el próximo viernes", friday, future=True)[1] == "2026-11-13"
     assert memoria.resolve_dates("Fue el sábado", friday)[1] == ""  # solo en planes
+
+
+def plan_and_fact(first_plan: bool):
+    plan = entity("Ir a la playa con Frida", "plan", "Renzo irá a la playa con Frida este sábado")
+    fact = entity("Renzo", "persona", "Renzo irá a la playa con Frida este sábado")
+    memoria.create_entities([plan, fact] if first_plan else [fact, plan], source=7)
+
+
+@pytest.mark.parametrize("first_plan", [True, False])
+def test_same_plan_sent_twice_in_a_turn_is_saved_once_as_a_plan(first_plan):
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities([entity("Frida", "persona", "Es amiga de Renzo")])
+    plan_and_fact(first_plan)
+    with memoria.connect() as db:
+        rows = db.execute(
+            "SELECT kind, content FROM observations WHERE content LIKE '%playa%'"
+        ).fetchall()
+    assert len(rows) == 1 and rows[0]["kind"] == "plan"
+    assert "este sábado" in rows[0]["content"] and "de 2026" in rows[0]["content"]
+    for name in ("Renzo", "Frida"):
+        assert memoria.open_nodes([name]).count("playa") == 1
+
+
+def test_facts_with_other_dates_are_not_joined():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities(
+        [entity("Renzo", "persona", "Irá al cine el 3 de enero de 2027")], source=3
+    )
+    memoria.create_entities([entity("Cine", "plan", "Irá al cine el 9 de enero de 2027")], source=3)
+    with memoria.connect() as db:
+        assert db.execute("SELECT COUNT(*) FROM observations").fetchone()[0] == 2
+
+
+def test_reflection_plan_turns_the_chat_fact_into_the_plan():
+    memoria.ensure_owner("Renzo")
+    memoria.create_entities(
+        [entity("Renzo", "persona", "Renzo irá a la playa con Frida")], source=5
+    )
+    memoria.save_plans(["Renzo irá a la playa con Frida"], cuando="el sábado", source=5)
+    with memoria.connect() as db:
+        rows = db.execute("SELECT kind FROM observations").fetchall()
+    assert [r["kind"] for r in rows] == ["plan"]

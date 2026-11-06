@@ -20,6 +20,7 @@ import sys
 import tempfile
 import threading
 from datetime import timedelta
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,7 @@ def plan_cases(today) -> list[tuple[str, str | None]]:
     return [
         ("Me voy a disfrazar de Shrek para la fiesta de la oficina.", ""),
         ("El sábado voy a la playa con Ana.", weekday_after(today, 5)),
+        ("El sábado voy a la playa con Frida", weekday_after(today, 5)),  # la demo del S8
         ("El 20 de diciembre voy al concierto de Los Bunkers.", december),
         ("En marzo pienso empezar un curso de cerámica.", f"{year}-03-01"),
         ("Mañana voy a almorzar con mi mamá.", (today + timedelta(days=1)).isoformat()),
@@ -101,17 +103,28 @@ def run_dates(layer: str, offline: bool) -> dict[str, Any]:
     return {"ok": ok, "respuesta": turn["respuesta"], "herramientas": turn["herramientas"]}
 
 
-def saved_plans(settings) -> list[tuple[str, str, str]]:
+def saved_facts(settings) -> list[tuple[str, str, str]]:
     path = settings.data_dir / "memoria.db"
     if not path.exists():
         return []
     db = sqlite3.connect(path)
     try:
         return db.execute(
-            "SELECT content, kind, occurred_at FROM observations WHERE kind = 'plan'"
+            "SELECT content, kind, occurred_at FROM observations WHERE valid = 1"
         ).fetchall()
     finally:
         db.close()
+
+
+def duplicates(facts: list[tuple[str, str, str]]) -> list[str]:
+    """Datos comunes que repiten un plan (el mismo hecho guardado dos veces)."""
+    plans = [memoria.fact_key(f[0])[0] for f in facts if f[1] == "plan"]
+    return [
+        f[0]
+        for f in facts
+        if f[1] != "plan"
+        and any(SequenceMatcher(None, memoria.fact_key(f[0])[0], p).ratio() >= 0.85 for p in plans)
+    ]
 
 
 def run_plans(layer: str, offline: bool) -> dict[str, Any]:
@@ -120,15 +133,21 @@ def run_plans(layer: str, offline: bool) -> dict[str, Any]:
     for text, expected in plan_cases(today):
         settings = fresh_settings("planes")
         turn = one_turn(settings, layer, text, offline)
-        plans = saved_plans(settings)
+        facts = saved_facts(settings)
+        plans = [f for f in facts if f[1] == "plan"]
+        repeated = duplicates(facts)
         if expected is None:
             ok = not plans
         else:
             dated = [p for p in plans if memoria.resolve_dates(p[0], future=True)[1]]
-            ok = bool(plans) and (dated[0][2] == expected if expected else not dated)
+            right_date = dated[0][2] == expected if expected else not dated
+            ok = len(plans) == 1 and right_date and not repeated
         mark = "ok" if ok else "FALLA"
-        print(f"[{layer}] {text} -> {turn['herramientas']} {plans} {mark}", flush=True)
-        results.append({"caso": text, "ok": ok, "planes": plans, "esperado": expected})
+        extra = f" duplicados: {repeated}" if repeated else ""
+        print(f"[{layer}] {text} -> {turn['herramientas']} {plans}{extra} {mark}", flush=True)
+        results.append(
+            {"caso": text, "ok": ok, "planes": plans, "duplicados": repeated, "esperado": expected}
+        )
     return {"correctos": sum(r["ok"] for r in results), "total": len(results), "detalle": results}
 
 

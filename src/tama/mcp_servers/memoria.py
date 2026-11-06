@@ -512,6 +512,34 @@ def same_fact(db: sqlite3.Connection, text: str) -> int | None:
     return None
 
 
+def plan_twin(
+    db: sqlite3.Connection, text: str, source: int | None, plan: bool
+) -> sqlite3.Row | None:
+    """El mismo hecho guardado en el mismo turno, una vez como plan y otra como dato común.
+
+    Pasa cuando el modelo manda la frase en la ficha del plan y también en la de Renzo, y la
+    fecha queda resuelta solo en una ("este sábado" y "este sábado 7 de noviembre"). Solo
+    compara datos del mismo mensaje de Renzo y no junta dos fechas distintas.
+    """
+    if source is None:
+        return None
+    wanted, when, digits = fact_key(text)
+    rows = db.execute(
+        "SELECT id, content, kind, occurred_at FROM observations"
+        " WHERE valid = 1 AND source = ? ORDER BY id",
+        (source,),
+    ).fetchall()
+    for row in rows:
+        if not plan and row["kind"] != "plan":
+            continue
+        current, other_when, other_digits = fact_key(row["content"])
+        close = SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT
+        dates_fit = not when or not other_when or when == other_when
+        if close and dates_fit and digits == other_digits:
+            return row
+    return None
+
+
 def add_obs(
     db: sqlite3.Connection,
     entity_ids: int | set[int],
@@ -532,7 +560,18 @@ def add_obs(
         if not text:
             continue
         repeated = same_fact(db, text)
-        if repeated:
+        twin = None if repeated else plan_twin(db, text, source, plan)
+        if twin:
+            observation_id = twin["id"]
+            if plan and twin["kind"] != "plan":
+                # El mismo hecho ya se guardó en este turno como dato común: pasa a ser el plan,
+                # con su fecha. El texto nuevo dice lo mismo y más (la fecha): nada se pierde.
+                db.execute(
+                    "UPDATE observations SET kind = 'plan', content = ?, occurred_at = ?"
+                    " WHERE id = ?",
+                    (text, when or twin["occurred_at"], twin["id"]),
+                )
+        elif repeated:
             observation_id = repeated
             if plan:
                 db.execute("UPDATE observations SET kind = 'plan' WHERE id = ?", (repeated,))
