@@ -57,24 +57,13 @@ def check_env(settings: Settings, name: str, login: str) -> list[str]:
             f"TAMA_WEB_TAILSCALE_USER dice {allowed}, pero la cuenta de Tailscale es {login}. "
             f"Pon: TAMA_WEB_TAILSCALE_USER={login}"
         )
-    public = settings_public_url()
+    public = settings.ntfy_public_url.strip()
     if name and public and name.lower() not in public.lower():
         problems.append(
             f"TAMA_NTFY_PUBLIC_URL no usa {name}. Pon: "
             f"TAMA_NTFY_PUBLIC_URL=https://{name}:{NTFY_HTTPS_PORT}"
         )
     return problems
-
-
-def settings_public_url() -> str:
-    """TAMA_NTFY_PUBLIC_URL: la lee docker compose, no Tama; aquí solo se revisa."""
-    from dotenv import dotenv_values
-
-    return (
-        os.environ.get("TAMA_NTFY_PUBLIC_URL")
-        or dotenv_values(".env").get("TAMA_NTFY_PUBLIC_URL", "")
-        or ""
-    )
 
 
 def new_topic() -> str:

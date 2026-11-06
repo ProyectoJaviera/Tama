@@ -10,6 +10,10 @@
 {% for s in pending %}<div class="card">{{ s }}</div>{% else %}<p class="muted">Ninguna.</p>{% endfor %}
 <h2>Celular</h2>
 <p class="muted">Avisos por ntfy: {{ ntfy }}</p>
+{% if ntfy_link %}
+<p><a href="{{ ntfy_link }}">Suscribirme en la app ntfy</a>
+  <span class="muted">(ábrelo en el celular, con la app ntfy instalada)</span></p>
+{% endif %}
 <form hx-post="/estado/aviso-prueba" hx-target="#aviso-prueba">
   <button type="submit">Enviar aviso de prueba</button>
   <span id="aviso-prueba" class="muted"></span>

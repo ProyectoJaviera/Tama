@@ -17,6 +17,7 @@ from datetime import date
 from html import escape
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
@@ -580,6 +581,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             tools=tools,
             pending=memoria.pending_list(),
             ntfy=ntfy_state(brain),
+            ntfy_link=ntfy_link(settings),
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
@@ -609,6 +611,15 @@ def preparing_html(brain: Brain) -> str:
         f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
         "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
     )
+
+
+def ntfy_link(settings: Settings) -> str:
+    """Enlace que abre la app ntfy del celular ya suscrita al tópico, en el servidor propio."""
+    public = settings.ntfy_public_url.strip().rstrip("/")
+    topic = settings.ntfy_topic.strip()
+    if not public.startswith("https://") or not topic:
+        return ""
+    return f"ntfy://{public.removeprefix('https://')}/{quote(topic)}"
 
 
 def ntfy_state(brain: Brain) -> str:

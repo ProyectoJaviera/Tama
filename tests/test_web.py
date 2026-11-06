@@ -617,3 +617,12 @@ def test_host_with_trailing_dot_or_capitals_is_the_same(remote):
     login = {"Tailscale-User-Login": "renzo@example.com"}
     upper = TestClient(client.app, base_url=f"https://{TS_HOST.upper()}.")
     assert upper.get("/", headers=login).status_code == 200
+
+
+def test_status_links_the_ntfy_app_to_the_own_server(tmp_path, monkeypatch):
+    from tama.web.app import ntfy_link
+
+    settings = Settings(ntfy_public_url="https://pc.tail1.ts.net:8443/", ntfy_topic="tama-a b")
+    assert ntfy_link(settings) == "ntfy://pc.tail1.ts.net:8443/tama-a%20b"
+    assert ntfy_link(Settings(ntfy_topic="x")) == ""
+    assert ntfy_link(Settings(ntfy_public_url="http://pc:8090", ntfy_topic="x")) == ""

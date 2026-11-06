@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     stale_goal_days: int = 14
     ntfy_url: str = ""
     ntfy_topic: str = ""
+    # Dirección de ntfy que usa el celular (https://<pc>.ts.net:8443): para el enlace de Estado
+    # que suscribe la app ntfy. docker compose la usa también como base-url de ntfy.
+    ntfy_public_url: str = ""
 
     # Interfaz web: solo localhost, salvo que el contenedor necesite escuchar hacia su puerto.
     web_host: str = "127.0.0.1"
