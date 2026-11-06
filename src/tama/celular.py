@@ -45,6 +45,8 @@ def guide(settings: Settings, name: str = "", topic: str = "") -> str:
 1. Tailscale (red privada; no se abre ningún puerto del router)
    - Instala Tailscale en el PC y en el celular, y entra con la misma cuenta en ambos.
    - En la consola de administración de Tailscale (DNS), activa MagicDNS y HTTPS Certificates.
+     Si `tailscale serve` pide activar HTTPS, deja marcado HTTPS certificates y DESMARCA
+     Tailscale Funnel: Funnel publicaría Tama a todo internet.
    - Nombre de este PC en Tailscale: {name}{found}
 
 2. Publicar Tama solo dentro de Tailscale (en PowerShell, en el PC):

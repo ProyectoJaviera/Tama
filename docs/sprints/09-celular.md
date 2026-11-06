@@ -51,7 +51,7 @@ Con una memoria de demo aparte (`demo-s9\`): tus datos no se tocan. Todo en Powe
 
 En el PC:
 1. Instala Tailscale (https://tailscale.com/download/windows) e inicia sesión. En
-   https://login.tailscale.com/admin/dns activa MagicDNS y HTTPS Certificates.
+   https://login.tailscale.com/admin/dns activa MagicDNS y HTTPS Certificates. Si el primer `tailscale serve` pide activar HTTPS, deja marcado HTTPS certificates y desmarca Tailscale Funnel: Funnel publicaría Tama a todo internet.
 2. `uv run tama celular`: muestra el nombre del PC en Tailscale y las líneas para el `.env`. Copia
    a tu `.env` las de `TAMA_WEB_TAILSCALE_HOST`, `TAMA_WEB_TAILSCALE_USER` (tu correo de
    Tailscale), `TAMA_NTFY_URL`, `TAMA_NTFY_TOPIC` y `TAMA_NTFY_PUBLIC_URL`. Si tu celular es un

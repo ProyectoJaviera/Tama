@@ -79,7 +79,7 @@ privada, y `tailscale serve` publica Tama solo dentro de ella, con HTTPS y certi
 `uv run tama celular` muestra estos pasos con los valores de tu PC y propone un tópico de ntfy:
 
 1. Instala Tailscale en el PC y en el celular y entra con la misma cuenta. En la consola de
-   Tailscale (DNS), activa MagicDNS y HTTPS Certificates.
+   Tailscale (DNS), activa MagicDNS y HTTPS Certificates. Si el primer `tailscale serve` pide activar HTTPS, deja marcado HTTPS certificates y desmarca Tailscale Funnel: Funnel publicaría Tama a todo internet.
 2. En el PC (PowerShell):
    ```powershell
    tailscale serve --bg --https=443 http://127.0.0.1:8765
