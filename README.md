@@ -95,11 +95,29 @@ privada, y `tailscale serve` publica Tama solo dentro de ella, con HTTPS y certi
 5. En el celular abre `https://<nombre del PC>`, instálala ("Agregar a la pantalla principal") y,
    en la app ntfy, agrega el servidor `https://<nombre del PC>:8443` y suscríbete al tópico.
 
-Seguridad, mientras no haya login (Sprint 10): solo entran los dispositivos de tu cuenta de
-Tailscale (y, con `TAMA_WEB_TAILSCALE_USER`, solo tu cuenta). Tama sigue escuchando solo en
+Seguridad: solo entran los dispositivos de tu cuenta de Tailscale (y, con
+`TAMA_WEB_TAILSCALE_USER`, solo tu cuenta), y además con tu passkey (ver "Passkey"). Tama sigue escuchando solo en
 127.0.0.1 y acepta el nombre de Tailscale solo si la petición llega por `tailscale serve`; ningún
 puerto queda abierto a internet. Para dejar de publicarla: `tailscale serve reset`. El service
 worker de la app guarda solo la interfaz, nunca conversaciones ni memoria.
+
+### Passkey (entrar desde fuera del PC)
+
+Desde fuera del PC, Tama pide una passkey: la huella, el rostro o el PIN del celular. Todo se
+verifica en el PC, sin servicios externos ni internet. En el PC (127.0.0.1) no hay login.
+
+1. En el PC: Estado > "Generar código para un celular" (o `uv run tama passkey nueva`). El código
+   vale 10 minutos y una sola vez.
+2. En el celular: abre Tama, toca "Registrar esta passkey", escribe el código y confirma con tu
+   huella o PIN. Luego "Entrar con passkey". La sesión dura 30 días (`TAMA_WEB_SESSION_DAYS`).
+3. `uv run tama passkey listar` y `uv run tama passkey revocar <n>` (o Estado, en el PC). Revocar
+   cierra sus sesiones al tiro. Si pierdes el celular: revócala, quita el dispositivo en la
+   consola de Tailscale y registra el nuevo con otro código.
+
+Desde fuera del PC, Tama no usa los archivos del PC ni borra nada para siempre (borrar datos,
+notas u objetivos, `/olvidar`, reemplazar una nota): eso se hace en el PC. Corregir un dato,
+descartar un objetivo o cancelar un recordatorio siguen disponibles, porque conservan el
+historial.
 
 ### Avisos
 
@@ -238,6 +256,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
 | `TAMA_WEB_TAILSCALE_HOST` | (vacío) | Nombre del PC en Tailscale para entrar desde el celular con `tailscale serve` |
 | `TAMA_WEB_TAILSCALE_USER` | (vacío) | Si se indica, solo esa cuenta de Tailscale puede entrar |
+| `TAMA_WEB_LOGIN_REMOTE` | `true` | Pedir passkey a todo lo que llega por Tailscale |
+| `TAMA_WEB_SESSION_DAYS` | `30` | Días que dura una sesión abierta con passkey |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
 | `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
