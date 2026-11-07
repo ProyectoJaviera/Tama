@@ -30,8 +30,9 @@ LOSSY_TOOLS = frozenset(
 BLOCKED = FILE_TOOLS | LOSSY_TOOLS
 # Va en la línea de "herramientas no disponibles" del prompt, solo en remoto.
 NOTICE = (
-    "archivos del PC y borrar para siempre: Renzo escribe desde fuera del PC; si "
-    "los pide, dile que eso lo puede hacer desde el PC, sin buscar otra forma"
+    "archivos del PC y borrar: Renzo escribe desde fuera del PC. Si los pide, dile que eso se "
+    "hace desde el PC; no ofrezcas borrar aquí ni busques otra forma. Sí puedes corregir datos "
+    "y descartar objetivos"
 )
 REFUSAL = (
     "Bloqueado: Renzo escribe desde fuera del PC, y los archivos y lo que borra para siempre solo "

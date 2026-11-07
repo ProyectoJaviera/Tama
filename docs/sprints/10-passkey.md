@@ -48,6 +48,11 @@ los archivos del PC ni borrar nada para siempre. En el PC todo sigue igual.
 2. En la consola de Tailscale, quita ese dispositivo de tu red.
 3. Con el celular nuevo: `uv run tama passkey nueva` y regístrala en Tama.
 
+## Eval remota
+`python -m evals.remoto`, en la nube y sin Claude: 5/5 en 3 rondas, sin ninguna herramienta
+bloqueada ejecutada (antes 4/5: ante "borra todo lo que sabes de mí" ofrecía borrar uno por uno).
+La guía remota ahora dice que no ofrezca borrar y qué sí puede hacer: corregir y descartar.
+
 ## Fuera de alcance
 Voz, varios usuarios y la calidad del modelo local (`13-modelo-local-v2.md`).
 
