@@ -100,6 +100,11 @@ class Settings(BaseSettings):
     # `tailscale serve` (Tailscale-User-Login) y, con web_tailscale_user, solo de esa cuenta.
     web_tailscale_host: str = ""
     web_tailscale_user: str = ""
+    # Desde fuera del PC (por Tailscale) se entra con passkey. En 127.0.0.1 no hay login: WebAuthn
+    # no acepta una IP como sitio, y el PC ya está protegido por la sesión de Windows.
+    web_login_remote: bool = True
+    # Cuánto dura una sesión abierta con passkey en el celular (se puede revocar antes).
+    web_session_days: float = 30.0
     web_confirm_timeout_s: float = 120.0
     # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
     web_turn_limit_s: float = 600.0

@@ -20,12 +20,20 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from tama import agent, chat, commands, history
 from tama import brain as brain_module
+from tama.auth import CODE_MINUTES, Access, AuthError
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.config import Settings
@@ -54,6 +62,11 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 # porque Tama solo escucha en 127.0.0.1.
 TAILSCALE_USER = "tailscale-user-login"
 END = object()
+SESSION_COOKIE = "tama_sesion"
+# Sin datos: se sirven sin sesión también desde fuera del PC.
+PUBLIC_PATHS = ("/sw.js", "/manifest.webmanifest", "/entrar", "/registrar")
+PUBLIC_PREFIXES = ("/static/", "/auth/")
+REMOTE_FORGET = "Olvidar para siempre solo se puede desde el PC."
 
 
 class Turn:
@@ -80,11 +93,24 @@ class Turn:
         return answer is True
 
 
-def stream_turn(brain: Brain, session: "Session", turn: Turn, text: str, turn_id: str = "") -> None:
+def stream_turn(
+    brain: Brain,
+    session: "Session",
+    turn: Turn,
+    text: str,
+    turn_id: str = "",
+    remote: bool = False,
+) -> None:
     answered: Answered | None = None
     try:
         for event in chat.run_turn(
-            brain, session.messages, text, session.max_tokens, session.max_tools, turn.confirm
+            brain,
+            session.messages,
+            text,
+            session.max_tokens,
+            session.max_tools,
+            turn.confirm,
+            remote,
         ):
             if isinstance(event, Text):
                 turn.send("text", text=chat.without_emojis(event.text))
@@ -146,7 +172,7 @@ class Session:
         with self._guard:
             return time.monotonic() - self._current[1] if self._current else 0.0
 
-    def start(self, text: str) -> str | None:
+    def start(self, text: str, remote: bool = False) -> str | None:
         """Lanza un turno; devuelve su id, o None si ya hay uno en curso."""
         with self._guard:
             now = time.monotonic()
@@ -158,7 +184,9 @@ class Session:
             self.brain.reflector.activity()
         turn = self.turns[turn_id] = Turn(self.timeout_s)
         threading.Thread(
-            target=stream_turn, args=(self.brain, self, turn, text, turn_id), daemon=True
+            target=stream_turn,
+            args=(self.brain, self, turn, text, turn_id, remote),
+            daemon=True,
         ).start()
         return turn_id
 
@@ -194,6 +222,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     csrf = secrets.token_urlsafe(32)
     session = Session(brain, settings)
     app.state.session = session
+    access = Access(settings.data_dir / "acceso.db")
+    app.state.access = access
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
     @app.middleware("http")
@@ -206,6 +236,18 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             # El detalle (con lo esperado) va solo a la consola del PC, no a quien pregunta.
             print(f"Tama rechazó una conexión: {detail}", file=sys.stderr, flush=True)
             return PlainTextResponse(message, status_code=403)
+        # Desde fuera del PC hace falta una sesión abierta con passkey (Sprint 10), salvo para
+        # lo que no tiene datos: la interfaz, la PWA y las páginas para entrar.
+        request.state.remote = is_remote(request)
+        if (
+            request.state.remote
+            and settings.web_login_remote
+            and not is_public(request.url.path)
+            and not access.valid_session(request.cookies.get(SESSION_COOKIE, ""))
+        ):
+            if request.method == "GET" and "text/html" in request.headers.get("accept", ""):
+                return RedirectResponse("/entrar", status_code=303)
+            return PlainTextResponse("Inicia sesión con tu passkey en /entrar.", status_code=401)
         return await call_next(request)
 
     @app.get("/sw.js")
@@ -230,6 +272,112 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     def page(request: Request, name: str, **context: Any) -> HTMLResponse:
         context = {"csrf": csrf, "v": STATIC_VERSION, **context}
         return templates.TemplateResponse(request, name, context)
+
+    def remote(request: Request) -> bool:
+        return getattr(request.state, "remote", False)
+
+    def local_only(request: Request) -> None:
+        if remote(request):
+            raise HTTPException(status_code=403, detail="Eso solo se puede hacer desde el PC.")
+
+    def origin_of(request: Request) -> tuple[str, str]:
+        """RP ID y origen de WebAuthn: el nombre con que el celular abrió Tama."""
+        host = request.headers.get("host", "")
+        proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+        return host.rsplit(":", 1)[0].lower(), f"{proto}://{host}"
+
+    @app.get("/entrar", response_class=HTMLResponse)
+    def login_page(request: Request) -> HTMLResponse:
+        return page(request, "entrar.html")
+
+    @app.get("/registrar", response_class=HTMLResponse)
+    def register_page(request: Request) -> HTMLResponse:
+        return page(request, "registrar.html")
+
+    @app.post("/auth/entrar/opciones")
+    async def login_options(request: Request) -> Response:
+        rp_id, _ = origin_of(request)
+        try:
+            flow, options = access.login_options(rp_id)
+        except AuthError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse({"flow": flow, "options": json.loads(options)})
+
+    @app.post("/auth/entrar")
+    async def login(request: Request) -> Response:
+        data = await request.json()
+        rp_id, origin = origin_of(request)
+        try:
+            token = access.login(
+                str(data.get("flow", "")),
+                data.get("credential") or {},
+                rp_id,
+                origin,
+                settings.web_session_days,
+            )
+        except AuthError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        response = JSONResponse({"ok": True})
+        response.set_cookie(
+            SESSION_COOKIE,
+            token,
+            max_age=int(settings.web_session_days * 86400),
+            httponly=True,
+            secure=origin.startswith("https://"),
+            samesite="strict",
+            path="/",
+        )
+        return response
+
+    @app.post("/auth/registrar/opciones")
+    async def register_options(request: Request) -> Response:
+        data = await request.json()
+        rp_id, _ = origin_of(request)
+        try:
+            flow, options = access.registration_options(rp_id, str(data.get("code", "")))
+        except AuthError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse({"flow": flow, "options": json.loads(options)})
+
+    @app.post("/auth/registrar")
+    async def register(request: Request) -> Response:
+        data = await request.json()
+        rp_id, origin = origin_of(request)
+        try:
+            key = access.register(
+                str(data.get("flow", "")),
+                data.get("credential") or {},
+                rp_id,
+                origin,
+                str(data.get("name", "")),
+                str(data.get("code", "")),
+            )
+        except AuthError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=400)
+        return JSONResponse({"ok": True, "name": key.name})
+
+    @app.post("/auth/salir", dependencies=[Depends(check_csrf)])
+    def logout(request: Request) -> Response:
+        access.logout(request.cookies.get(SESSION_COOKIE, ""))
+        # Desde HTMX la página entera debe ir a /entrar, no solo el botón.
+        response = Response(status_code=204, headers={"HX-Redirect": "/entrar"})
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        return response
+
+    @app.post("/acceso/codigo", dependencies=[Depends(check_csrf), Depends(local_only)])
+    def new_code() -> HTMLResponse:
+        code = access.new_code()
+        return HTMLResponse(
+            f"Código: <strong>{code[:4]} {code[4:]}</strong> (vale {CODE_MINUTES} minutos, una "
+            'vez). En el celular abre Tama y toca "Registrar esta passkey".'
+        )
+
+    @app.post(
+        "/acceso/revocar/{passkey_id}", dependencies=[Depends(check_csrf), Depends(local_only)]
+    )
+    def revoke(request: Request, passkey_id: int) -> HTMLResponse:
+        access.revoke(passkey_id)
+        return page(request, "passkeys.html", passkeys=access.passkeys())
 
     def chat_history() -> list[tuple[str, str]]:
         """La conversación, con los comandos y los avisos, tal como se vio."""
@@ -273,12 +421,14 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(text: str = Form(...)) -> dict[str, Any]:
+    def send(request: Request, text: str = Form(...)) -> dict[str, Any]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
         if text.startswith("/"):
             command = commands.canonical(text)
+            if command.startswith("/olvidar") and remote(request):
+                return answer_command(text, REMOTE_FORGET)
             if command.startswith("/olvidar"):
                 preview, arguments = commands.forget_preview(brain, command[8:].strip())
                 if arguments is None:
@@ -296,7 +446,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 ]
                 return answer_command(text, preview, choices=choices)
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
-        turn_id = session.start(text)
+        turn_id = session.start(text, remote(request))
         if turn_id is None:
             waited = int(session.running_for())
             raise HTTPException(
@@ -409,6 +559,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
 
     @app.post("/memoria/ficha/{entity_id}/olvidar/{fact}", dependencies=[Depends(check_csrf)])
     def forget_fact(request: Request, entity_id: int, fact: int) -> HTMLResponse:
+        if remote(request):
+            return HTMLResponse(f"<p>{REMOTE_FORGET}</p>", status_code=403)
         memoria.forget_memory([], [fact])
         return show_card(request, entity_id)
 
@@ -584,6 +736,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             ntfy_link=ntfy_link(settings),
             ntfy_server=settings.ntfy_public_url.strip().rstrip("/") if ntfy_link(settings) else "",
             ntfy_topic=settings.ntfy_topic.strip(),
+            local=not remote(request),
+            passkeys=access.passkeys(),
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
@@ -631,6 +785,16 @@ def ntfy_state(brain: Brain) -> str:
     if engine.ntfy_error:
         return f"falló el último envío: {engine.ntfy_error}"
     return f"activos, a {engine.ntfy_url}"
+
+
+def is_remote(request: Request) -> bool:
+    """Llega por `tailscale serve` (trae su cabecera) o con un nombre que no es el del PC."""
+    host = request.headers.get("host", "").rsplit(":", 1)[0].lower()
+    return bool(request.headers.get(TAILSCALE_USER)) or host not in LOCAL_HOSTS
+
+
+def is_public(path: str) -> bool:
+    return path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES)
 
 
 def rejection(request: Request, settings: Settings) -> tuple[str, str] | None:

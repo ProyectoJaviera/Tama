@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tama: registrar passkey</title>
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}">
+  <meta name="theme-color" content="#2f6b5e">
+</head>
+<body>
+  <main>
+    <h2>Registrar esta passkey</h2>
+    <p>En el PC, abre Tama en Estado y toca "Generar código para un celular" (o escribe
+      <code>uv run tama passkey nueva</code>). El código vale 10 minutos y una sola vez.</p>
+    <form id="alta" class="row">
+      <input id="codigo" inputmode="numeric" autocomplete="one-time-code" placeholder="Código del PC" aria-label="Código del PC" required>
+      <input id="nombre" placeholder="Nombre (p. ej. Samsung de Renzo)" aria-label="Nombre de la passkey">
+      <button type="submit">Registrar</button>
+    </form>
+    <p id="estado" class="muted" aria-live="polite"></p>
+    <p class="muted"><a href="/entrar">Volver a entrar</a></p>
+  </main>
+  <script src="/static/passkey.js?v={{ v }}"></script>
+  <script>
+    document.getElementById("alta").onsubmit = (event) => {
+      event.preventDefault();
+      tamaPasskey.registrar(
+        document.getElementById("codigo").value,
+        document.getElementById("nombre").value,
+      );
+    };
+  </script>
+</body>
+</html>

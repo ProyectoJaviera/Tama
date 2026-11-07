@@ -35,4 +35,17 @@
   <button type="submit">Enviar aviso de prueba</button>
   <span id="aviso-prueba" class="muted"></span>
 </form>
+<h2>Acceso desde fuera del PC</h2>
+{% if local %}
+<p class="muted">Desde el celular se entra con passkey. Para registrar un dispositivo, genera un
+  código y escríbelo en Tama, en el celular, en "Registrar esta passkey".</p>
+<form hx-post="/acceso/codigo" hx-target="#codigo-alta">
+  <button type="submit">Generar código para un celular</button>
+  <span id="codigo-alta"></span>
+</form>
+{% include "passkeys.html" %}
+{% else %}
+<p class="muted">Entraste con passkey. Las passkeys se registran y revocan desde el PC.</p>
+<button type="button" class="plain" hx-post="/auth/salir">Cerrar sesión en este dispositivo</button>
+{% endif %}
 {% endblock %}

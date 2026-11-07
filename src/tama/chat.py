@@ -11,6 +11,7 @@ from tama.brain import Brain
 from tama.cascade import Answered, Switch
 from tama.mcp_servers import memoria, notas
 from tama.providers import Error, Message, Text, ToolCall
+from tama.remote import RemoteTools
 
 EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
 
@@ -122,17 +123,23 @@ def run_turn(
     max_tokens: int,
     max_tools: int,
     confirm: agent.Confirm,
+    remote: bool = False,
 ) -> Iterator[agent.AgentEvent]:
-    """Corre un turno completo; si falla, el historial queda como estaba."""
+    """Corre un turno completo; si falla, el historial queda como estaba.
+
+    Con `remote` (Renzo entra desde fuera del PC), las herramientas de archivos y las que borran
+    para siempre quedan fuera de la vista del modelo y bloqueadas (ver remote.py).
+    """
     messages.append({"role": "user", "content": text})
     event_id = brain.store.log("user_msg", text)
     if brain.tools is not None:
         brain.tools.current_event = event_id
+    tools = RemoteTools(brain.tools) if remote and brain.tools is not None else brain.tools
     answered: Answered | None = None
     for event in whole_words(
         agent.run_turn(
             brain.cascade,
-            brain.tools,
+            tools,
             history.trim(messages, max_tokens),
             confirm,
             max_tools,

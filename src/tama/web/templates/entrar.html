@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tama: entrar</title>
+  <link rel="stylesheet" href="/static/style.css?v={{ v }}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#2f6b5e">
+  <link rel="apple-touch-icon" href="/static/icono-apple-180.png">
+</head>
+<body>
+  <main>
+    <h2>Entrar a Tama</h2>
+    <p>Desde fuera del PC, Tama pide tu passkey (huella, rostro o el PIN del celular).</p>
+    <p><button type="button" id="entrar">Entrar con passkey</button></p>
+    <p id="estado" class="muted" aria-live="polite"></p>
+    <p class="muted">¿Primera vez en este dispositivo? <a href="/registrar">Registrar esta
+      passkey</a> con un código del PC.</p>
+  </main>
+  <script src="/static/passkey.js?v={{ v }}"></script>
+  <script>document.getElementById("entrar").onclick = () => tamaPasskey.entrar();</script>
+</body>
+</html>

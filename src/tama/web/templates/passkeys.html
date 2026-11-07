@@ -1,0 +1,11 @@
+<div id="passkeys">
+  {% for p in passkeys %}
+  <div class="row">
+    <span>{{ p.name }} <span class="muted">· desde {{ p.created_at[:10] }}{% if p.last_used %} · usada {{ p.last_used[:16]|replace("T", " ") }}{% endif %}</span></span>
+    <button type="button" class="plain" hx-post="/acceso/revocar/{{ p.id }}" hx-target="#passkeys" hx-swap="outerHTML"
+      hx-confirm="¿Revoco «{{ p.name }}»? Ese dispositivo ya no podrá entrar.">Revocar</button>
+  </div>
+  {% else %}
+  <p class="muted">Todavía no hay passkeys.</p>
+  {% endfor %}
+</div>
