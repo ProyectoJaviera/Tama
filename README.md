@@ -119,6 +119,22 @@ notas u objetivos, `/olvidar`): eso se hace en el PC. Corregir un dato, editar u
 la versión anterior), descartar un objetivo o cancelar un recordatorio siguen disponibles,
 porque conservan el historial.
 
+### Voz
+
+Mantén apretado "Hablar" en el chat (también en el celular) y suelta para enviar. Con "Leer
+respuestas en voz alta", Tama contesta con voz. Escucha con whisper.cpp en el PC (sin GPU) y habla
+con ElevenLabs si hay API key, o con Piper en el PC sin internet o si se pasa el tope del mes.
+
+1. Modelos (una vez, con internet): `uv run python scripts/descargar_voz.py`.
+2. ElevenLabs (opcional): en tu `.env`, `ELEVENLABS_API_KEY=<tu key>` (elevenlabs.io > Developers
+   > API Keys). Luego crea la voz de Tama con `uv run tama voz disenar` (o elige una con
+   `uv run tama voz listar`) y pega en el `.env` la línea `TAMA_ELEVENLABS_VOICE_ID=...` que
+   muestra. Reinicia Tama.
+3. `uv run tama voz probar` dice una frase con la voz activa. Estado muestra la voz activa y los
+   caracteres usados del mes (`TAMA_ELEVENLABS_MONTHLY_CHARS`, 10.000 por defecto).
+
+`uv run tama voz clonar <wav>` existe solo para tu propia voz o la de alguien que te dio permiso.
+
 ### Avisos
 
 Tama recuerda y sugiere por su cuenta, sin molestar: nada de 22:00 a 8:00 (salvo urgentes), hasta 3
@@ -258,6 +274,10 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_WEB_TAILSCALE_USER` | (vacío) | Si se indica, solo esa cuenta de Tailscale puede entrar |
 | `TAMA_WEB_LOGIN_REMOTE` | `true` | Pedir passkey a todo lo que llega por Tailscale |
 | `TAMA_WEB_SESSION_DAYS` | `30` | Días que dura una sesión abierta con passkey |
+| `ELEVENLABS_API_KEY` | (vacío) | Key de ElevenLabs; sin ella habla Piper |
+| `TAMA_ELEVENLABS_VOICE_ID` | (vacío) | Voz de ElevenLabs (de `tama voz disenar` o `listar`) |
+| `TAMA_ELEVENLABS_MONTHLY_CHARS` | `10000` | Tope de caracteres por mes en ElevenLabs |
+| `TAMA_WHISPER_MODEL` | `ggml-base-q5_1.bin` | Modelo de whisper.cpp en `models/voz` |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
 | `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |

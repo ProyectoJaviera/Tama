@@ -137,15 +137,17 @@ class Speech:
     provider: str
 
 
-def piper_config(model: Path) -> Path:
+def piper_config(model: Path, cache_dir: Path | None = None) -> Path:
     """Las voces v1.0.0 traen "PhonemeType.ESPEAK"; Piper 1.8 espera "espeak". Se deja una copia
-    corregida al lado (el archivo descargado no se toca, así su hash sigue valiendo)."""
+    corregida en `cache_dir` (la carpeta de datos): el archivo descargado no se toca, así su hash
+    sigue valiendo y la carpeta de modelos puede ir de solo lectura (Docker)."""
     original = Path(f"{model}.json")
     data = json.loads(original.read_text(encoding="utf-8"))
     kind = str(data.get("phoneme_type", ""))
     if not kind.startswith("PhonemeType."):
         return original
-    fixed = model.with_suffix(".tama.json")
+    fixed = (cache_dir or model.parent) / f"{model.stem}.tama.json"
+    fixed.parent.mkdir(parents=True, exist_ok=True)
     data["phoneme_type"] = kind.split(".", 1)[1].lower()
     if not fixed.exists() or json.loads(fixed.read_text(encoding="utf-8")) != data:
         fixed.write_text(json.dumps(data), encoding="utf-8")
@@ -155,8 +157,9 @@ def piper_config(model: Path) -> Path:
 class PiperSpeaker:
     name = "piper"
 
-    def __init__(self, model_path: Path) -> None:
+    def __init__(self, model_path: Path, cache_dir: Path | None = None) -> None:
         self.model_path = model_path
+        self.cache_dir = cache_dir
         self._voice = None
         self._lock = threading.Lock()
 
@@ -169,7 +172,7 @@ class PiperSpeaker:
             from piper import PiperVoice
 
             self._voice = PiperVoice.load(
-                str(self.model_path), config_path=str(piper_config(self.model_path))
+                str(self.model_path), config_path=str(piper_config(self.model_path, self.cache_dir))
             )
 
     def warm(self) -> None:
@@ -316,7 +319,7 @@ def build(settings: Any, online: Callable[[], bool] = lambda: True) -> Voice:
             settings.elevenlabs_timeout_s,
         )
     return Voice(
-        PiperSpeaker(folder / settings.piper_voice),
+        PiperSpeaker(folder / settings.piper_voice, Path(settings.data_dir)),
         Usage(Path(settings.data_dir) / "voz.db"),
         eleven,
         settings.elevenlabs_monthly_chars,

@@ -155,7 +155,8 @@ def test_old_piper_configs_are_read_without_touching_the_download(tmp_path):
     model = tmp_path / "voz.onnx"
     original = tmp_path / "voz.onnx.json"
     original.write_text(json.dumps({"phoneme_type": "PhonemeType.ESPEAK"}), encoding="utf-8")
-    fixed = piper_config(model)
+    fixed = piper_config(model, tmp_path / "datos")
+    assert fixed.parent == tmp_path / "datos"
     assert json.loads(fixed.read_text(encoding="utf-8"))["phoneme_type"] == "espeak"
     assert "PhonemeType" in original.read_text(encoding="utf-8")
 

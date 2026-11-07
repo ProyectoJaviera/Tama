@@ -20,6 +20,7 @@ services:
       TAMA_THINK: ${TAMA_THINK:-false}
       TAMA_WEB_HOST: 0.0.0.0
       TAMA_WEB_PORT: ${TAMA_WEB_PORT:-8765}
+      TAMA_VOICE_MODELS_DIR: /modelos/voz
     # En Linux host.docker.internal no existe por defecto.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -29,6 +30,8 @@ services:
       - tama-memoria:/memoria
       # Carpeta de trabajo para el servidor de archivos: la de Renzo en el host.
       - ${TAMA_WORKDIR_HOST:-./trabajo}:/trabajo
+      # Modelos de voz (whisper y Piper), descargados en el host con scripts/descargar_voz.py.
+      - ./models/voz:/modelos/voz:ro
     # Solo en localhost: Tama no queda a la vista de la red. Se abre con `docker compose run
     # --service-ports tama web`. Dentro del contenedor debe escuchar en todas sus interfaces.
     ports:

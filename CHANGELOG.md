@@ -6,6 +6,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 11 (voz): escuchar con whisper.cpp en CPU y hablar con ElevenLabs (flash) → Piper local,
+  con tope mensual de caracteres y cortacircuitos; botón "Hablar" y lectura en voz alta en la web y
+  el celular; Estado con la voz activa. Modelos descargados una vez con hash fijo
+  (`scripts/descargar_voz.py`). `tama voz disenar/listar/clonar/probar`.
 - Sprint 10 (passkey): desde fuera del PC se entra con passkey (WebAuthn con `webauthn` 2.7.0,
   todo local, sin internet). Alta solo con un código de un solo uso del PC (`tama passkey nueva`
   o Estado); `tama passkey listar` y `revocar`. Sesión con cookie HttpOnly, Secure y
