@@ -582,6 +582,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             pending=memoria.pending_list(),
             ntfy=ntfy_state(brain),
             ntfy_link=ntfy_link(settings),
+            ntfy_server=settings.ntfy_public_url.strip().rstrip("/") if ntfy_link(settings) else "",
+            ntfy_topic=settings.ntfy_topic.strip(),
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])

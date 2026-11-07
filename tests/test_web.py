@@ -626,3 +626,19 @@ def test_status_links_the_ntfy_app_to_the_own_server(tmp_path, monkeypatch):
     assert ntfy_link(settings) == "ntfy://pc.tail1.ts.net:8443/tama-a%20b"
     assert ntfy_link(Settings(ntfy_topic="x")) == ""
     assert ntfy_link(Settings(ntfy_public_url="http://pc:8090", ntfy_topic="x")) == ""
+
+
+def test_status_shows_server_and_topic_to_copy(tmp_path, monkeypatch):
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        memory_dir=tmp_path / "memoria",
+        ntfy_public_url="https://pc.tail1.ts.net:8443",
+        ntfy_topic="tama-secreto",
+    )
+    cascade = Cascade([Layer(Provider())], FakeConnectivity())
+    brain = Brain(cascade, EventStore(tmp_path / "data" / "events.db"), None, tools=Tools())
+    page = TestClient(create_app(brain, settings), base_url="http://127.0.0.1").get("/estado").text
+    assert 'value="https://pc.tail1.ts.net:8443"' in page and 'value="tama-secreto"' in page
+    assert "Usar otro servidor" in page
