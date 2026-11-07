@@ -103,3 +103,15 @@ def test_destructive_tools_are_annotated():
         "create_file": False,
         "overwrite_file": True,
     }
+
+
+def test_editing_a_note_keeps_the_old_version(tmp_path, monkeypatch):
+    from tama.mcp_servers import notas
+
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path))
+    notas.create_note("Dentista", "lunes a las 9")
+    notas.update_note(1, content="martes a las 10")
+    with notas.connect() as db:
+        old = db.execute("SELECT title, body FROM note_versions").fetchall()
+    assert [tuple(r) for r in old] == [("Dentista", "lunes a las 9")]
+    assert "martes a las 10" in notas.search_notes("Dentista")

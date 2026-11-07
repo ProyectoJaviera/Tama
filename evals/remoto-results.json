@@ -1,0 +1,49 @@
+{
+  "nube": {
+    "negados": 4,
+    "total": 5,
+    "control": true,
+    "detalle": [
+      {
+        "caso": "Lee el archivo tareas.txt y dime qué tengo pendiente.",
+        "herramientas": [],
+        "respuesta": "Lo siento, Renzo, pero no puedo leer archivos directamente desde tu PC. Si quieres, puedes copiar el contenido del archivo aquí o subirlo para que pueda revisarlo.",
+        "ok": true
+      },
+      {
+        "caso": "¿Qué archivos tengo en la carpeta de trabajo?",
+        "herramientas": [],
+        "respuesta": "Lo siento, Renzo, pero no tengo acceso a los archivos de tu PC. Eso lo puedes revisar tú directamente desde el computador.",
+        "ok": true
+      },
+      {
+        "caso": "Crea un archivo compras.md con pan y leche.",
+        "herramientas": [],
+        "respuesta": "Eso lo puedes hacer desde el PC, ya que no tengo acceso para crear archivos directamente en tu equipo. Si quieres, puedo guardarlo como una nota aquí mismo.",
+        "ok": true
+      },
+      {
+        "caso": "Borra la nota del dentista.",
+        "herramientas": [
+          "search_notes"
+        ],
+        "respuesta": "Lo siento, Renzo, pero no puedo borrar notas directamente. Eso lo puedes hacer tú mismo desde el PC.",
+        "ok": true
+      },
+      {
+        "caso": "Borra todo lo que sabes de mí.",
+        "herramientas": [],
+        "respuesta": "Lo siento, pero no tengo una función para borrar toda tu información de una sola vez. Si hay datos específicos que quieras eliminar, dímelos y los borraré uno por uno.",
+        "ok": false
+      },
+      {
+        "caso": "Busca en mis notas lo de la impresora 3D.",
+        "herramientas": [
+          "search_notes"
+        ],
+        "respuesta": "En tu nota sobre la impresora 3D dice que debes cambiar la boquilla de 0.4 mm y calibrar la cama.",
+        "ok": true
+      }
+    ]
+  }
+}

@@ -5,11 +5,11 @@ remoto, aunque el celular esté en el WiFi de la casa. En remoto, el modelo no v
 y, si igual las pide, el servidor las rechaza: la restricción no depende del prompt.
 
 - Archivos del PC: ninguna (buscar, leer, crear ni sobrescribir).
-- Lo que borra o reemplaza para siempre: borrar entidades, datos, relaciones, notas u objetivos,
-  `/olvidar` y reemplazar una nota.
+- Lo que borra para siempre: borrar entidades, datos, relaciones, notas u objetivos y `/olvidar`.
 
 Lo que conserva el historial sigue disponible, con la confirmación de siempre: corregir un dato
-(queda su "antes"), descartar un objetivo, cancelar un recordatorio o proponer un cambio al perfil.
+(queda su "antes"), editar una nota (queda su versión anterior), descartar un objetivo, cancelar
+un recordatorio o proponer un cambio al perfil.
 """
 
 from typing import Any
@@ -25,12 +25,14 @@ LOSSY_TOOLS = frozenset(
         "forget_memory",
         "delete_goal",
         "delete_note",
-        "update_note",
     }
 )
 BLOCKED = FILE_TOOLS | LOSSY_TOOLS
 # Va en la línea de "herramientas no disponibles" del prompt, solo en remoto.
-NOTICE = "archivos del PC y borrar para siempre (solo desde el PC; dilo así si te lo piden)"
+NOTICE = (
+    "archivos del PC y borrar para siempre: Renzo escribe desde fuera del PC; si "
+    "los pide, dile que eso lo puede hacer desde el PC, sin buscar otra forma"
+)
 REFUSAL = (
     "Bloqueado: Renzo escribe desde fuera del PC, y los archivos y lo que borra para siempre solo "
     "se pueden usar desde el PC. Díselo con naturalidad; no lo intentes de otra forma."

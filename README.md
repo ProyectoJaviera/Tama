@@ -115,9 +115,9 @@ verifica en el PC, sin servicios externos ni internet. En el PC (127.0.0.1) no h
    consola de Tailscale y registra el nuevo con otro código.
 
 Desde fuera del PC, Tama no usa los archivos del PC ni borra nada para siempre (borrar datos,
-notas u objetivos, `/olvidar`, reemplazar una nota): eso se hace en el PC. Corregir un dato,
-descartar un objetivo o cancelar un recordatorio siguen disponibles, porque conservan el
-historial.
+notas u objetivos, `/olvidar`): eso se hace en el PC. Corregir un dato, editar una nota (guarda
+la versión anterior), descartar un objetivo o cancelar un recordatorio siguen disponibles,
+porque conservan el historial.
 
 ### Avisos
 

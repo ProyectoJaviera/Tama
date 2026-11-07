@@ -21,12 +21,11 @@ los archivos del PC ni borrar nada para siempre. En el PC todo sigue igual.
    lo que llega por Tailscale es remoto, aunque el celular esté en el WiFi de la casa. En remoto,
    el modelo no ve estas herramientas y el servidor las rechaza si igual las pide:
    - Archivos del PC: `find_files`, `read_file`, `create_file`, `overwrite_file`.
-   - Lo que borra o reemplaza para siempre: `delete_entities`, `delete_observations`,
-     `delete_relations`, `forget_memory` (`/olvidar` y "Olvidar" en la ficha), `delete_goal`,
-     `delete_note` y `update_note`.
+   - Lo que borra para siempre: `delete_entities`, `delete_observations`, `delete_relations`,
+     `forget_memory` (`/olvidar` y "Olvidar" en la ficha), `delete_goal` y `delete_note`.
    Lo que conserva el historial sigue disponible, con la confirmación de siempre: corregir un dato
-   (queda su "antes"), descartar un objetivo, cancelar un recordatorio y proponer un cambio al
-   perfil. Tama lo dice con naturalidad: el modelo recibe "solo desde el PC" en la línea de
+   (queda su "antes"), editar una nota (ahora guarda la versión anterior), descartar un objetivo,
+   cancelar un recordatorio y proponer un cambio al perfil. Tama lo dice con naturalidad: el modelo recibe "solo desde el PC" en la línea de
    herramientas no disponibles, sin otra regla en el prompt.
 5. 127.0.0.1 en el PC sigue sin login, como hasta ahora. Pedir passkey en el PC no es posible:
    WebAuthn no acepta una IP como sitio, y el PC ya está protegido por la sesión de Windows. Fuera
@@ -39,7 +38,9 @@ los archivos del PC ni borrar nada para siempre. En el PC todo sigue igual.
 - Bloquear y no pedir confirmación en el PC: una confirmación remota no protege si alguien tiene el
   celular desbloqueado, y borrar para siempre es justo lo que no se puede deshacer. Las acciones
   que conservan historial no pierden datos, así que pueden seguir con su confirmación.
-- `update_note` queda fuera porque reemplaza el texto anterior sin guardarlo.
+- Editar una nota reemplazaba el texto sin guardarlo; ahora guarda la versión anterior
+  (`note_versions`), así que no pierde datos y sigue disponible desde fuera. En la eval, cuando
+  estaba bloqueada, el modelo creaba otra nota y decía "actualicé": era peor que permitirla.
 
 ## Recuperación si pierdes el celular
 1. En el PC: `uv run tama passkey listar` y `uv run tama passkey revocar <n>` (o Estado > Revocar).

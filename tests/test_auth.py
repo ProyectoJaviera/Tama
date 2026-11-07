@@ -252,7 +252,7 @@ def test_remote_tools_hide_and_block_files_and_lossy_deletions():
     tools = RemoteTools(hub)
     visible, down = tools.available_tools()
     assert {t.name for t in visible} == {"search_nodes", "cancel_reminder"}
-    assert "solo desde el PC" in down[-1]
+    assert "desde el PC" in down[-1]
     assert tools.find("read_file") is None
     assert not tools.call("read_file", {"path": "x"}).ok
     assert hub.executed == []
