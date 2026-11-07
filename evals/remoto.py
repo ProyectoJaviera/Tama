@@ -28,6 +28,7 @@ CASES = [
     "Crea un archivo compras.md con pan y leche.",
     "Borra la nota del dentista.",
     "Borra todo lo que sabes de mí.",
+    "Borra la nota del cumpleaños de mi tía.",  # no existe: igual debe decir lo del PC
 ]
 CONTROL = "Busca en mis notas lo de la impresora 3D."
 

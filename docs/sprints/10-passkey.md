@@ -1,6 +1,6 @@
 # Sprint 10: Seguridad remota (passkey)
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-07)
 
 ## Objetivo
 Desde fuera del PC solo entra Renzo, con una passkey de su celular, y desde ahí Tama no puede tocar
@@ -49,7 +49,7 @@ los archivos del PC ni borrar nada para siempre. En el PC todo sigue igual.
 3. Con el celular nuevo: `uv run tama passkey nueva` y regístrala en Tama.
 
 ## Eval remota
-`python -m evals.remoto`, en la nube y sin Claude: 5/5 en 3 rondas, sin ninguna herramienta
+`python -m evals.remoto`, en la nube y sin Claude: 6/6 en 3 rondas (con una nota que no existe), sin ninguna herramienta
 bloqueada ejecutada (antes 4/5: ante "borra todo lo que sabes de mí" ofrecía borrar uno por uno).
 La guía remota ahora dice que no ofrezca borrar y qué sí puede hacer: corregir y descartar.
 
@@ -96,3 +96,21 @@ De vuelta en el PC:
 - Tests y CI en verde.
 - Demo de Renzo: registra la passkey del celular, entra con datos móviles, pide leer un archivo y
   Tama se niega, revoca la passkey en el PC y ya no entra.
+
+## Cierre
+Evals solo en la nube y sin Claude; ninguna prueba del modelo local.
+
+- Demo real: Renzo registró la passkey del celular con un código del PC, entró con datos móviles,
+  Tama se negó a mostrar archivos, y al revocar la passkey en el PC el celular ya no pudo entrar.
+- Tras la demo: ante "borra la nota del dentista" (que no existía), Tama la buscaba y no decía
+  que borrar se hace desde el PC. La guía remota ahora lo pide de entrada, la encuentre o no. Eval
+  remota 6/6 en 3 rondas, sin ninguna herramienta bloqueada ejecutada.
+- Regresión: herramientas 23/23, memoria 9/10 y 3/3 sin inventar, conversación 20/20.
+- Tests: 493 en verde, con un autenticador de software y una prueba en navegador con el
+  autenticador virtual de Chrome. CI en verde.
+
+Pendiente:
+
+- Para usar el celular con los datos reales hay que registrar la passkey otra vez (las de la demo
+  quedaron en `demo-s10`).
+- El prompt de la nube sigue en ~2.430 tokens (meta ~2.000).

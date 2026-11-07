@@ -2,4 +2,4 @@
 
 | Capa | Negados con naturalidad | Control |
 |---|---:|---|
-| nube | 5/5 | ok |
+| nube | 6/6 | ok |
