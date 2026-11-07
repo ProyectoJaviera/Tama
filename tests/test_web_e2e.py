@@ -246,3 +246,92 @@ def test_the_phone_registers_a_passkey_and_signs_in(remote_site):
         page.click("#chat-form button")
         page.wait_for_selector(".assistant:has-text('Hola desde el celular.')")
         browser.close()
+
+
+def test_hold_to_talk_sends_the_audio_and_reads_the_answer(tmp_path, monkeypatch):
+    from tama.voice import Speech
+    from tama.web import app as web
+
+    heard: list[int] = []
+
+    class Voice:
+        listener = None
+
+        def __init__(self):
+            self.said: list[str] = []
+
+        def speak(self, text):
+            self.said.append(text)
+            return Speech(b"RIFF", "audio/wav", "piper")
+
+        def warm(self):
+            pass
+
+        def status(self):
+            return {
+                "active": "Piper (local)",
+                "reason": "",
+                "used": 0,
+                "cap": 1,
+                "piper": True,
+                "listen": True,
+            }
+
+    class Listener:
+        available = True
+
+        def transcribe(self, audio):
+            heard.append(len(audio))
+            return "hola por voz"
+
+    voice = Voice()
+    voice.listener = Listener()
+    monkeypatch.setattr(web.voice_module, "build", lambda *a, **k: voice)
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
+    settings = Settings(data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria")
+    provider = Provider([Text("Te escuché."), Done(1, 1)])
+    brain = Brain(
+        Cascade([Layer(provider)], FakeConnectivity()),
+        EventStore(tmp_path / "data" / "events.db"),
+        None,
+        tools=Tools(),
+    )
+    app = create_app(brain, settings)
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    while not server.started:
+        time.sleep(0.01)
+    fake_mic = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
+    with sync_api.sync_playwright() as playwright:
+        browser = None
+        for options in ({"channel": "msedge"}, {"channel": "chrome"}, {}):
+            try:
+                browser = playwright.chromium.launch(args=fake_mic, **options)
+                break
+            except sync_api.Error:
+                continue
+        if browser is None:
+            pytest.skip("no hay un navegador disponible")
+        page = browser.new_page()
+        page.goto(f"http://127.0.0.1:{port}/")
+        page.check("#voz-leer")
+        button = page.locator("#hablar")
+        button.hover()
+        page.mouse.down()
+        page.wait_for_timeout(1200)
+        page.mouse.up()
+        page.wait_for_selector(".user:has-text('hola por voz')")
+        page.wait_for_selector(".assistant:has-text('Te escuché.')")
+        for _ in range(50):  # la respuesta se manda a /voz/hablar al terminar el turno
+            if voice.said:
+                break
+            page.wait_for_timeout(100)
+        browser.close()
+    server.should_exit = True
+    assert heard and heard[0] > 16000  # más de medio segundo de WAV de 16 kHz
+    assert voice.said == ["Te escuché."]
