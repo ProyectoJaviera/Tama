@@ -60,6 +60,7 @@ class Engine:
         ntfy_url: str = "",
         ntfy_topic: str = "",
         post: Callable[..., object] = httpx.post,
+        ntfy_priority: str = "high",
     ) -> None:
         self.store = store
         self.rules = rules
@@ -67,6 +68,7 @@ class Engine:
         self.ntfy_url = ntfy_url.rstrip("/")
         self.ntfy_topic = ntfy_topic
         self.ntfy_error = ""
+        self.ntfy_priority = ntfy_priority
         self.post = post
         self.listeners: list[Listener] = []
         self.busy: Callable[[], bool] = lambda: False
@@ -146,23 +148,59 @@ class Engine:
         self.store.log("proactive", f"{kind} ({reason}): {text}")
         for listener in self.listeners:
             listener(notice)
-        self._push(text)
+        self._push(text, *self._importance(kind, reason))
         return notice
 
-    def _push(self, text: str) -> None:
+    def _importance(self, kind: str, reason: str) -> tuple[str, str]:
+        """Prioridad y emoji en ntfy. Un recordatorio lo pidió Renzo para esa hora: va alto, con
+        sonido y en la pantalla de bloqueo; uno urgente, al máximo. Sugerencias, resumen y
+        seguimiento de objetivos pueden esperar: prioridad normal."""
+        if kind == "recordatorio" and reason == "urgente":
+            return "urgent", "rotating_light"
+        if kind == "recordatorio":
+            return self.ntfy_priority, "alarm_clock"
+        return "default", "bulb"
+
+    def _push(self, text: str, priority: str = "default", tag: str = "") -> None:
         if not self.ntfy_url or not self.ntfy_topic:
             return
+        self.ntfy_error = self._send_ntfy(text, priority, tag)
+        if self.ntfy_error:
+            log.debug("ntfy no respondió: %s", self.ntfy_error)
+
+    def _send_ntfy(self, text: str, priority: str = "default", tag: str = "") -> str:
+        """Publica en el tópico de ntfy; devuelve el error, o "" si salió bien."""
+        headers = {"Title": "Tama", "Priority": priority}
+        if tag:
+            headers["Tags"] = tag
         try:
-            self.post(
+            response = self.post(
                 f"{self.ntfy_url}/{self.ntfy_topic}",
                 content=text.encode("utf-8"),
-                headers={"Title": "Tama"},
+                headers=headers,
                 timeout=5,
             )
-            self.ntfy_error = ""
         except httpx.HTTPError as exc:
-            self.ntfy_error = str(exc) or type(exc).__name__
-            log.debug("ntfy no respondió: %s", exc)
+            return str(exc) or type(exc).__name__
+        status = getattr(response, "status_code", 200)
+        return f"ntfy respondió {status}" if status >= 400 else ""
+
+    def test_push(self) -> str:
+        """Aviso de prueba por ntfy, pedido por Renzo: no cuenta en el tope ni queda en Avisos."""
+        if not self.ntfy_url or not self.ntfy_topic:
+            return (
+                "ntfy no está configurado: define TAMA_NTFY_URL y TAMA_NTFY_TOPIC en .env "
+                "(`uv run tama celular` muestra cómo)."
+            )
+        # Con la misma prioridad que un recordatorio: así la prueba muestra cómo llegarán.
+        self.ntfy_error = self._send_ntfy(
+            "Aviso de prueba: si lo ves en el celular, ntfy funciona.",
+            self.ntfy_priority,
+            "white_check_mark",
+        )
+        if self.ntfy_error:
+            return f"No pude enviar el aviso de prueba: {self.ntfy_error}"
+        return "Aviso de prueba enviado. Debería llegarte al celular en unos segundos."
 
     def start(self, every_s: float = 20.0) -> None:
         def loop() -> None:

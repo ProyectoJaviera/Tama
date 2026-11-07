@@ -8,4 +8,31 @@
 {% else %}<p class="muted">Sin herramientas activas.</p>{% endfor %}
 <h2>Sugerencias pendientes</h2>
 {% for s in pending %}<div class="card">{{ s }}</div>{% else %}<p class="muted">Ninguna.</p>{% endfor %}
+<h2>Celular</h2>
+<p class="muted">Avisos por ntfy: {{ ntfy }}</p>
+{% if ntfy_server %}
+<div class="card">
+  <p>En la app ntfy del celular: toca <b>+</b>, pega el tópico, marca <b>Usar otro servidor</b> y
+    pega el servidor. Debe quedar este servidor, no ntfy.sh.</p>
+  <label class="muted">Servidor</label>
+  <input readonly value="{{ ntfy_server }}" onclick="this.select()" aria-label="Servidor de ntfy">
+  <label class="muted">Tópico</label>
+  <input readonly value="{{ ntfy_topic }}" onclick="this.select()" aria-label="Tópico de ntfy">
+  <p class="muted">También puedes probar el enlace
+    <a href="{{ ntfy_link }}">Suscribirme en la app ntfy</a> (solo desde el celular).</p>
+  <details><summary class="muted">Si no suenan o no salen con el celular bloqueado</summary>
+    <ul class="muted">
+      <li>En ntfy: toca la suscripción &gt; ⋮ &gt; Ajustes de notificación: prioridad mínima
+        "Por defecto" o menor y sonido activado.</li>
+      <li>En Ajustes del celular &gt; Notificaciones &gt; Notificaciones en pantalla de bloqueo:
+        "Mostrar contenido" y ntfy permitida.</li>
+      <li>Ajustes &gt; Aplicaciones &gt; ntfy y Tailscale &gt; Batería: "Sin restricciones".</li>
+    </ul>
+  </details>
+</div>
+{% endif %}
+<form hx-post="/estado/aviso-prueba" hx-target="#aviso-prueba">
+  <button type="submit">Enviar aviso de prueba</button>
+  <span id="aviso-prueba" class="muted"></span>
+</form>
 {% endblock %}

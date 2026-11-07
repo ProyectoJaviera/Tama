@@ -85,10 +85,21 @@ class Settings(BaseSettings):
     stale_goal_days: int = 14
     ntfy_url: str = ""
     ntfy_topic: str = ""
+    # Prioridad de los recordatorios en ntfy (min, low, default, high, urgent). "high" suena y sale
+    # en la pantalla de bloqueo; los urgentes van siempre en "urgent" y el resto en "default".
+    ntfy_priority_recordatorio: str = "high"
+    # Dirección de ntfy que usa el celular (https://<pc>.ts.net:8443): para el enlace de Estado
+    # que suscribe la app ntfy. docker compose la usa también como base-url de ntfy.
+    ntfy_public_url: str = ""
 
     # Interfaz web: solo localhost, salvo que el contenedor necesite escuchar hacia su puerto.
     web_host: str = "127.0.0.1"
     web_port: int = 8765
+    # Acceso desde el celular por Tailscale (`tailscale serve`): nombre del PC en Tailscale, p. ej.
+    # "mi-pc.tail1234.ts.net". Solo se acepta si la petición trae la cabecera que agrega
+    # `tailscale serve` (Tailscale-User-Login) y, con web_tailscale_user, solo de esa cuenta.
+    web_tailscale_host: str = ""
+    web_tailscale_user: str = ""
     web_confirm_timeout_s: float = 120.0
     # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
     web_turn_limit_s: float = 600.0

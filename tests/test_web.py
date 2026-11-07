@@ -499,3 +499,146 @@ def test_card_counts_say_dato_in_singular(web):
     memoria.create_entities([{"name": "Ana", "entityType": "persona", "observations": ["Toma té"]}])
     assert "1 dato<" in client.get("/memoria").text
     assert "1 dato<" in client.get("/memoria/ficha/Ana", headers={"hx-request": "true"}).text
+
+
+def test_manifest_and_icons_are_served(web):
+    client, _ = web()
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.headers["content-type"].startswith("application/manifest+json")
+    data = manifest.json()
+    assert data["start_url"] == "/" and data["display"] == "standalone"
+    sizes = {i["sizes"] for i in data["icons"]}
+    assert {"192x192", "512x512"} <= sizes
+    for icon in data["icons"]:
+        image = client.get(icon["src"])
+        assert image.status_code == 200 and image.content[:4] == b"\x89PNG"
+    page = client.get("/").text
+    assert 'rel="manifest"' in page and "/static/pwa.js" in page
+
+
+def test_service_worker_only_caches_the_interface(web):
+    client, _ = web()
+    response = client.get("/sw.js")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/javascript")
+    assert response.headers["cache-control"] == "no-cache"
+    code = response.text
+    assert "__VERSION__" not in code
+    # Nada que no sea GET, y de lo GET solo /static/; las páginas van siempre a la red.
+    assert 'if (request.method !== "GET") return;' in code
+    assert 'url.pathname.startsWith("/static/")' in code
+    assert "cache.put" not in code  # nunca guarda respuestas que pasan por la red
+    shell = re.findall(r'"(/[^"]+)"', code.split("const SHELL = [")[1].split("];")[0])
+    assert shell and all(path.startswith("/static/") for path in shell)
+    assert not any(word in code for word in ("/api", '/chat"', '/memoria"'))
+    assert client.get("/static/offline.html").status_code == 200
+
+
+TS_HOST = "mi-pc.tail1234.ts.net"
+
+
+@pytest.fixture
+def remote(tmp_path, monkeypatch):
+    def make(user=""):
+        monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+        (tmp_path / "data").mkdir(exist_ok=True)
+        settings = Settings(
+            data_dir=tmp_path / "data",
+            memory_dir=tmp_path / "memoria",
+            web_tailscale_host=TS_HOST,
+            web_tailscale_user=user,
+        )
+        cascade = Cascade([Layer(Provider())], FakeConnectivity())
+        brain = Brain(cascade, EventStore(tmp_path / "data" / "events.db"), None, tools=Tools())
+        return TestClient(create_app(brain, settings), base_url=f"https://{TS_HOST}")
+
+    return make
+
+
+def test_tailscale_name_needs_the_header_of_tailscale_serve(remote):
+    client = remote()
+    assert client.get("/").status_code == 403  # sin la cabecera: no viene de tailscale serve
+    ok = client.get("/", headers={"Tailscale-User-Login": "renzo@example.com"})
+    assert ok.status_code == 200 and "Tama" in ok.text
+    other = TestClient(client.app, base_url="https://otro.tail1234.ts.net")
+    assert other.get("/", headers={"Tailscale-User-Login": "renzo@example.com"}).status_code == 403
+
+
+def test_tailscale_user_must_match_when_set(remote):
+    client = remote(user="renzo@example.com")
+    assert client.get("/", headers={"Tailscale-User-Login": "Renzo@Example.com"}).status_code == 200
+    assert client.get("/", headers={"Tailscale-User-Login": "otra@example.com"}).status_code == 403
+    local = TestClient(client.app, base_url="http://127.0.0.1")
+    assert local.get("/").status_code == 200  # en el PC, igual que antes
+    assert local.get("/", headers={"Tailscale-User-Login": "otra@example.com"}).status_code == 403
+
+
+def test_without_tailscale_settings_only_localhost(web):
+    client, _ = web()
+    remote = TestClient(client.app, base_url=f"https://{TS_HOST}")
+    assert remote.get("/", headers={"Tailscale-User-Login": "renzo@example.com"}).status_code == 403
+
+
+class FakeEngine:
+    ntfy_url, ntfy_topic, ntfy_error = "http://127.0.0.1:8090", "tama-x", ""
+
+    def test_push(self):
+        return "Aviso de prueba enviado."
+
+
+def test_status_page_sends_a_test_notice(web):
+    client, brain = web()
+    assert "sin configurar" in client.get("/estado").text
+    brain.proactive = FakeEngine()
+    assert "activos, a http://127.0.0.1:8090" in client.get("/estado").text
+    assert client.post("/estado/aviso-prueba").text == "Aviso de prueba enviado."
+    reply = client.post("/chat", data={"text": "/aviso-prueba"}).json()["reply"]
+    assert reply == "Aviso de prueba enviado."
+
+
+def test_rejection_says_why_without_showing_the_settings(remote, web, capsys):
+    client = remote(user="renzo@example.com")
+    login = {"Tailscale-User-Login": "renzo@example.com"}
+    no_header = client.get("/")
+    assert no_header.text == "Tama solo acepta conexiones desde el PC o por tailscale serve."
+    other = TestClient(client.app, base_url="https://otro.tail1234.ts.net").get("/", headers=login)
+    assert "otro.tail1234.ts.net no coincide con TAMA_WEB_TAILSCALE_HOST" in other.text
+    assert TS_HOST not in other.text
+    wrong = client.get("/", headers={"Tailscale-User-Login": "otra@example.com"})
+    assert "no es la de TAMA_WEB_TAILSCALE_USER" in wrong.text and "renzo@" not in wrong.text
+    assert f"TAMA_WEB_TAILSCALE_HOST='{TS_HOST}'" in capsys.readouterr().err  # solo en el PC
+    unset, _ = web()
+    empty = TestClient(unset.app, base_url=f"https://{TS_HOST}").get("/", headers=login)
+    assert empty.text.startswith("Falta TAMA_WEB_TAILSCALE_HOST")
+
+
+def test_host_with_trailing_dot_or_capitals_is_the_same(remote):
+    client = remote()
+    login = {"Tailscale-User-Login": "renzo@example.com"}
+    upper = TestClient(client.app, base_url=f"https://{TS_HOST.upper()}.")
+    assert upper.get("/", headers=login).status_code == 200
+
+
+def test_status_links_the_ntfy_app_to_the_own_server(tmp_path, monkeypatch):
+    from tama.web.app import ntfy_link
+
+    settings = Settings(ntfy_public_url="https://pc.tail1.ts.net:8443/", ntfy_topic="tama-a b")
+    assert ntfy_link(settings) == "ntfy://pc.tail1.ts.net:8443/tama-a%20b"
+    assert ntfy_link(Settings(ntfy_topic="x")) == ""
+    assert ntfy_link(Settings(ntfy_public_url="http://pc:8090", ntfy_topic="x")) == ""
+
+
+def test_status_shows_server_and_topic_to_copy(tmp_path, monkeypatch):
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    settings = Settings(
+        data_dir=tmp_path / "data",
+        memory_dir=tmp_path / "memoria",
+        ntfy_public_url="https://pc.tail1.ts.net:8443",
+        ntfy_topic="tama-secreto",
+    )
+    cascade = Cascade([Layer(Provider())], FakeConnectivity())
+    brain = Brain(cascade, EventStore(tmp_path / "data" / "events.db"), None, tools=Tools())
+    page = TestClient(create_app(brain, settings), base_url="http://127.0.0.1").get("/estado").text
+    assert 'value="https://pc.tail1.ts.net:8443"' in page and 'value="tama-secreto"' in page
+    assert "Usar otro servidor" in page

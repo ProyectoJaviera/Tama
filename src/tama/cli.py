@@ -21,7 +21,15 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 EXIT_COMMANDS = {"/salir", "salir", "exit", "quit"}
-COMMANDS_ONLY = {"/recordatorios", "/avisos", "/silencio", "/resumen", "/ayuda", "/estado"}
+COMMANDS_ONLY = {
+    "/recordatorios",
+    "/avisos",
+    "/silencio",
+    "/resumen",
+    "/ayuda",
+    "/estado",
+    "/aviso-prueba",
+}
 
 
 def cancel(args: str) -> None:
@@ -347,6 +355,10 @@ def main(
         return export_memory(settings)
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
+    if args.mensaje == ["celular"]:
+        from tama import celular
+
+        return celular.main(settings)
     if args.mensaje == ["web"]:
         # Antes de importar el servidor: esa carga ya toma unos segundos.
         print(f"Tama web en http://{settings.web_host}:{settings.web_port}", flush=True)

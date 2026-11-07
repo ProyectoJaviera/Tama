@@ -17,6 +17,7 @@ from datetime import date
 from html import escape
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response, StreamingResponse
@@ -36,8 +37,8 @@ from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
 
 HERE = Path(__file__).parent
-# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
 CARD_PAGE = 20  # datos por página en la ficha de la web
+# Cambia con el contenido de static/: el navegador no se queda con un app.js viejo tras actualizar.
 STATIC_VERSION = hashlib.sha256(
     b"".join(p.read_bytes() for p in sorted((HERE / "static").iterdir()) if p.is_file())
 ).hexdigest()[:10]
@@ -49,6 +50,9 @@ NOTICE_LABELS = {
     "silenciado": "no se repite",
 }
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
+# La agrega `tailscale serve` con la cuenta de quien abre Tama; nadie fuera de Tailscale la envía,
+# porque Tama solo escucha en 127.0.0.1.
+TAILSCALE_USER = "tailscale-user-login"
 END = object()
 
 
@@ -195,10 +199,29 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     @app.middleware("http")
     async def only_localhost(request: Request, call_next):
         # Evita que un sitio externo llegue al servidor con un dominio propio (DNS rebinding).
-        host = request.headers.get("host", "").rsplit(":", 1)[0]
-        if host not in LOCAL_HOSTS:
-            return PlainTextResponse("Solo localhost", status_code=403)
+        # Desde el celular solo vale el nombre del PC en Tailscale, por `tailscale serve`.
+        refused = rejection(request, settings)
+        if refused:
+            message, detail = refused
+            # El detalle (con lo esperado) va solo a la consola del PC, no a quien pregunta.
+            print(f"Tama rechazó una conexión: {detail}", file=sys.stderr, flush=True)
+            return PlainTextResponse(message, status_code=403)
         return await call_next(request)
+
+    @app.get("/sw.js")
+    def service_worker() -> Response:
+        """En la raíz, para controlar todo el sitio; solo guarda la interfaz (ver static/sw.js)."""
+        text = (HERE / "static" / "sw.js").read_text(encoding="utf-8")
+        return Response(
+            text.replace("__VERSION__", STATIC_VERSION),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    @app.get("/manifest.webmanifest")
+    def manifest() -> Response:
+        text = (HERE / "static" / "manifest.webmanifest").read_text(encoding="utf-8")
+        return Response(text, media_type="application/manifest+json")
 
     def check_csrf(request: Request) -> None:
         if not secrets.compare_digest(request.headers.get("x-csrf-token", ""), csrf):
@@ -552,8 +575,20 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         ]
         tools = brain.tools.status() if brain.tools is not None else []
         return page(
-            request, "estado.html", layers=layers, tools=tools, pending=memoria.pending_list()
+            request,
+            "estado.html",
+            layers=layers,
+            tools=tools,
+            pending=memoria.pending_list(),
+            ntfy=ntfy_state(brain),
+            ntfy_link=ntfy_link(settings),
+            ntfy_server=settings.ntfy_public_url.strip().rstrip("/") if ntfy_link(settings) else "",
+            ntfy_topic=settings.ntfy_topic.strip(),
         )
+
+    @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
+    def test_notice() -> HTMLResponse:
+        return HTMLResponse(escape(commands.test_notice_text(brain)))
 
     if brain.warmer is not None:
         # La precarga usa el mismo prefijo que tendrá el próximo turno: sin red, la primera
@@ -578,6 +613,59 @@ def preparing_html(brain: Brain) -> str:
         f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
         "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
     )
+
+
+def ntfy_link(settings: Settings) -> str:
+    """Enlace que abre la app ntfy del celular ya suscrita al tópico, en el servidor propio."""
+    public = settings.ntfy_public_url.strip().rstrip("/")
+    topic = settings.ntfy_topic.strip()
+    if not public.startswith("https://") or not topic:
+        return ""
+    return f"ntfy://{public.removeprefix('https://')}/{quote(topic)}"
+
+
+def ntfy_state(brain: Brain) -> str:
+    engine = brain.proactive
+    if engine is None or not engine.ntfy_url or not engine.ntfy_topic:
+        return "sin configurar (TAMA_NTFY_URL y TAMA_NTFY_TOPIC)"
+    if engine.ntfy_error:
+        return f"falló el último envío: {engine.ntfy_error}"
+    return f"activos, a {engine.ntfy_url}"
+
+
+def rejection(request: Request, settings: Settings) -> tuple[str, str] | None:
+    """Por qué se rechaza una petición: (mensaje para quien pregunta, detalle para la consola).
+
+    En el PC vale localhost. Desde el celular, solo el nombre del PC en Tailscale, por
+    `tailscale serve` (que agrega la cuenta de quien abre Tama) y, si se configuró, de esa cuenta.
+    El mensaje dice la causa sin mostrar lo configurado.
+    """
+    host = request.headers.get("host", "").rsplit(":", 1)[0].rstrip(".").lower()
+    user = request.headers.get(TAILSCALE_USER, "").strip().lower()
+    expected = settings.web_tailscale_host.strip().rstrip(".").lower()
+    allowed = settings.web_tailscale_user.strip().lower()
+    if host not in LOCAL_HOSTS:
+        if not user:
+            return (
+                "Tama solo acepta conexiones desde el PC o por tailscale serve.",
+                f"host {host!r} sin la cabecera de tailscale serve",
+            )
+        if not expected:
+            return (
+                "Falta TAMA_WEB_TAILSCALE_HOST en el .env de Tama (y reiniciarla).",
+                f"llegó por Tailscale a {host!r}, pero TAMA_WEB_TAILSCALE_HOST está vacío",
+            )
+        if host != expected:
+            return (
+                f"El nombre {host} no coincide con TAMA_WEB_TAILSCALE_HOST en el .env de Tama.",
+                f"host {host!r}; TAMA_WEB_TAILSCALE_HOST={expected!r}",
+            )
+    if user and allowed and user != allowed:
+        return (
+            "La cuenta de Tailscale de este dispositivo no es la de TAMA_WEB_TAILSCALE_USER.",
+            f"cuenta {user!r}; TAMA_WEB_TAILSCALE_USER={allowed!r}",
+        )
+    return None
 
 
 STARTING = """<!doctype html><html lang="es"><head><meta charset="utf-8">

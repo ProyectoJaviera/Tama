@@ -71,6 +71,36 @@ registrado en `events.db` (en el volumen de datos).
 perfil, memoria y objetivos. Solo escucha en esta máquina y no pide nada a internet. En Docker:
 `docker compose up -d`, publicado solo en localhost.
 
+### En el celular
+
+Tama se usa desde el celular como una app instalada (PWA), en la casa o con datos móviles, sin abrir
+puertos del router: el PC y el celular se conectan por [Tailscale](https://tailscale.com), una red
+privada, y `tailscale serve` publica Tama solo dentro de ella, con HTTPS y certificado válido.
+`uv run tama celular` muestra estos pasos con los valores de tu PC y propone un tópico de ntfy:
+
+1. Instala Tailscale en el PC y en el celular y entra con la misma cuenta. En la consola de
+   Tailscale (DNS), activa MagicDNS y HTTPS Certificates. Si el primer `tailscale serve` pide activar HTTPS, deja marcado HTTPS certificates y desmarca Tailscale Funnel: Funnel publicaría Tama a todo internet.
+2. En el PC (PowerShell):
+   ```powershell
+   tailscale serve --bg --https=443 http://127.0.0.1:8765
+   tailscale serve --bg --https=8443 http://127.0.0.1:8090
+   ```
+3. En `.env`: `TAMA_WEB_TAILSCALE_HOST` (el nombre del PC en Tailscale, p. ej.
+   `mi-pc.tail1234.ts.net`), `TAMA_WEB_TAILSCALE_USER` (tu correo de Tailscale),
+   `TAMA_NTFY_URL=http://127.0.0.1:8090` (en Docker: `http://ntfy:80`), `TAMA_NTFY_TOPIC` (largo y
+   aleatorio) y `TAMA_NTFY_PUBLIC_URL=https://<nombre del PC>:8443`. Con iPhone, además
+   `TAMA_NTFY_UPSTREAM=https://ntfy.sh` (solo despierta la app; el texto no sale del PC).
+4. Levanta ntfy y Tama: `docker compose --profile ntfy up -d ntfy` y `uv run tama web`, o ambos en
+   Docker con `docker compose --profile ntfy up -d`.
+5. En el celular abre `https://<nombre del PC>`, instálala ("Agregar a la pantalla principal") y,
+   en la app ntfy, agrega el servidor `https://<nombre del PC>:8443` y suscríbete al tópico.
+
+Seguridad, mientras no haya login (Sprint 10): solo entran los dispositivos de tu cuenta de
+Tailscale (y, con `TAMA_WEB_TAILSCALE_USER`, solo tu cuenta). Tama sigue escuchando solo en
+127.0.0.1 y acepta el nombre de Tailscale solo si la petición llega por `tailscale serve`; ningún
+puerto queda abierto a internet. Para dejar de publicarla: `tailscale serve reset`. El service
+worker de la app guarda solo la interfaz, nunca conversaciones ni memoria.
+
 ### Avisos
 
 Tama recuerda y sugiere por su cuenta, sin molestar: nada de 22:00 a 8:00 (salvo urgentes), hasta 3
@@ -80,9 +110,12 @@ Si un recordatorio cae en no molestar, Tama te dice a qué hora avisará. En la 
 suena, sale como notificación del navegador y queda en una franja fija hasta que lo marques en la
 pestaña Avisos o en la misma franja.
 
-Para recibirlos en el celular por el mismo WiFi, sin internet: `docker compose --profile ntfy up -d`,
-define `TAMA_NTFY_URL=http://<IP del PC>:8090` y un `TAMA_NTFY_TOPIC` largo y aleatorio, y suscríbete
-a ese tema en la app ntfy. Si falla, Tama sigue y lo indica en `/estado`.
+Para recibirlos en el celular, con un servidor ntfy propio (el texto de los avisos nunca pasa por
+ntfy.sh): mira "En el celular". Por el mismo WiFi también funciona sin internet, con
+`TAMA_NTFY_URL=http://<IP del PC>:8090`. Si ntfy falla, Tama sigue y lo indica en `/estado`.
+`/aviso-prueba` (o Estado > "Enviar aviso de prueba") manda uno de prueba.
+Los recordatorios llegan a ntfy con prioridad alta (suenan y salen con el celular bloqueado;
+`TAMA_NTFY_PRIORITY_RECORDATORIO`), los urgentes al máximo y el resto con prioridad normal.
 
 ### Cerebro en cascada
 
@@ -203,6 +236,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_HISTORY_MAX_TOKENS` | `2000` | Historial máximo que se envía al modelo |
 | `TAMA_CONNECTIVITY_WATCH_S` | `5` | En el chat, cada cuántos segundos se revisa la red; al detectar un corte se precarga el modelo local |
 | `TAMA_LOCAL_KEEP_WARM` | `false` | Mantener el modelo local siempre en RAM (3-4 GB) |
+| `TAMA_WEB_TAILSCALE_HOST` | (vacío) | Nombre del PC en Tailscale para entrar desde el celular con `tailscale serve` |
+| `TAMA_WEB_TAILSCALE_USER` | (vacío) | Si se indica, solo esa cuenta de Tailscale puede entrar |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
 | `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |
