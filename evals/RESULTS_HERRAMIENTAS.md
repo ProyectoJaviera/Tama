@@ -6,12 +6,11 @@ herramienta y el sistema pida confirmación). Criterio de cierre: 90% o más por
 
 | Capa | Correctos | % | Primer token p50 | Voseo |
 |---|---:|---:|---:|---:|
-| nube | 22/23 | 96% | 0.3 s | 0 |
+| nube | 23/23 | 100% | 0.4 s | 0 |
 | claude | 23/23 | 100% | 0.6 s | 0 |
 | local | 21/23 | 91% | 1.8 s | 2 |
 
 ## Fallos
 
-- `nube` · editar-viaje: ninguna capa pudo responder (último error en nube: sin respuesta en 8 s)
 - `local` · buscar-dentista: faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])
 - `local` · cadena-hora-nota: faltó create_note {'*': 'estudi'} (llamó ['get_current_time'])
