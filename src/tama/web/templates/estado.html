@@ -35,6 +35,15 @@
   <button type="submit">Enviar aviso de prueba</button>
   <span id="aviso-prueba" class="muted"></span>
 </form>
+<h2>Voz</h2>
+{% if voice %}
+<p>Voz activa: <b>{{ voice.active }}</b>{% if voice.reason %} <span class="muted">({{ voice.reason }})</span>{% endif %}</p>
+<p class="muted">ElevenLabs este mes: {{ voice.used }} de {{ voice.cap }} caracteres (contados en el PC).
+  Escuchar: {{ "listo" if voice.listen else "falta el modelo (scripts/descargar_voz.py)" }}.
+  Voz local: {{ "lista" if voice.piper else "falta el modelo (scripts/descargar_voz.py)" }}.</p>
+{% else %}
+<p class="muted">La voz está apagada (TAMA_VOICE_ENABLED=false).</p>
+{% endif %}
 <h2>Acceso desde fuera del PC</h2>
 {% if local %}
 <p class="muted">Desde el celular se entra con passkey. Para registrar un dispositivo, genera un

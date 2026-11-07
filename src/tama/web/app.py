@@ -12,6 +12,7 @@ import secrets
 import sys
 import threading
 import time
+import wave
 from collections.abc import Callable, Iterator
 from datetime import date
 from html import escape
@@ -30,9 +31,11 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from tama import agent, chat, commands, history
 from tama import brain as brain_module
+from tama import voice as voice_module
 from tama.auth import CODE_MINUTES, Access, AuthError
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -43,6 +46,7 @@ from tama.ollama import OllamaError
 from tama.proactive import act_on
 from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
+from tama.voice import VoiceError
 
 HERE = Path(__file__).parent
 CARD_PAGE = 20  # datos por página en la ficha de la web
@@ -62,6 +66,7 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 # porque Tama solo escucha en 127.0.0.1.
 TAILSCALE_USER = "tailscale-user-login"
 END = object()
+MAX_AUDIO_BYTES = 16000 * 2 * 60  # un minuto de WAV de 16 kHz y 16 bits
 SESSION_COOKIE = "tama_sesion"
 # Sin datos: se sirven sin sesión también desde fuera del PC.
 PUBLIC_PATHS = ("/sw.js", "/manifest.webmanifest", "/entrar", "/registrar")
@@ -224,6 +229,9 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     app.state.session = session
     access = Access(settings.data_dir / "acceso.db")
     app.state.access = access
+    online = brain.connectivity.online if brain.connectivity is not None else (lambda: True)
+    voice = voice_module.build(settings, online) if settings.voice_enabled else None
+    app.state.voice = voice
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
     @app.middleware("http")
@@ -378,6 +386,31 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     def revoke(request: Request, passkey_id: int) -> HTMLResponse:
         access.revoke(passkey_id)
         return page(request, "passkeys.html", passkeys=access.passkeys())
+
+    @app.post("/voz/escuchar", dependencies=[Depends(check_csrf)])
+    async def listen(request: Request) -> Response:
+        """Audio WAV (16 kHz, mono) desde el micrófono del navegador → texto con whisper.cpp."""
+        if voice is None or voice.listener is None:
+            return JSONResponse({"error": "La voz está apagada."}, status_code=503)
+        audio = await request.body()
+        if len(audio) > MAX_AUDIO_BYTES:
+            return JSONResponse({"error": "El audio es demasiado largo."}, status_code=413)
+        try:
+            text = await run_in_threadpool(voice.listener.transcribe, audio)
+        except (VoiceError, wave.Error) as exc:
+            return JSONResponse({"error": str(exc) or "No pude leer el audio."}, status_code=400)
+        return JSONResponse({"text": text})
+
+    @app.post("/voz/hablar", dependencies=[Depends(check_csrf)])
+    def speak(texto: str = Form(...)) -> Response:
+        if voice is None:
+            return JSONResponse({"error": "La voz está apagada."}, status_code=503)
+        try:
+            speech = voice.speak(texto)
+        except VoiceError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=503)
+        label = "ElevenLabs" if speech.provider == "elevenlabs" else "Piper (local)"
+        return Response(speech.audio, media_type=speech.media_type, headers={"X-Tama-Voz": label})
 
     def chat_history() -> list[tuple[str, str]]:
         """La conversación, con los comandos y los avisos, tal como se vio."""
@@ -738,6 +771,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             ntfy_topic=settings.ntfy_topic.strip(),
             local=not remote(request),
             passkeys=access.passkeys(),
+            voice=voice.status() if voice is not None else None,
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
@@ -884,6 +918,9 @@ def serve(settings: Settings) -> int:
             brain.reflector.start()
         if settings.local_preload:
             brain.preload()
+        voice = app.state.voice
+        if voice is not None:
+            threading.Thread(target=voice.warm, name="tama-voz", daemon=True).start()
         if settings.connectivity_watch_s > 0:
             brain.watch_network(settings.connectivity_watch_s, settings.local_keep_warm)
         if brain.proactive is not None:

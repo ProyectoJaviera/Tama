@@ -113,6 +113,9 @@
         add("line", event.text);
       } else if (event.kind === "done") {
         add("line", event.line);
+        // La voz (voz.js) lee la respuesta si Renzo la tiene activada.
+        const said = reply ? reply.textContent : "";
+        document.dispatchEvent(new CustomEvent("tama:respuesta", { detail: said }));
       } else if (event.kind === "error") {
         add("error", event.text);
       }

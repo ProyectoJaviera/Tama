@@ -109,6 +109,22 @@ class Settings(BaseSettings):
     # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
     web_turn_limit_s: float = 600.0
 
+    # Voz (Sprint 11). Escuchar: whisper.cpp en CPU. Hablar: ElevenLabs → Piper local.
+    # Los modelos se descargan al instalar con `scripts/descargar_voz.py`, nunca en ejecución.
+    voice_enabled: bool = True
+    voice_models_dir: Path = Path("models/voz")
+    # "base" cuantizado: ~0,8 s por 4 s de audio en este PC; "small" tarda ~3 s (se decide en S13).
+    whisper_model: str = "ggml-base-q5_1.bin"
+    piper_voice: str = "es_MX-ald-medium.onnx"
+    elevenlabs_api_key: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("ELEVENLABS_API_KEY", "TAMA_ELEVENLABS_API_KEY")
+    )
+    elevenlabs_voice_id: str = ""
+    elevenlabs_model: str = "eleven_flash_v2_5"
+    elevenlabs_timeout_s: float = 8.0
+    # Tope de caracteres por mes enviados a ElevenLabs (contados en el PC). Al pasarlo, habla Piper.
+    elevenlabs_monthly_chars: int = 10000
+
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
@@ -133,7 +149,7 @@ class Settings(BaseSettings):
         value = value.strip().rstrip("/")
         return value if "://" in value else f"http://{value}"
 
-    @field_validator("ollama_api_key", "anthropic_api_key", mode="before")
+    @field_validator("ollama_api_key", "anthropic_api_key", "elevenlabs_api_key", mode="before")
     @classmethod
     def empty_is_none(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value

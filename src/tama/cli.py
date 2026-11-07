@@ -385,6 +385,10 @@ def main(
         return export_memory(settings)
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
+    if args.mensaje[:1] == ["voz"]:
+        from tama import voz_cli
+
+        return voz_cli.main(settings, args.mensaje[1:])
     if args.mensaje[:1] == ["passkey"]:
         return passkey_command(settings, args.mensaje[1:])
     if args.mensaje == ["celular"]:
