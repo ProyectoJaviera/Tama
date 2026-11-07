@@ -6,6 +6,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 10 (passkey): desde fuera del PC se entra con passkey (WebAuthn con `webauthn` 2.7.0,
+  todo local, sin internet). Alta solo con un código de un solo uso del PC (`tama passkey nueva`
+  o Estado); `tama passkey listar` y `revocar`. Sesión con cookie HttpOnly, Secure y
+  SameSite=Strict, revocable. Desde fuera, las herramientas de archivos y las que borran para
+  siempre quedan fuera de la vista del modelo y bloqueadas en el servidor. En 127.0.0.1 nada cambia.
+  Editar una nota guarda la versión anterior (`note_versions`).
+  Tras la demo: fuera del PC, ante un pedido de borrar, Tama dice de entrada que se hace desde el
+  PC y no ofrece borrar.
 - Sprint 9 (celular): Tama se instala como app (PWA) con manifest, íconos y un service worker que
   solo guarda la interfaz; diseño usable en pantalla chica. Acceso desde el celular por Tailscale
   (`tailscale serve`, HTTPS) sin abrir puertos: Tama acepta su nombre de Tailscale solo por

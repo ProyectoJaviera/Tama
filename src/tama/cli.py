@@ -344,6 +344,36 @@ def chat_loop(
             brain.proactive.activity()
 
 
+def passkey_command(settings: Settings, args: list[str]) -> int:
+    """`tama passkey nueva | listar | revocar <n>`: el acceso desde el celular, solo en el PC."""
+    from tama.auth import CODE_MINUTES, Access
+
+    access = Access(settings.data_dir / "acceso.db")
+    action = args[0] if args else ""
+    if action == "nueva":
+        code = access.new_code()
+        print(f"Código para registrar una passkey: {code[:4]} {code[4:]}")
+        print(f"Vale {CODE_MINUTES} minutos y una sola vez. En el celular abre Tama y toca")
+        print('"Registrar esta passkey".')
+        return 0
+    if action == "listar":
+        keys = access.passkeys()
+        for key in keys:
+            used = f", usada {key.last_used[:16].replace('T', ' ')}" if key.last_used else ""
+            print(f"{key.id}. {key.name} (desde {key.created_at[:10]}{used})")
+        if not keys:
+            print("Todavía no hay passkeys.")
+        return 0
+    if action == "revocar" and len(args) == 2 and args[1].isdigit():
+        if access.revoke(int(args[1])):
+            print("Revocada: ese dispositivo ya no puede entrar y sus sesiones se cerraron.")
+            return 0
+        print("No hay una passkey activa con ese número (mira `tama passkey listar`).")
+        return 1
+    print("Uso: tama passkey nueva | listar | revocar <número>")
+    return 2
+
+
 def main(
     argv: list[str] | None = None, brain: Brain | None = None, settings: Settings | None = None
 ) -> int:
@@ -355,6 +385,8 @@ def main(
         return export_memory(settings)
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
+    if args.mensaje[:1] == ["passkey"]:
+        return passkey_command(settings, args.mensaje[1:])
     if args.mensaje == ["celular"]:
         from tama import celular
 

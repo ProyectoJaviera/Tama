@@ -105,6 +105,8 @@ def guide(settings: Settings, name: str = "", topic: str = "") -> str:
 
 5. En el celular:
    - Abre https://{name} con Tailscale conectado, también con datos móviles.
+   - La primera vez, toca "Registrar esta passkey" y escribe el código de
+     `uv run tama passkey nueva` (o de Estado en el PC). Luego entra con tu huella o PIN.
    - Instálala: en Chrome, menú > "Agregar a la pantalla principal"; en Safari, Compartir >
      "Agregar a inicio".
    - App ntfy: agrega el servidor https://{name}:{NTFY_HTTPS_PORT} y suscríbete al tópico de arriba.

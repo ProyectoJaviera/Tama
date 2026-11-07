@@ -539,7 +539,8 @@ TS_HOST = "mi-pc.tail1234.ts.net"
 
 @pytest.fixture
 def remote(tmp_path, monkeypatch):
-    def make(user=""):
+    def make(user="", login=False):
+        # Sin login por defecto: estas pruebas miran el nombre y la cuenta de Tailscale.
         monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
         (tmp_path / "data").mkdir(exist_ok=True)
         settings = Settings(
@@ -547,6 +548,7 @@ def remote(tmp_path, monkeypatch):
             memory_dir=tmp_path / "memoria",
             web_tailscale_host=TS_HOST,
             web_tailscale_user=user,
+            web_login_remote=login,
         )
         cascade = Cascade([Layer(Provider())], FakeConnectivity())
         brain = Brain(cascade, EventStore(tmp_path / "data" / "events.db"), None, tools=Tools())

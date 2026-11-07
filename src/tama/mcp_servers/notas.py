@@ -35,6 +35,14 @@ CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN
         VALUES ('delete', old.id, old.title, old.body);
     INSERT INTO notes_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
 END;
+-- Cada cambio guarda la versión anterior: editar una nota nunca pierde lo que decía.
+CREATE TABLE IF NOT EXISTS note_versions (
+    id INTEGER PRIMARY KEY,
+    note_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    saved_at TEXT NOT NULL
+);
 """
 MAX_BODY_IN_RESULTS = 800
 
@@ -124,7 +132,10 @@ def search_notes(query: str = "", limit: int = 5) -> str:
 
 
 @server.tool(
-    description="Cambia el título y/o el contenido de una nota existente (reemplaza lo anterior).",
+    description=(
+        "Cambia el título y/o el contenido de una nota existente. La versión anterior queda "
+        "guardada."
+    ),
     annotations=ToolAnnotations(destructive_hint=True),
 )
 def update_note(note_id: int, title: str | None = None, content: str | None = None) -> str:
@@ -132,6 +143,10 @@ def update_note(note_id: int, title: str | None = None, content: str | None = No
         row = db.execute("SELECT * FROM notes WHERE id = ?", (note_id,)).fetchone()
         if row is None:
             return f"No existe la nota {note_id}."
+        db.execute(
+            "INSERT INTO note_versions (note_id, title, body, saved_at) VALUES (?, ?, ?, ?)",
+            (note_id, row["title"], row["body"], _now()),
+        )
         db.execute(
             "UPDATE notes SET title = ?, body = ?, updated = ? WHERE id = ?",
             (

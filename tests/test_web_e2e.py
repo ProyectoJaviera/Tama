@@ -185,3 +185,64 @@ def test_a_notice_missed_while_asleep_shows_when_the_page_comes_back(site, page)
     page.wait_for_selector("#banner:has-text('Recordatorio: tomar agua')")
     assert page.inner_text("#avisos-n") == "(1)"
     assert page.outside == []
+
+
+@pytest.fixture
+def remote_site(tmp_path, monkeypatch):
+    """Tama vista "desde fuera del PC": cada pedido trae la cabecera de tailscale serve."""
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    settings = Settings(
+        data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria", web_tailscale_host="localhost"
+    )
+    provider = Provider([Text("Hola desde el celular."), Done(1, 1)])
+    cascade = Cascade([Layer(provider)], FakeConnectivity())
+    brain = Brain(cascade, EventStore(tmp_path / "data" / "events.db"), None, tools=Tools())
+    app = create_app(brain, settings)
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    while not server.started:
+        time.sleep(0.01)
+    yield f"http://localhost:{port}", app.state.access
+    server.should_exit = True
+
+
+def test_the_phone_registers_a_passkey_and_signs_in(remote_site):
+    url, access = remote_site
+    with sync_api.sync_playwright() as playwright:
+        browser = launch(playwright)
+        context = browser.new_context(
+            extra_http_headers={"Tailscale-User-Login": "renzo@example.com"}
+        )
+        page = context.new_page()
+        cdp = context.new_cdp_session(page)
+        cdp.send("WebAuthn.enable")
+        cdp.send(
+            "WebAuthn.addVirtualAuthenticator",
+            {
+                "options": {
+                    "protocol": "ctap2",
+                    "transport": "internal",
+                    "hasResidentKey": True,
+                    "hasUserVerification": True,
+                    "isUserVerified": True,
+                }
+            },
+        )
+        page.goto(url + "/")
+        assert page.url.endswith("/entrar")
+        page.click("text=Registrar esta passkey")
+        page.fill("#codigo", access.new_code())
+        page.fill("#nombre", "Celular de prueba")
+        page.click("#alta button")
+        page.wait_for_url("**/entrar")
+        assert [k.name for k in access.passkeys()] == ["Celular de prueba"]
+        page.click("#entrar")
+        page.wait_for_url(url + "/")
+        page.fill("#chat-text", "hola")
+        page.click("#chat-form button")
+        page.wait_for_selector(".assistant:has-text('Hola desde el celular.')")
+        browser.close()
