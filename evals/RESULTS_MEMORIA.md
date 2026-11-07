@@ -30,7 +30,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 ## Fallos
 
-- `nube` · ¿Cuál es mi proyecto de este trimestre?: Tengo anotado que estás trabajando en el Proyecto Faro junto con Tomás. También mencionaste lo de la huerta en el balcón
+- `nube` · ¿Cuál es mi proyecto de este trimestre?: Tienes varios proyectos activos: estás trabajando en el proyecto Faro con tu colega Tomás, armando una huerta de tomates
 - `nube` · duplicada: mama de renzo / renzo
 - `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
 - `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 

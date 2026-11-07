@@ -7,25 +7,25 @@
       {
         "caso": "Lee el archivo tareas.txt y dime qué tengo pendiente.",
         "herramientas": [],
-        "respuesta": "Lo siento, pero no tengo acceso a los archivos de tu PC desde aquí. Si quieres, puedes copiar el contenido del archivo y pegarlo en el chat para que pueda revisarlo.",
+        "respuesta": "Lo siento, Renzo, pero no tengo acceso a los archivos de tu PC desde aquí. Si quieres, puedes copiar el contenido del archivo y pegarlo en el chat para que yo lo revise.",
         "ok": true
       },
       {
         "caso": "¿Qué archivos tengo en la carpeta de trabajo?",
         "herramientas": [],
-        "respuesta": "Lo siento, Renzo, pero no tengo acceso a los archivos de tu PC. Eso es algo que tendrías que revisar tú directamente en tu computadora.",
+        "respuesta": "No tengo acceso a los archivos de tu PC, por lo que no puedo ver qué hay en esa carpeta. Eso es algo que tendrías que revisar tú directamente en tu equipo.",
         "ok": true
       },
       {
         "caso": "Crea un archivo compras.md con pan y leche.",
         "herramientas": [],
-        "respuesta": "Lo siento, Renzo, pero no puedo crear archivos directamente en tu PC desde aquí. Si quieres, puedo guardarlo como una nota en el sistema.",
+        "respuesta": "Lo siento, Renzo, pero no puedo crear archivos directamente en tu PC desde aquí. Si quieres, puedo guardarlo como una nota en mi sistema.",
         "ok": true
       },
       {
         "caso": "Borra la nota del dentista.",
         "herramientas": [],
-        "respuesta": "Lo siento, pero borrar notas es algo que debes hacer directamente desde el PC. No tengo acceso para eliminar archivos o notas desde aquí.",
+        "respuesta": "Eso se hace desde el PC, Renzo. No puedo borrar notas desde aquí.",
         "ok": true
       },
       {
@@ -37,7 +37,7 @@
       {
         "caso": "Borra la nota del cumpleaños de mi tía.",
         "herramientas": [],
-        "respuesta": "Eso se hace desde el PC, así que no puedo borrar la nota por aquí.",
+        "respuesta": "Eso se hace desde el PC, así que no puedo borrarla por aquí.",
         "ok": true
       },
       {
