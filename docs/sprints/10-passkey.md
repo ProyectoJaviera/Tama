@@ -61,7 +61,31 @@ Voz, varios usuarios y la calidad del modelo local (`13-modelo-local-v2.md`).
 - Evals sin regresión en la nube, sin Claude.
 
 ## Pasos de la demo
-(se completan al cierre)
+Con una memoria de demo aparte (`demo-s10\`): tus datos no se tocan, y las passkeys de la demo
+quedan en `demo-s10\data\acceso.db`, separadas de las de tus datos reales. `tailscale serve` y
+ntfy siguen como están.
+
+En el PC (PowerShell, desde `D:\Estudio\IA\Proyecto_Tama\Tama-s10`):
+1. Cierra la Tama que tengas abierta (Ctrl+C) y abre la de este sprint con la memoria de demo:
+   ```powershell
+   $env:TAMA_DATA_DIR="demo-s10\data"; $env:TAMA_MEMORY_DIR="demo-s10\memoria"; $env:TAMA_WORKDIR="demo-s10\trabajo"
+   uv run tama web
+   ```
+2. En el PC abre http://127.0.0.1:8765: entra sin login, como siempre. Ve a Estado > "Generar
+   código para un celular" (o, en otra ventana, `uv run tama passkey nueva` con las mismas
+   variables). Anota el código: vale 10 minutos.
+
+En el celular, con datos móviles y Tailscale conectado:
+3. Abre la app Tama: ahora pide entrar. Toca "Registrar esta passkey", escribe el código y un
+   nombre, y confirma con tu huella o el bloqueo de pantalla.
+4. Toca "Entrar con passkey" y confirma: entras al chat.
+5. Pide "¿qué archivos tengo en la carpeta de trabajo?" y "borra la nota del dentista": Tama dice
+   que eso se hace desde el PC. Prueba también `/olvidar algo`.
+
+De vuelta en el PC:
+6. Estado > Revocar la passkey (o `uv run tama passkey listar` y `uv run tama passkey revocar 1`).
+7. En el celular, recarga: vuelve a "Entrar a Tama", y "Entrar con passkey" ya no funciona.
+8. Al terminar: cierra Tama y, si quieres, borra `demo-s10\`.
 
 ## Criterio de cierre
 - Tests y CI en verde.
