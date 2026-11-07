@@ -12,6 +12,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   `tailscale serve` y de la cuenta configurada (`TAMA_WEB_TAILSCALE_HOST`,
   `TAMA_WEB_TAILSCALE_USER`) y sigue escuchando en 127.0.0.1. Avisos al celular por el ntfy propio
   vía Tailscale, aviso de prueba en Estado y `/aviso-prueba`, y `tama celular` con los pasos.
+  Tras la demo: el rechazo dice la causa y `tama celular` revisa el `.env`; la página se pone al
+  día con los avisos al volver del segundo plano; Estado muestra servidor y tópico de ntfy; los
+  recordatorios van a ntfy con prioridad alta (`TAMA_NTFY_PRIORITY_RECORDATORIO`).
 - Sprint 8 (pulido): la línea de tiempo y las búsquedas dicen "fecha no indicada" en cada dato sin
   fecha, y la línea de tiempo nombra de quién es cada dato; los planes son un tipo de dato propio,
   enlazado a Renzo y con su fecha futura ("el sábado", "en marzo"), y la reflexión guarda los que

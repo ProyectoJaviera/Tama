@@ -1,6 +1,6 @@
 # Sprint 9: Tama en el celular
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-06)
 
 ## Objetivo
 Renzo usa Tama desde el celular, en la casa o con datos móviles, como una app instalada, y recibe
@@ -98,3 +98,30 @@ En el celular, con el WiFi apagado (solo datos móviles):
 - Demo de Renzo: celular con datos móviles abre Tama por HTTPS, la instala como app, conversa y
   recibe un aviso ntfy.
 - Tama sigue respondiendo en 127.0.0.1 y ningún puerto del router queda abierto.
+
+## Cierre
+Evals solo en la nube y sin Claude; ninguna prueba del modelo local (van en
+`13-modelo-local-v2.md`).
+
+- Demo real: un Samsung con datos móviles abrió Tama por HTTPS a través de Tailscale, la instaló
+  como app, conversó y recibió los recordatorios por ntfy, también con la pantalla apagada. En el
+  PC, Tama siguió respondiendo en 127.0.0.1, sin puertos abiertos en el router.
+- Evals: herramientas 23/23, memoria 10/10 y 3/3 sin inventar, conversación 20/20 (media 5,0);
+  Sprint 8 sin regresión (planes 7/7, reflexión 3/3).
+- Tests: 478 en verde, con una prueba en navegador con pantalla de Pixel 7. CI en verde.
+
+Arreglos durante la demo:
+- `tailscale serve` pide activar HTTPS la primera vez: se deja Funnel desmarcado (documentado).
+- Tama rechazaba al celular por dos errores de tipeo en el `.env`. El rechazo ahora dice la causa
+  y `tama celular` compara el `.env` con lo que reporta Tailscale.
+- La página del celular perdía los avisos que llegaban con la pantalla apagada: ahora se pone al
+  día al reconectarse, al volver a la pantalla y cada minuto.
+- El enlace `ntfy://` dejó la suscripción en ntfy.sh. Estado muestra el servidor y el tópico para
+  suscribirse a mano.
+- Los recordatorios llegan a ntfy con prioridad alta (suenan y salen bloqueado) y los urgentes al
+  máximo.
+
+Pendiente:
+
+- El acceso depende de la cuenta de Tailscale; el login propio llega en el Sprint 10.
+- El prompt de la nube sigue en 2.433 tokens (meta ~2.000).
