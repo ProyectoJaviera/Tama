@@ -44,7 +44,35 @@ La calidad del modelo local y la elección final del tamaño de whisper (`13-mod
 - Evals sin regresión en la nube, sin Claude.
 
 ## Pasos de la demo
-(se completan al cierre)
+Con una memoria de demo aparte (`demo-s11\`): tus datos no se tocan. Los modelos de voz ya están
+descargados en `Tama-s11\models\voz` (en otra carpeta: `uv run python scripts/descargar_voz.py`).
+En PowerShell, desde `D:\Estudio\IA\Proyecto_Tama\Tama-s11`.
+
+En el PC:
+1. Cierra la Tama abierta (Ctrl+C) y abre esta:
+   ```powershell
+   $env:TAMA_DATA_DIR="demo-s11\data"; $env:TAMA_MEMORY_DIR="demo-s11\memoria"; $env:TAMA_WORKDIR="demo-s11\trabajo"
+   uv run tama web
+   ```
+2. En http://127.0.0.1:8765, marca "Leer respuestas en voz alta". Mantén apretado "Hablar", di
+   "Hola Tama, ¿qué hora es?" y suelta (la primera vez Chrome pide el micrófono). Debe aparecer
+   tu mensaje escrito, la respuesta y su voz (Piper, sin key todavía).
+3. Estado > Voz: "Piper (local)", con el motivo, y 0 de 10.000 caracteres.
+
+ElevenLabs (cuando tengas la key):
+4. En tu `.env` (el de `Tama-s11`), agrega `ELEVENLABS_API_KEY=<tu key>`.
+5. `uv run tama voz disenar`: escucha las voces de prueba (se abren solas), elige un número y pega
+   en el `.env` la línea `TAMA_ELEVENLABS_VOICE_ID=...` que muestra. Reinicia Tama (paso 1).
+6. `uv run tama voz probar` y Estado deben decir ElevenLabs; los caracteres del mes suben.
+
+En el celular (datos móviles, Tailscale conectado):
+7. Esta memoria de demo no tiene passkeys: en el PC, Estado > "Generar código para un celular";
+   en el celular, "Registrar esta passkey" con el código y luego entra.
+8. Marca "Leer respuestas en voz alta", mantén "Hablar" (el celular pide el micrófono), habla y
+   suelta: escribe tu mensaje, responde y lo dice en voz alta.
+
+Sin internet (opcional): desconecta el PC y repite el paso 2 en el PC: escucha y habla con
+whisper y Piper. Al terminar, puedes borrar `demo-s11\`.
 
 ## Criterio de cierre
 - Tests y CI en verde.
