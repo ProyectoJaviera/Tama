@@ -32,6 +32,18 @@ sería más simple, pero cualquiera que adivine el tópico lee los avisos y el t
 tercero. En iPhone, ntfy necesita a ntfy.sh solo para despertar la app (`upstream-base-url`): se
 envía un identificador del mensaje, no su texto.
 
+## Prioridad de los avisos en ntfy
+Un recordatorio lo pidió Renzo para una hora: va con prioridad alta (`high`), con sonido, emergente
+y en la pantalla de bloqueo. Uno urgente va al máximo (`urgent`). Sugerencias, resumen matutino y
+seguimiento de objetivos pueden esperar: prioridad normal, para no molestar. La de los
+recordatorios se cambia con `TAMA_NTFY_PRIORITY_RECORDATORIO`. El aviso de prueba usa la misma, así
+muestra cómo llegará un recordatorio.
+
+En el celular (Samsung/Android), si no suenan o no salen bloqueado: en ntfy, la suscripción > ⋮ >
+Ajustes de notificación (prioridad mínima "Por defecto" o menor y sonido); en Ajustes >
+Notificaciones > Notificaciones en pantalla de bloqueo, "Mostrar contenido" con ntfy permitida; y
+batería "Sin restricciones" para ntfy y Tailscale. Estado lo recuerda.
+
 ## Fuera de alcance
 Login y usuarios (S10), voz y cambios al modelo local (las pruebas del modelo local van en
 `13-modelo-local-v2.md`).

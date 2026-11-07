@@ -183,6 +183,7 @@ def build_proactive(settings: Settings) -> Engine:
         rules,
         ntfy_url=settings.ntfy_url,
         ntfy_topic=settings.ntfy_topic,
+        ntfy_priority=settings.ntfy_priority_recordatorio,
     )
 
 

@@ -459,3 +459,32 @@ def test_phone_guide_points_at_wrong_env_lines():
     )
     assert celular.check_env(good, "desktop-1.tail9.ts.net", "renzo@gmail.com") == []
     assert celular.check_env(settings, "", "") == []  # sin Tailscale no hay con qué comparar
+
+
+def capture():
+    sent = []
+    return sent, lambda url, **kwargs: sent.append(kwargs["headers"])
+
+
+def test_reminders_go_to_ntfy_with_high_priority_and_urgent_with_max():
+    sent, post = capture()
+    item = engine(ntfy_url="http://127.0.0.1:8090", ntfy_topic="t", post=post)
+    remind(WEDNESDAY - timedelta(minutes=2))
+    remind(WEDNESDAY - timedelta(minutes=1), urgent=True, text="Apagar el horno")
+    item.tick()
+    priorities = {(h["Priority"], h["Tags"]) for h in sent}
+    assert {("high", "alarm_clock"), ("urgent", "rotating_light")} <= priorities
+    assert priorities <= {
+        ("high", "alarm_clock"),
+        ("urgent", "rotating_light"),
+        ("default", "bulb"),
+    }
+    assert all(h["Title"] == "Tama" for h in sent)
+
+
+def test_lesser_notices_go_with_normal_priority_and_test_like_a_reminder():
+    sent, post = capture()
+    item = engine(ntfy_url="http://127.0.0.1:8090", ntfy_topic="t", post=post, ntfy_priority="max")
+    item.deliver("sugerencia", "s1", "Retoma el portugués", "sugerencia de la reflexión")
+    item.test_push()
+    assert [h["Priority"] for h in sent] == ["default", "max"]

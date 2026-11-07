@@ -114,6 +114,8 @@ Para recibirlos en el celular, con un servidor ntfy propio (el texto de los avis
 ntfy.sh): mira "En el celular". Por el mismo WiFi también funciona sin internet, con
 `TAMA_NTFY_URL=http://<IP del PC>:8090`. Si ntfy falla, Tama sigue y lo indica en `/estado`.
 `/aviso-prueba` (o Estado > "Enviar aviso de prueba") manda uno de prueba.
+Los recordatorios llegan a ntfy con prioridad alta (suenan y salen con el celular bloqueado;
+`TAMA_NTFY_PRIORITY_RECORDATORIO`), los urgentes al máximo y el resto con prioridad normal.
 
 ### Cerebro en cascada
 

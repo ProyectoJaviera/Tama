@@ -20,6 +20,15 @@
   <input readonly value="{{ ntfy_topic }}" onclick="this.select()" aria-label="Tópico de ntfy">
   <p class="muted">También puedes probar el enlace
     <a href="{{ ntfy_link }}">Suscribirme en la app ntfy</a> (solo desde el celular).</p>
+  <details><summary class="muted">Si no suenan o no salen con el celular bloqueado</summary>
+    <ul class="muted">
+      <li>En ntfy: toca la suscripción &gt; ⋮ &gt; Ajustes de notificación: prioridad mínima
+        "Por defecto" o menor y sonido activado.</li>
+      <li>En Ajustes del celular &gt; Notificaciones &gt; Notificaciones en pantalla de bloqueo:
+        "Mostrar contenido" y ntfy permitida.</li>
+      <li>Ajustes &gt; Aplicaciones &gt; ntfy y Tailscale &gt; Batería: "Sin restricciones".</li>
+    </ul>
+  </details>
 </div>
 {% endif %}
 <form hx-post="/estado/aviso-prueba" hx-target="#aviso-prueba">

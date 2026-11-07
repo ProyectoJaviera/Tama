@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     stale_goal_days: int = 14
     ntfy_url: str = ""
     ntfy_topic: str = ""
+    # Prioridad de los recordatorios en ntfy (min, low, default, high, urgent). "high" suena y sale
+    # en la pantalla de bloqueo; los urgentes van siempre en "urgent" y el resto en "default".
+    ntfy_priority_recordatorio: str = "high"
     # Dirección de ntfy que usa el celular (https://<pc>.ts.net:8443): para el enlace de Estado
     # que suscribe la app ntfy. docker compose la usa también como base-url de ntfy.
     ntfy_public_url: str = ""
