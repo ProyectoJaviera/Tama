@@ -46,6 +46,19 @@ Ollama empezó a limitar más el uso de la nube por la sesión del PC. La capa 1
 - Las evals usan solo la key 3 (`TAMA_EVALS_OLLAMA_KEY=3`), para no gastar las del día a día.
 - Si todas se agotan a la vez, Tama baja a Claude sin esperar.
 
+## Agregado: Claude como capa principal (decisión de Renzo, 2026-11-12)
+Las keys de Ollama Cloud responden 402 (la cuenta no tiene uso gratis con API key). Renzo eligió
+Claude primero:
+- Orden configurable `TAMA_CASCADE_ORDER`, por defecto `claude,nube,local`; la local va siempre.
+- Gasto de Claude contado en el PC en cada llamada (las de herramientas también) con los precios
+  de Haiku 5.5 (US$ 0,10 entrada y 0,50 salida por millón; caché escrita 1,25x y leída 0,1x).
+  Al llegar al tope (`TAMA_CLAUDE_MONTHLY_USD` / `TAMA_CLAUDE_TOPE_USD_MES`, US$ 5) la capa se
+  salta; al 80 % avisa una vez en la consola. Estado muestra el gasto del mes.
+- Caché de prompt automática (`cache_control` en la petición).
+- Prueba de humo `python -m evals.humo_claude --con-claude` (5 mensajes: charla, hora y memoria):
+  US$ 0,0012 en total; la caché bajó el costo de los mensajes siguientes entre 3 y 10 veces.
+  Suite completa con Claude estimada en unos US$ 0,03 (~122 turnos, sin el juez). No se corrió.
+
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
 

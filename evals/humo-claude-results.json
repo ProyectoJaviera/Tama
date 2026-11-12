@@ -1,0 +1,47 @@
+{
+  "total_usd": 0.00118,
+  "por_mensaje_usd": 0.000236,
+  "suite_turnos": 122,
+  "suite_estimada_usd": 0.029,
+  "detalle": [
+    {
+      "mensaje": "Hola Tama, ¿cómo estás?",
+      "capa": "claude",
+      "herramientas": [],
+      "costo_usd": 0.000647,
+      "respuesta": "Hola Renzo, estoy bien, gracias por preguntar. ¿Cómo estás tú? ¿Qué tal va tu día?"
+    },
+    {
+      "mensaje": "¿Qué hora es?",
+      "capa": "claude",
+      "herramientas": [
+        "get_current_time"
+      ],
+      "costo_usd": 0.00017,
+      "respuesta": "Son las 12:54 del mediodía en Santiago, un jueves 12 de noviembre."
+    },
+    {
+      "mensaje": "Mi perro se llama Bruno y tiene 4 años.",
+      "capa": "claude",
+      "herramientas": [
+        "create_entities"
+      ],
+      "costo_usd": 0.000216,
+      "respuesta": "Qué bueno conocer a Bruno, Renzo. Ya lo guardé: tu perro tiene 4 años. ¿Qué tipo de perro es o qué les gusta hacer juntos?"
+    },
+    {
+      "mensaje": "¿Cómo se llama mi perro?",
+      "capa": "claude",
+      "herramientas": [],
+      "costo_usd": 7.2e-05,
+      "respuesta": "Tu perro se llama Bruno."
+    },
+    {
+      "mensaje": "Gracias, eso es todo por ahora.",
+      "capa": "claude",
+      "herramientas": [],
+      "costo_usd": 7.5e-05,
+      "respuesta": "De nada, Renzo. Que tengas buena tarde, y saludos a Bruno."
+    }
+  ]
+}

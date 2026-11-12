@@ -153,17 +153,19 @@ Los recordatorios llegan a ntfy con prioridad alta (suenan y salen con el celula
 
 ### Cerebro en cascada
 
-Tama prueba tres capas en orden y usa la primera que responda:
+Tama prueba tres capas en orden y usa la primera que responda. Por defecto (desde que la nube de
+Ollama dejó de tener uso gratis), `TAMA_CASCADE_ORDER=claude,nube,local`:
 
-1. **Nube de Ollama** (`gemma4:31b-cloud`), directo a ollama.com con API keys, en orden: usa la
-   key 1 (`OLLAMA_API_KEY_1`); si agota su cuota o la rechazan, pasa a la 2 y luego a la 3 en la
-   misma respuesta. Una key agotada se vuelve a probar cada hora (`TAMA_CLOUD_KEY_COOLDOWN_S`) y
-   se vuelve a preferir en orden. Sin keys, esta capa queda apagada. Estado muestra cada key como
-   activa o agotada hasta tal hora (nunca la key). Las evals usan solo la key 3
-   (`TAMA_EVALS_OLLAMA_KEY`). Las keys se crean en ollama.com > Settings > Keys.
-2. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se superó el tope
-   mensual (`TAMA_CLAUDE_MONTHLY_USD`, US$ 5 por defecto).
-3. **Ollama local**, siempre disponible y sin internet.
+1. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se pasó el tope del
+   mes (`TAMA_CLAUDE_MONTHLY_USD` o `TAMA_CLAUDE_TOPE_USD_MES`, US$ 5 por defecto). El gasto se
+   cuenta en el PC con lo que informa cada llamada (incluida la caché de prompt, que abarata los
+   mensajes siguientes); al 80 % avisa en la consola y Estado muestra el gasto del mes.
+2. **Nube de Ollama** (`gemma4:31b`), directo a ollama.com con API keys, en orden: usa la key 1
+   (`OLLAMA_API_KEY_1`); si se agota o queda sin saldo, pasa a la 2 y luego a la 3 en la misma
+   respuesta. Una key agotada se vuelve a probar cada hora (`TAMA_CLOUD_KEY_COOLDOWN_S`) y se
+   vuelve a preferir en orden. Sin keys, esta capa queda apagada. `uv run tama nube` muestra cada
+   key y `uv run tama nube reintentar` las vuelve a probar al tiro. Las evals usan solo la key 3.
+3. **Ollama local**, siempre disponible y sin internet (siempre va, al final si no se nombra).
 
 Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
 completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
@@ -263,6 +265,7 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |
+| `TAMA_CASCADE_ORDER` | `claude,nube,local` | Orden de las capas (la local va siempre) |
 | `OLLAMA_API_KEY_1`, `_2`, `_3` | vacío | Keys de Ollama Cloud, en orden (`OLLAMA_API_KEY` vale como la 1) |
 | `TAMA_CLOUD_KEY_COOLDOWN_S` | `3600` | Cuánto queda de lado una key agotada antes de reintentarla |
 | `TAMA_EVALS_OLLAMA_KEY` | `3` | Key que usan las evals (0 = todas en orden) |

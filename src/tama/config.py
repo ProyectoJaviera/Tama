@@ -72,7 +72,10 @@ class Settings(BaseSettings):
     claude_first_token_s: float = 8.0
     # low | medium | high | xhigh | max. "low" baja la latencia en conversación.
     claude_effort: str = "low"
-    claude_monthly_usd: float = 5.0
+    claude_monthly_usd: float = Field(
+        5.0,
+        validation_alias=AliasChoices("TAMA_CLAUDE_MONTHLY_USD", "TAMA_CLAUDE_TOPE_USD_MES"),
+    )
     # Precios en US$ por millón de tokens (Haiku 5.5, prompts de hasta 100K tokens).
     claude_usd_per_mtok_in: float = 0.10
     claude_usd_per_mtok_out: float = 0.50

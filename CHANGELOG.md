@@ -6,6 +6,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Claude como capa principal: orden de la cascada configurable (`TAMA_CASCADE_ORDER`, por defecto
+  `claude,nube,local`), gasto contado en cada llamada con la caché, tope mensual con aviso al 80 % y
+  gasto en Estado, y caché de prompt automática. Prueba de humo `evals.humo_claude`.
 - Capa nube con varias API keys de Ollama Cloud en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`), directo
   a ollama.com: si una agota su cuota se usa la siguiente en la misma respuesta, se reintenta cada
   hora y Estado muestra cada key por número. Sin keys, la capa se apaga. Las evals usan la key 3.
