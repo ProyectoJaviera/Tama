@@ -323,7 +323,7 @@ def test_hold_to_talk_sends_the_audio_and_reads_the_answer(tmp_path, monkeypatch
         button = page.locator("#hablar")
         button.hover()
         page.mouse.down()
-        page.wait_for_timeout(1200)
+        page.wait_for_timeout(2500)  # el micrófono falso tarda en partir en la CI
         page.mouse.up()
         page.wait_for_selector(".user:has-text('hola por voz')")
         page.wait_for_selector(".assistant:has-text('Te escuché.')")
