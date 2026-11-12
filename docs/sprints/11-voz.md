@@ -44,10 +44,7 @@ Ollama empezó a limitar más el uso de la nube por la sesión del PC. La capa 1
 - Estado persistido en `data/nube_keys.json`, sin las keys. Estado muestra cada key por número.
 - Sin keys, la capa 1 se apaga: ya no usa la sesión de `ollama signin`.
 - Las evals usan solo la key 3 (`TAMA_EVALS_OLLAMA_KEY=3`), para no gastar las del día a día.
-- Las 3 keys son de la misma cuenta. Según la página de precios de Ollama, la cuota es mensual y
-  por plan (cuenta), así que lo más probable es que se agoten las tres a la vez; en ese caso Tama
-  baja a Claude sin esperar. La documentación no dice qué código devuelve al agotarse: se tratan
-  429 y 402 como agotada.
+- Si todas se agotan a la vez, Tama baja a Claude sin esperar.
 
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
