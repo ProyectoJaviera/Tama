@@ -208,6 +208,8 @@ HEALTH_WORDS = (
     "enferm",
 )
 MAX_TIMELINE = 30
+# Memoria y notas son distintas: lo que no está en la memoria pudo quedar en una nota.
+NOTES_HINT = "Si Renzo pudo haberlo anotado, búscalo también en sus notas (search_notes)."
 # Va antes de una línea de tiempo con datos sin fecha: el modelo tendía a callarlo al resumir.
 UNDATED_NOTE = (
     "Al contarlo, repite la fecha de cada línea tal como está; donde dice «fecha no indicada», "
@@ -677,11 +679,11 @@ def no_match(db: sqlite3.Connection) -> str:
         (MAX_LISTED,),
     ).fetchall()
     if not rows:
-        return "No hay nada anotado sobre eso."
+        return f"No hay nada anotado sobre eso en la memoria. {NOTES_HINT}"
     listed = ", ".join(f"{r['name']} ({r['type']})" for r in rows)
     text = (
         "No hay coincidencias con esas palabras. Entidades guardadas: "
-        f"{listed}. Si alguna puede servir, búscala por su nombre; si no, no está anotado."
+        f"{listed}. Si alguna puede servir, búscala por su nombre. {NOTES_HINT}"
     )
     owner = find_entity(db, OWNER)
     facts = recent_observations(db, owner["id"]) if owner else []
@@ -729,7 +731,8 @@ def with_date(texts: list[str], when: Any) -> list[str]:
         "observations (frases que digan de quién hablan, con su nombre, y las fechas como las "
         "dijo: se calculan solas). Lo puntual con alguien "
         "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
-        "entidad con aliases: [nombre]."
+        "entidad con aliases: [nombre]. Si pide anotar o apuntar algo, eso va en una nota "
+        "(create_note)."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:

@@ -140,7 +140,7 @@ def run_plans(layer: str, offline: bool) -> dict[str, Any]:
             ok = not plans
         else:
             dated = [p for p in plans if memoria.resolve_dates(p[0], future=True)[1]]
-            right_date = dated[0][2] == expected if expected else not dated
+            right_date = (bool(dated) and dated[0][2] == expected) if expected else not dated
             ok = len(plans) == 1 and right_date and not repeated
         mark = "ok" if ok else "FALLA"
         extra = f" duplicados: {repeated}" if repeated else ""
