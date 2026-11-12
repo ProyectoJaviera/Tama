@@ -344,6 +344,21 @@ def chat_loop(
             brain.proactive.activity()
 
 
+def cloud_command(settings: Settings, args: list[str]) -> int:
+    """`tama nube` muestra las API keys de Ollama Cloud; `tama nube reintentar` vuelve a probarlas
+    todas desde ya (p. ej. después de cargar créditos), sin esperar la hora."""
+    from tama.providers.cloud_keys import KeyRing
+
+    count = len(settings.cloud_keys())
+    ring = KeyRing(count, settings.data_dir / "nube_keys.json", settings.cloud_key_cooldown_s)
+    if args[:1] == ["reintentar"]:
+        ring.clear()
+        print("Listo: Tama volverá a probar todas las keys en el próximo mensaje.")
+        return 0
+    print("\n".join(ring.status()) or "Sin API keys de Ollama Cloud en el .env.")
+    return 0
+
+
 def passkey_command(settings: Settings, args: list[str]) -> int:
     """`tama passkey nueva | listar | revocar <n>`: el acceso desde el celular, solo en el PC."""
     from tama.auth import CODE_MINUTES, Access
@@ -385,6 +400,8 @@ def main(
         return export_memory(settings)
     if args.mensaje[:2] == ["memoria", "reparar"]:
         return repair_memory(settings)
+    if args.mensaje[:1] == ["nube"]:
+        return cloud_command(settings, args.mensaje[1:])
     if args.mensaje[:1] == ["voz"]:
         from tama import voz_cli
 

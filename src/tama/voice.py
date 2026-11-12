@@ -12,6 +12,7 @@ La API key de ElevenLabs solo viaja en la cabecera `xi-api-key`; nunca se regist
 import io
 import json
 import logging
+import os
 import sqlite3
 import threading
 import wave
@@ -110,7 +111,13 @@ class Listener:
                 )
             from pywhispercpp.model import Model
 
-            options: dict[str, Any] = {"print_progress": False, "print_realtime": False}
+            # Solo CPU (regla del PC: la GPU no se usa) y sin el detalle de carga en la consola.
+            options: dict[str, Any] = {
+                "print_progress": False,
+                "print_realtime": False,
+                "context_params": {"use_gpu": False},
+                "redirect_whispercpp_logs_to": os.devnull,
+            }
             if self.threads:
                 options["n_threads"] = self.threads
             self._model = Model(str(self.model_path), **options)

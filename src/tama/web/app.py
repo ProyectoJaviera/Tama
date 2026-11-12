@@ -934,6 +934,9 @@ def serve(settings: Settings) -> int:
             brain.watch_network(settings.connectivity_watch_s, settings.local_keep_warm)
         if brain.proactive is not None:
             brain.proactive.start()
+        for layer in brain.cascade.layers:
+            if hasattr(layer.provider, "startup_line"):
+                print(f"Ollama Cloud: {layer.provider.startup_line()}", flush=True)
         print("Tama lista.", flush=True)
         return app
 

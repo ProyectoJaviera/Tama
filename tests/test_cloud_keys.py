@@ -80,7 +80,7 @@ def test_all_keys_exhausted_at_once_go_down_to_the_next_layer_quickly(tmp_path):
     cloud = provider(tmp_path, {KEYS[0]: [429], KEYS[1]: [402], KEYS[2]: [429]}, seen)
     events = run(cloud)
     assert len(seen) == 3 and isinstance(events[-1], Error)
-    assert cloud.unavailable_reason().startswith("todas las API keys")
+    assert cloud.unavailable_reason().startswith("ninguna API key")
 
     class Claude:
         name, model, needs_network = "claude", "haiku", True
@@ -102,7 +102,7 @@ def test_a_rejected_key_is_set_aside_too(tmp_path):
     seen = []
     cloud = provider(tmp_path, {KEYS[0]: [401], KEYS[1]: [], KEYS[2]: []}, seen)
     run(cloud)
-    assert cloud.keys_status()[0].startswith("key 1: rechazada hasta")
+    assert cloud.keys_status()[0].startswith("key 1: inválida hasta")
 
 
 def test_network_errors_and_5xx_do_not_mark_the_key(tmp_path):
@@ -163,7 +163,7 @@ def test_evals_can_pin_one_key(tmp_path):
     assert seen == [("sk-tres-secreto", "gemma4:31b")]
     cloud = provider(tmp_path / "b", {KEYS[2]: [429], KEYS[0]: [], KEYS[1]: []}, seen, only=3)
     run(cloud)
-    assert cloud.unavailable_reason().startswith("todas las API keys")
+    assert cloud.unavailable_reason().startswith("ninguna API key")
 
 
 def test_settings_read_three_keys_and_the_old_name_as_key_1(monkeypatch):
@@ -180,3 +180,56 @@ def test_without_keys_the_layer_is_off():
     cloud = OllamaCloudKeys([], "gemma4:31b-cloud", ring)
     assert cloud.unavailable_reason().startswith("sin API keys")
     assert cloud.keys_status() == ["sin API keys configuradas"]
+
+
+def test_no_credits_is_shown_as_such_and_said_in_the_console(tmp_path, capsys):
+    seen = []
+    cloud = provider(tmp_path, {KEYS[0]: [402], KEYS[1]: [], KEYS[2]: []}, seen)
+    run(cloud)
+    assert cloud.keys_status()[0].startswith("key 1: sin saldo hasta")
+    console = capsys.readouterr().err
+    assert "key 1 sin saldo (error 402" in console and "usando la key 2" in console
+    assert not any(key in console for key in KEYS)
+
+
+def test_an_invalid_key_waits_five_minutes_not_an_hour(tmp_path):
+    clock = Clock()
+    seen = []
+    cloud = provider(tmp_path, {KEYS[0]: [401], KEYS[1]: [], KEYS[2]: []}, seen, clock)
+    run(cloud)
+    clock.now += 301
+    assert cloud.ring.usable() == [1, 2, 3]
+
+
+def test_model_not_found_is_not_blamed_on_the_key(tmp_path):
+    seen = []
+    cloud = provider(tmp_path, {KEYS[0]: [404], KEYS[1]: [], KEYS[2]: []}, seen)
+    events = run(cloud)
+    assert len(seen) == 1 and "modelo no encontrado" in str(events[-1])
+    assert cloud.keys_status()[0] == "key 1: activa"
+
+
+def test_retry_command_clears_the_marks(tmp_path, monkeypatch, capsys):
+    import time
+
+    from tama import cli
+
+    seen = []  # con el reloj real: el comando lee el estado guardado con la hora de verdad
+    run(provider(tmp_path, {KEYS[0]: [402], KEYS[1]: [402], KEYS[2]: [402]}, seen, time.time))
+    monkeypatch.setenv("OLLAMA_API_KEY_1", "a")
+    monkeypatch.setenv("OLLAMA_API_KEY_2", "b")
+    monkeypatch.setenv("OLLAMA_API_KEY_3", "c")
+    settings = Settings(_env_file=None, data_dir=tmp_path)
+    cli.cloud_command(settings, [])
+    assert "sin saldo" in capsys.readouterr().out
+    cli.cloud_command(settings, ["reintentar"])
+    assert KeyRing(3, tmp_path / "nube_keys.json").usable() == [1, 2, 3]
+
+
+def test_startup_line_lists_each_key_by_number(tmp_path):
+    seen = []
+    cloud = provider(tmp_path, {k: [] for k in KEYS}, seen, only=3)
+    assert (
+        cloud.startup_line()
+        == "3 keys (solo la key 3): key 1: activa; key 2: activa; key 3: activa"
+    )
