@@ -13,12 +13,69 @@ from tama.net import tcp_probe
 from tama.ollama import OllamaClient, OllamaError
 
 
-def make_judge(settings, local_only: bool = False):
-    """Juez en la nube si hay red (vía el Ollama local o con OLLAMA_API_KEY); si no, o si la nube
-    falla, el modelo de fondo local, mucho más lento en CPU.
+def claude_judge(settings):
+    """Juez con Claude (decisión de Renzo, 2026-11-12: nunca el modelo local como juez).
 
-    En `--offline` lo que se prueba es la generación sin red: el juicio puede usar la nube después.
+    Su gasto se suma al mismo contador que la capa de Claude, así cuenta para el tope.
     """
+    import anthropic
+    from anthropic import DefaultHttpxClient
+
+    from tama.net import tls_context
+    from tama.spend import Spend
+
+    client = anthropic.Anthropic(
+        api_key=settings.anthropic_api_key.get_secret_value(),
+        max_retries=2,
+        http_client=DefaultHttpxClient(verify=tls_context()),
+    )
+    spend = Spend(
+        settings.claude_spend_db or settings.data_dir / "claude_gasto.db",
+        settings.claude_usd_per_mtok_in,
+        settings.claude_usd_per_mtok_out,
+        settings.claude_monthly_usd,
+    )
+    schema = {
+        "type": "object",
+        "properties": {
+            "puntajes": {"type": "array", "items": {"type": "integer"}},
+            "comentario": {"type": "string"},
+        },
+        "required": ["puntajes", "comentario"],
+        "additionalProperties": False,
+    }
+    used: list[str] = []
+
+    def judge(prompt: str) -> dict:
+        if spend.gate():
+            raise ValueError(f"juez: {spend.gate()}")
+        response = client.messages.create(
+            model=settings.claude_model,
+            max_tokens=2048,
+            system=runner.JUDGE_SYSTEM,
+            messages=[{"role": "user", "content": prompt}],
+            output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
+        )
+        spend.add(response.usage)
+        text = next((b.text for b in response.content if b.type == "text"), "")
+        verdict = runner.parse_json_object(text)
+        verdict["puntajes"] = [min(5, max(1, int(n))) for n in verdict.get("puntajes", [])]
+        if settings.claude_model not in used:
+            used.append(settings.claude_model)
+        return verdict
+
+    return judge, used, client.close
+
+
+def make_judge(settings, local_only: bool = False):
+    """Juez de las evals. Con la capa de Claude encendida (--con-claude), solo Claude.
+
+    Si no, en la nube si hay red (vía el Ollama local o con OLLAMA_API_KEY) y, si falla, el modelo
+    de fondo local, más lento en CPU. En `--offline` lo que se prueba es la generación sin red:
+    el juicio puede usar la nube después.
+    """
+    if settings.claude_enabled and settings.anthropic_api_key is not None:
+        return claude_judge(settings)
     local = OllamaClient(settings.ollama_host, timeout=900)
     local_judge = (
         local,
@@ -63,8 +120,9 @@ def make_judge(settings, local_only: bool = False):
     return judge, used, close
 
 
-def rejudge(settings, mode: str, scenarios, local_only: bool) -> int:
-    """Puntúa de nuevo los escenarios cuyo juicio falló, sin volver a generar las respuestas."""
+def rejudge(settings, mode: str, scenarios, local_only: bool, everything: bool = False) -> int:
+    """Puntúa de nuevo los escenarios cuyo juicio falló (o todos, con `everything`), sin volver a
+    generar las respuestas."""
     judge_name, outcomes = runner.load_mode(mode)
     by_id = {s.id: s for s in scenarios}
     judge, used, close = make_judge(settings, local_only)
@@ -72,14 +130,18 @@ def rejudge(settings, mode: str, scenarios, local_only: bool) -> int:
         for outcome in outcomes:
             judge_failed = (outcome.error or "").startswith("juez:")
             not_judged = not outcome.error and not outcome.puntajes
-            if not (judge_failed or not_judged) or outcome.scenario not in by_id:
+            if not (everything or judge_failed or not_judged) or outcome.scenario not in by_id:
                 continue
+            if everything and outcome.error and not judge_failed:
+                continue  # Tama no respondió: no hay nada que puntuar
             outcome.error = None
+            outcome.puntajes = []
             runner.apply_judgement(by_id[outcome.scenario], outcome, judge)
             print(f"[juez] {outcome.scenario}: {outcome.puntajes or outcome.error}", flush=True)
     finally:
         close()
-    names = [n for n in [judge_name, *used] if n and n != "pendiente"]
+    names = used if everything and used else [judge_name, *used]
+    names = [n for n in names if n and n != "pendiente"]
     runner.save_mode(mode, ", ".join(dict.fromkeys(names)), outcomes)
     (runner.EVALS_DIR / "RESULTS.md").write_text(runner.render_report(), encoding="utf-8")
     return 0
@@ -102,6 +164,11 @@ def main() -> int:
         action="store_true",
         help="puntúa los escenarios guardados que no tienen puntaje o cuyo juicio falló",
     )
+    parser.add_argument(
+        "--rejuzgar-todos",
+        action="store_true",
+        help="vuelve a puntuar todos los escenarios guardados (p. ej. con otro juez)",
+    )
     args = parser.parse_args()
 
     settings = get_settings().model_copy(update={"data_dir": runner.EVALS_DIR / "data"})
@@ -112,8 +179,8 @@ def main() -> int:
     if args.capas and not args.offline:
         mode = "online-" + "-".join(args.capas)
 
-    if args.rejuzgar:
-        return rejudge(settings, mode, scenarios, args.juez_local)
+    if args.rejuzgar or args.rejuzgar_todos:
+        return rejudge(settings, mode, scenarios, args.juez_local, args.rejuzgar_todos)
 
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
     brain = brain_module.build(settings, force_offline=args.offline, only=args.capas)

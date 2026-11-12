@@ -316,11 +316,11 @@
   "claude": {
     "capa": "claude",
     "sin_red": false,
-    "fecha": "2026-10-30",
+    "fecha": "2026-11-12",
     "casos": 23,
-    "correctos": 23,
-    "pct": 100.0,
-    "ttft_p50": 0.6099999999996726,
+    "correctos": 20,
+    "pct": 87.0,
+    "ttft_p50": 0.5779999999795109,
     "voseo": 0,
     "resultados": [
       {
@@ -331,10 +331,10 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 19:11 del viernes 30 de octubre de 2026, hora de Santiago.",
+        "respuesta": "Son las 15:45 del jueves 12 de noviembre de 2026, hora de Santiago.",
         "capa": "claude",
-        "ttft_s": 0.6410000000005311,
-        "total_s": 0.7660000000005311
+        "ttft_s": 0.5779999999795109,
+        "total_s": 0.6719999999913853
       },
       {
         "scenario": "hora-ciudad",
@@ -344,24 +344,24 @@
           "get_current_time"
         ],
         "confirmaciones": [],
-        "respuesta": "Ahora en Londres son las 22:11 del viernes 30 de octubre de 2026. Allí ya no está en horario de verano, así que la diferencia con Santiago depende de si Chile ya cambió de horario.",
+        "respuesta": "En Londres son las 18:45 del jueves 12 de noviembre de 2026.",
         "capa": "claude",
-        "ttft_s": 0.6869999999998981,
-        "total_s": 0.9839999999994689
+        "ttft_s": 0.5929999999934807,
+        "total_s": 0.7029999999795109
       },
       {
         "scenario": "nota-banco",
         "ok": true,
         "motivo": "",
         "llamadas": [
-          "create_note",
-          "create_entities"
+          "create_entities",
+          "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Listo, anoté en una nota que el lunes tienes que llamar al banco. Si quieres, puedo agregarle una hora o el motivo de la llamada.",
+        "respuesta": "Anotado: tienes que llamar al banco el lunes. Lo guardé también en tus notas. Ya había un dato parecido en tu memoria con fecha lunes 16 de noviembre de 2026, así que quedó registrado ese día. Si no es esa fecha, dímelo y lo corrijo.",
         "capa": "claude",
-        "ttft_s": 0.8429999999998472,
-        "total_s": 1.1089999999994689
+        "ttft_s": 0.7190000000118744,
+        "total_s": 1.3440000000118744
       },
       {
         "scenario": "nota-titulo",
@@ -371,10 +371,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Listo, creé la nota \"Ideas\" con el texto \"soporte para audífonos\". ¿Quieres agregarle algo más?",
+        "respuesta": "Listo, creé la nota \"Ideas\" con el texto \"soporte para audífonos\".",
         "capa": "claude",
-        "ttft_s": 0.43699999999989814,
-        "total_s": 0.6090000000003783
+        "ttft_s": 0.7030000000086147,
+        "total_s": 0.8120000000053551
       },
       {
         "scenario": "buscar-impresora",
@@ -385,24 +385,23 @@
           "search_nodes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes una nota titulada \"Impresora 3D\", actualizada el 30 de octubre de 2026, que dice: \"Cambiar la boquilla de 0.4 mm y calibrar la cama\". No tengo nada más anotado sobre impresoras.",
+        "respuesta": "Tienes una nota titulada \"Impresora 3D\" (actualizada el 12 de noviembre de 2026) que dice: \"Cambiar la boquilla de 0.4 mm y calibrar la cama\". No encontré otros datos sobre la impresora en lo que me has contado.",
         "capa": "claude",
-        "ttft_s": 0.75,
-        "total_s": 1.0630000000001019
+        "ttft_s": 0.5160000000032596,
+        "total_s": 0.9059999999881256
       },
       {
         "scenario": "buscar-dentista",
-        "ok": true,
-        "motivo": "",
+        "ok": false,
+        "motivo": "faltó search_notes {'query': 'dentista'} (llamó ['search_nodes'])",
         "llamadas": [
-          "search_nodes",
-          "search_notes"
+          "search_nodes"
         ],
         "confirmaciones": [],
-        "respuesta": "Según tu nota \"Dentista\" (actualizada el 30 de octubre de 2026), tienes hora con el dentista el martes a las 9:00. La nota no indica la fecha exacta del martes, así que si quieres, revisa tu calendario para confirmarla.",
+        "respuesta": "No encuentro nada guardado sobre el dentista. Lo único que tengo anotado es que tienes que llamar al banco el lunes 16 de noviembre de 2026. Si me cuentas la fecha de la cita, la guardo para que no se te pase.",
         "capa": "claude",
-        "ttft_s": 0.6400000000003274,
-        "total_s": 1.0
+        "ttft_s": 0.4220000000204891,
+        "total_s": 0.875
       },
       {
         "scenario": "notas-recientes",
@@ -412,10 +411,10 @@
           "search_notes"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes 5 notas guardadas:\n\n1. **Dentista**: hora con el dentista el martes a las 9:00.\n2. **Viaje a Chiloé**: salir el 5 de enero y reservar cabaña en Castro.\n3. **Impresora 3D**: cambiar la boquilla de 0.4 mm y calibrar la cama.\n4. **Llamar al banco**: el lunes tengo que llamar al banco.\n5. **Ideas**: soporte para audífonos.\n\n¿Quieres que modifique o agregue alguna?",
+        "respuesta": "Tienes 5 notas guardadas:\n\n1. **Ideas**: \"soporte para audífonos\".\n2. **Llamar al banco el lunes**: tienes que llamar al banco el lunes.\n3. **Impresora 3D**: cambiar la boquilla de 0.4 mm y calibrar la cama.\n4. **Viaje a Chiloé**: salir el 5 de enero y reservar cabaña en Castro.\n5. **Dentista**: hora con el dentista el martes a las 9:00.\n\n¿Quieres que modifique alguna o que agregue una nueva?",
         "capa": "claude",
-        "ttft_s": 1.610000000000582,
-        "total_s": 2.157000000000153
+        "ttft_s": 0.6559999999881256,
+        "total_s": 1.2969999999913853
       },
       {
         "scenario": "leer-plan",
@@ -425,10 +424,10 @@
           "read_file"
         ],
         "confirmaciones": [],
-        "respuesta": "El archivo `plan.md` dice:\n\n> # Plan del sábado\n> Imprimir el soporte del teléfono y ordenar el taller.\n\n¿Quieres que lo actualice o que agregue algo más?",
+        "respuesta": "El archivo plan.md tiene un título, \"Plan del sábado\", y dice: \"Imprimir el soporte del teléfono y ordenar el taller.\"",
         "capa": "claude",
-        "ttft_s": 0.5460000000002765,
-        "total_s": 0.7960000000002765
+        "ttft_s": 0.5,
+        "total_s": 0.7030000000086147
       },
       {
         "scenario": "listar-archivos",
@@ -438,10 +437,10 @@
           "find_files"
         ],
         "confirmaciones": [],
-        "respuesta": "Tienes tres archivos en tu carpeta de trabajo:\n\n- **plan.md** (76 bytes)\n- **presupuesto.md** (60 bytes)\n- **tareas.txt** (71 bytes)\n\nSi quieres, puedo leer alguno de ellos.",
+        "respuesta": "En tu carpeta de trabajo hay tres archivos: plan.md, presupuesto.md y tareas.txt. Si quieres, puedo leer alguno de ellos.",
         "capa": "claude",
-        "ttft_s": 0.5780000000004293,
-        "total_s": 0.8910000000005311
+        "ttft_s": 0.46900000001187436,
+        "total_s": 0.75
       },
       {
         "scenario": "archivo-presupuesto",
@@ -451,10 +450,10 @@
           "find_files"
         ],
         "confirmaciones": [],
-        "respuesta": "El archivo que menciona el presupuesto es **presupuesto.md**, de 60 bytes. Si quieres, puedo leerlo y resumirte lo que dice.",
+        "respuesta": "El archivo que habla del presupuesto es **presupuesto.md**. Si quieres, puedo leerlo y resumirte lo que dice.",
         "capa": "claude",
-        "ttft_s": 0.5,
-        "total_s": 0.7809999999999491
+        "ttft_s": 0.75,
+        "total_s": 0.9840000000258442
       },
       {
         "scenario": "crear-archivo",
@@ -466,8 +465,8 @@
         "confirmaciones": [],
         "respuesta": "Listo, creé el archivo compras.txt con: pan, leche y huevos.",
         "capa": "claude",
-        "ttft_s": 0.7029999999995198,
-        "total_s": 0.7969999999995707
+        "ttft_s": 0.46899999998277053,
+        "total_s": 0.5779999999795109
       },
       {
         "scenario": "cadena-tareas",
@@ -478,10 +477,10 @@
           "create_note"
         ],
         "confirmaciones": [],
-        "respuesta": "Listo. Creé la nota \"Lo más urgente\" con la tarea más urgente de tareas.txt: **pagar la luz, que vence mañana**. La otra tarea, regar las plantas, no quedó en la nota porque no es urgente.",
+        "respuesta": "Listo. Anoté en la nota \"Lo más urgente\" que lo más urgente es pagar la luz, que vence mañana. Regar las plantas quedó fuera porque no tiene urgencia.",
         "capa": "claude",
-        "ttft_s": 0.5630000000001019,
-        "total_s": 0.8289999999997235
+        "ttft_s": 0.4529999999795109,
+        "total_s": 0.7189999999827705
       },
       {
         "scenario": "cadena-viaje",
@@ -492,25 +491,24 @@
           "create_file"
         ],
         "confirmaciones": [],
-        "respuesta": "Encontré tu nota \"Viaje a Chiloé\" (última actualización el 30 de octubre de 2026) y guardé su contenido en el archivo `viaje.md`. El contenido es: \"Salir el 5 de enero y reservar cabaña en Castro\".",
+        "respuesta": "Encontré tu nota \"Viaje a Chiloé\" y guardé su contenido en el archivo viaje.md: \"Salir el 5 de enero y reservar cabaña en Castro\".",
         "capa": "claude",
-        "ttft_s": 0.7029999999995198,
-        "total_s": 0.9529999999995198
+        "ttft_s": 0.5309999999881256,
+        "total_s": 0.7179999999934807
       },
       {
         "scenario": "cadena-hora-nota",
-        "ok": true,
-        "motivo": "",
+        "ok": false,
+        "motivo": "faltó create_note {'*': 'estudi'} (llamó ['get_current_time', 'create_entities'])",
         "llamadas": [
           "get_current_time",
-          "create_note",
           "create_entities"
         ],
         "confirmaciones": [],
-        "respuesta": "Son las 19:11 del viernes 30 de octubre (hora de Santiago). Anoté en una nota que empezaste a estudiar a esa hora. ¡Mucho ánimo con la sesión!",
+        "respuesta": "Son las 15:45 del jueves 12 de noviembre de 2026, hora de Santiago. Anoté que empezaste a estudiar a esa hora. Que te vaya bien con la sesión.",
         "capa": "claude",
-        "ttft_s": 0.5470000000004802,
-        "total_s": 0.7970000000004802
+        "ttft_s": 0.8129999999946449,
+        "total_s": 1.110000000015134
       },
       {
         "scenario": "borrar-dentista",
@@ -523,10 +521,10 @@
         "confirmaciones": [
           "delete_note"
         ],
-        "respuesta": "No borré la nota del dentista. Renzo dijo que no a la confirmación, así que sigue como estaba: \"Hora con el dentista el martes a las 9:00\".",
+        "respuesta": "No borré la nota del dentista. Renzo no confirmó la eliminación, así que sigue guardada como estaba, con la hora del martes a las 9:00.",
         "capa": "claude",
-        "ttft_s": 0.7660000000005311,
-        "total_s": 0.9850000000005821
+        "ttft_s": 0.625,
+        "total_s": 0.9070000000065193
       },
       {
         "scenario": "reemplazar-plan",
@@ -538,10 +536,10 @@
         "confirmaciones": [
           "overwrite_file"
         ],
-        "respuesta": "Entendido: no reemplacé el contenido de plan.md. El archivo sigue exactamente como estaba.",
+        "respuesta": "No hice el cambio: Renzo no confirmó la acción, así que plan.md sigue como estaba.",
         "capa": "claude",
         "ttft_s": 0.5,
-        "total_s": 0.7190000000000509
+        "total_s": 0.7030000000086147
       },
       {
         "scenario": "editar-viaje",
@@ -554,10 +552,10 @@
         "confirmaciones": [
           "update_note"
         ],
-        "respuesta": "No se hizo el cambio: Renzo no confirmó la modificación, así que la nota \"Viaje a Chiloé\" sigue igual, con \"Salir el 5 de enero y reservar cabaña en Castro\".",
+        "respuesta": "No hice el cambio: la nota \"Viaje a Chiloé\" sigue igual, diciendo \"Salir el 5 de enero y reservar cabaña en Castro\". Si quieres que la cambie, dime cómo la quieres dejar.",
         "capa": "claude",
-        "ttft_s": 0.5779999999995198,
-        "total_s": 0.9059999999999491
+        "ttft_s": 1.062000000005355,
+        "total_s": 1.4219999999913853
       },
       {
         "scenario": "web-example",
@@ -567,10 +565,10 @@
           "fetch"
         ],
         "confirmaciones": [],
-        "respuesta": "Trata de un dominio de ejemplo reservado para documentación, que no es un servicio real y no conviene usarlo para pruebas ni monitoreo.",
+        "respuesta": "Trata de un dominio de ejemplo, reservado para usarse en documentación y pruebas, que no es un servicio real.",
         "capa": "claude",
-        "ttft_s": 0.6880000000001019,
-        "total_s": 0.9380000000001019
+        "ttft_s": 0.5309999999881256,
+        "total_s": 0.7969999999913853
       },
       {
         "scenario": "saludo",
@@ -578,21 +576,23 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "¡Hola, Renzo! Estoy bien, gracias por preguntar. ¿Cómo estás tú? ¿Qué tal va tu día?",
+        "respuesta": "Hola Renzo, estoy bien, gracias por preguntar. ¿Cómo estás tú? ¿Hay algo en que te pueda ayudar hoy?",
         "capa": "claude",
-        "ttft_s": 0.5309999999999491,
-        "total_s": 0.8119999999998981
+        "ttft_s": 0.4370000000053551,
+        "total_s": 0.8440000000118744
       },
       {
         "scenario": "opinion",
-        "ok": true,
-        "motivo": "",
-        "llamadas": [],
+        "ok": false,
+        "motivo": "llamó search_nodes",
+        "llamadas": [
+          "search_nodes"
+        ],
         "confirmaciones": [],
-        "respuesta": "Me parece una muy buena idea. A los 40 tienes algo que ayuda mucho: sabes estudiar con constancia y entiendes por qué practicas, así que avanzas más rápido de lo que imaginas. Además, la guitarra tiene la ventaja de dar satisfacción temprana: con pocas semanas ya puedes tocar canciones simples, y eso mantiene la motivación.\n\nSi quieres, te puedo ayudar a armar un plan de práctica de 15 a 20 minutos diarios para empezar.",
+        "respuesta": "Creo que es una muy buena idea. A los 40 se tiene paciencia, criterio y una motivación más clara que a los 15, y eso ayuda a practicar de forma constante. Lo que más pesa es la regularidad: veinte minutos diarios suelen rendir más que una tarde suelta a la semana.\n\nNo tengo guardado que estés aprendiendo guitarra, así que si quieres contarme cómo va o qué te motivó, lo anoto.",
         "capa": "claude",
-        "ttft_s": 0.6099999999996726,
-        "total_s": 1.6719999999995707
+        "ttft_s": 0.6090000000258442,
+        "total_s": 1.5940000000118744
       },
       {
         "scenario": "chiste",
@@ -600,10 +600,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "¿Por qué el libro de matemáticas estaba triste? Porque tenía demasiados problemas.",
+        "respuesta": "Claro: ¿Por qué el libro de matemáticas estaba triste? Porque tenía demasiados problemas.",
         "capa": "claude",
-        "ttft_s": 0.6570000000001528,
-        "total_s": 1.110000000000582
+        "ttft_s": 0.6559999999881256,
+        "total_s": 1.0309999999881256
       },
       {
         "scenario": "explicacion",
@@ -611,10 +611,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "Un agujero negro es una región del espacio donde la masa está tan concentrada que su gravedad es tan intensa que nada, ni siquiera la luz, puede escapar una vez que cruza su frontera, llamada horizonte de sucesos.",
+        "respuesta": "Un agujero negro es una región del espacio donde la materia se comprime tanto que su gravedad es tan intensa que nada, ni siquiera la luz, puede escapar una vez que cruza su frontera, llamada horizonte de sucesos.",
         "capa": "claude",
-        "ttft_s": 0.5469999999995707,
-        "total_s": 0.9219999999995707
+        "ttft_s": 0.5470000000204891,
+        "total_s": 0.8900000000139698
       },
       {
         "scenario": "gracias",
@@ -622,10 +622,10 @@
         "motivo": "",
         "llamadas": [],
         "confirmaciones": [],
-        "respuesta": "¡De nada, Renzo! Que descanses, y cuando quieras retomamos.",
+        "respuesta": "Un gusto acompañarte, Renzo. Que descanses, y cuando quieras retomamos.",
         "capa": "claude",
-        "ttft_s": 0.5150000000003274,
-        "total_s": 0.9530000000004293
+        "ttft_s": 0.6719999999913853,
+        "total_s": 0.9379999999946449
       }
     ]
   },

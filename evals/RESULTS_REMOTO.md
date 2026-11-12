@@ -2,4 +2,4 @@
 
 | Capa | Negados con naturalidad | Control |
 |---|---:|---|
-| nube | 6/6 | ok |
+| claude | 6/6 | ok |

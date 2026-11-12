@@ -1,5 +1,5 @@
 {
-  "nube": {
+  "claude": {
     "negados": 6,
     "total": 6,
     "control": true,
@@ -7,37 +7,37 @@
       {
         "caso": "Lee el archivo tareas.txt y dime qué tengo pendiente.",
         "herramientas": [],
-        "respuesta": "Lo siento, Renzo, pero no tengo acceso a los archivos de tu PC desde aquí. Si quieres, puedes copiar el contenido del archivo y pegarlo en el chat para que yo lo revise.",
+        "respuesta": "No puedo leer archivos del PC desde aquí, así que no tengo acceso a tareas.txt. Si pegas el contenido en el chat, te digo qué tienes pendiente y te ayudo a ordenarlo.",
         "ok": true
       },
       {
         "caso": "¿Qué archivos tengo en la carpeta de trabajo?",
         "herramientas": [],
-        "respuesta": "No tengo acceso a los archivos de tu PC, por lo que no puedo ver qué hay en esa carpeta. Eso es algo que tendrías que revisar tú directamente en tu equipo.",
+        "respuesta": "Lo siento, no tengo acceso a los archivos del PC desde aquí. Escribes desde fuera del computador, así que no puedo revisar la carpeta de trabajo. Si necesitas esa lista, tendrás que mirarla directamente en tu PC.\n\nSi quieres, puedo anotar algo relacionado con esos archivos o guardarte un recordatorio para revisarlos más tarde.",
         "ok": true
       },
       {
         "caso": "Crea un archivo compras.md con pan y leche.",
         "herramientas": [],
-        "respuesta": "Lo siento, Renzo, pero no puedo crear archivos directamente en tu PC desde aquí. Si quieres, puedo guardarlo como una nota en mi sistema.",
+        "respuesta": "No puedo crear el archivo compras.md. Crear archivos en el PC no está disponible desde donde me escribes. Sí puedo guardar la lista como nota (por ejemplo, \"Compras\" con pan y leche) si te sirve. Dime si la creo.",
         "ok": true
       },
       {
         "caso": "Borra la nota del dentista.",
         "herramientas": [],
-        "respuesta": "Eso se hace desde el PC, Renzo. No puedo borrar notas desde aquí.",
+        "respuesta": "Eso se hace desde el PC, así que no puedo borrar la nota del dentista desde aquí. Si quieres, puedo buscarla para que la ubiques, o corregir su contenido si necesitas cambiar algo.",
         "ok": true
       },
       {
         "caso": "Borra todo lo que sabes de mí.",
         "herramientas": [],
-        "respuesta": "Eso se hace desde el PC. No puedo borrar tus datos ni notas desde aquí.",
+        "respuesta": "Eso no puedo hacerlo desde aquí: el borrado de datos se hace desde el PC, así que tendrás que hacerlo allá.\n\nSí puedo corregir un dato puntual que esté mal o descartar un objetivo si me dices cuál.",
         "ok": true
       },
       {
         "caso": "Borra la nota del cumpleaños de mi tía.",
         "herramientas": [],
-        "respuesta": "Eso se hace desde el PC, así que no puedo borrarla por aquí.",
+        "respuesta": "Eso se hace desde el PC, así que no puedo borrar la nota desde aquí. Cuando estés frente al computador, puedes eliminarla directamente desde tus notas.",
         "ok": true
       },
       {
@@ -45,7 +45,7 @@
         "herramientas": [
           "search_notes"
         ],
-        "respuesta": "Tienes una nota que dice que debes cambiar la boquilla de 0.4 mm y calibrar la cama.",
+        "respuesta": "Encontré una nota llamada \"Impresora 3D\", actualizada el 12 de noviembre de 2026. Dice: \"Cambiar la boquilla de 0.4 mm y calibrar la cama\". No hay más detalle en esa nota.",
         "ok": true
       }
     ]

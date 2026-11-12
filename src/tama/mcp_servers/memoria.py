@@ -514,6 +514,16 @@ def same_fact(db: sqlite3.Connection, text: str) -> int | None:
     return None
 
 
+def same_words(a: str, b: str) -> bool:
+    """Las mismas palabras en otro orden ("en marzo piensa empezar..." y "Renzo piensa empezar
+    ... en marzo"): casi todas las palabras con contenido coinciden. Ignora "Renzo" y las cortas."""
+    first = {w for w in a.split() if len(w) > 3 and w != OWNER}
+    second = {w for w in b.split() if len(w) > 3 and w != OWNER}
+    if not first or not second:
+        return False
+    return len(first & second) / len(first | second) >= 0.75
+
+
 def plan_twin(
     db: sqlite3.Connection, text: str, source: int | None, plan: bool
 ) -> sqlite3.Row | None:
@@ -536,6 +546,7 @@ def plan_twin(
             continue
         current, other_when, other_digits = fact_key(row["content"])
         close = SequenceMatcher(None, wanted, current).ratio() >= SAME_FACT
+        close = close or same_words(wanted, current)
         dates_fit = not when or not other_when or when == other_when
         if close and dates_fit and digits == other_digits:
             return row
@@ -727,12 +738,13 @@ def with_date(texts: list[str], when: Any) -> list[str]:
     description=(
         "Guarda lo que Renzo cuente de su vida: llámala con cada dato nuevo, antes de responder. "
         "Cada entidad lleva name, entityType (persona, mascota, lugar, organizacion, proyecto, "
-        "plan: lo que va a hacer, también un evento futuro, evento, salud, objeto, gusto) y "
-        "observations (frases que digan de quién hablan, con su nombre, y las fechas como las "
-        "dijo: se calculan solas). Lo puntual con alguien "
-        "va en esa persona. Si dice el nombre de alguien ya guardado (su esposa Lizette), usa esa "
-        "entidad con aliases: [nombre]. Si pide anotar o apuntar algo, eso va en una nota "
-        "(create_note)."
+        "plan, evento, salud, objeto, gusto) y observations (frases que digan de quién hablan, "
+        "con su nombre, y las fechas como las dijo: se calculan solas). Todo lo que Renzo VA a "
+        "hacer (ir, viajar, empezar, almorzar, disfrazarse), con fecha o sin ella, es una entidad "
+        "aparte con entityType plan; las fechas tal cual ('el sábado', 'en marzo'). Lo puntual "
+        "con alguien va en esa persona. Si dice el nombre de alguien ya guardado (su esposa "
+        "Lizette), usa esa entidad con aliases: [nombre]. Si pide anotar o apuntar algo, eso va "
+        "en una nota (create_note)."
     )
 )
 def create_entities(entities: list[dict[str, Any]], source: int | None = None) -> str:

@@ -7,7 +7,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 | Capa | Hechos recordados | Negativos | Entidades | Duplicadas | Mal nombradas | Tokens de prompt (máx) |
 |---|---:|---:|---:|---:|---:|---:|
 | nube | 9/10 | 3/3 | 11 | 1 | 1 | 2434 |
-| claude | 10/10 | 3/3 | 11 | 0 | 0 | 4251 |
+| claude | 10/10 | 3/3 | 7 | 1 | 0 | 5059 |
 | local | 8/10 | 3/3 | 14 | 0 | 0 | 2892 |
 | local (sin red) | 7/10 | 3/3 | 10 | 0 | 0 | 2721 |
 
@@ -18,13 +18,14 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 | nube | ok | ok |
 | local | ok | ok |
 | local (sin red) | ok | ok |
+| claude | ok | ok |
 
 ## Corrección de un dato
 
 | Capa | Sin confirmación | Antiguo no vigente | Recuerda el nuevo | Un hecho | Anterior |
 |---|---|---|---|---|---|
 | nube | ok | ok | ok | ok | ok |
-| claude | ok | ok | FALLA | ok | FALLA |
+| claude | ok | FALLA | ok | ok | ok |
 | local | ok | FALLA | ok | FALLA | ok |
 | local (sin red) | ok | FALLA | ok | FALLA | FALLA |
 
@@ -32,6 +33,7 @@ sesión nueva. Casos negativos: datos nunca contados. Meta: 9 de 10 y ninguna in
 
 - `nube` · ¿Cuál es mi proyecto de este trimestre?: Tienes varios proyectos activos: estás trabajando en el proyecto Faro con tu colega Tomás, armando una huerta de tomates
 - `nube` · duplicada: mama de renzo / renzo
+- `claude` · duplicada: mama de renzo / renzo
 - `local` · ¿Qué hierba no me gusta?: No tengo información sobre qué hierbas te gustan o no. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba 
 - `local` · ¿Cuál es mi proyecto de este trimestre?: No tengo el listado de proyectos de este trimestre. Puedes decirme más sobre qué tipo de proyecto te interesa o cuál es 
 - `local (sin red)` · ¿Qué hierba no me gusta?: No tengo datos sobre tus gustos en hierbas. Si me dices más, puedo ayudarte mejor. ¿Te refieres a una hierba en cocina o
