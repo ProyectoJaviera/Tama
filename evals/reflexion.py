@@ -347,6 +347,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("eval", choices=["reflexion", "diario", "objetivos", "cancelacion"])
     parser.add_argument("--capas", nargs="+", default=["nube"])
+    parser.add_argument("--con-claude", action="store_true", help="incluye la capa de Claude")
     parser.add_argument("--offline", action="store_true", help="simula no tener internet")
     args = parser.parse_args()
 

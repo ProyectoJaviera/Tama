@@ -77,6 +77,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TAMA_CLAUDE_MONTHLY_USD", "TAMA_CLAUDE_TOPE_USD_MES"),
     )
     # Precios en US$ por millón de tokens (Haiku 5.5, prompts de hasta 100K tokens).
+    # Dónde se cuenta el gasto de Claude (por defecto, data/claude_gasto.db). Las evals lo comparten
+    # entre corridas para cortar la suite completa en un solo tope.
+    claude_spend_db: Path | None = None
     claude_usd_per_mtok_in: float = 0.10
     claude_usd_per_mtok_out: float = 0.50
 

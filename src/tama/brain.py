@@ -139,7 +139,7 @@ def build(
     )
     # Gasto de Claude contado en cada llamada (incluidas las de herramientas y la caché).
     spend = Spend(
-        settings.data_dir / "claude_gasto.db",
+        settings.claude_spend_db or settings.data_dir / "claude_gasto.db",
         settings.claude_usd_per_mtok_in,
         settings.claude_usd_per_mtok_out,
         settings.claude_monthly_usd,
