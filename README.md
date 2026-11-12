@@ -155,8 +155,12 @@ Los recordatorios llegan a ntfy con prioridad alta (suenan y salen con el celula
 
 Tama prueba tres capas en orden y usa la primera que responda:
 
-1. **Nube de Ollama** (`gemma4:31b-cloud`), si hay internet y el Ollama del PC tiene la sesión
-   iniciada (`ollama signin`); no necesita clave. Con `OLLAMA_API_KEY` va directo a ollama.com.
+1. **Nube de Ollama** (`gemma4:31b-cloud`), directo a ollama.com con API keys, en orden: usa la
+   key 1 (`OLLAMA_API_KEY_1`); si agota su cuota o la rechazan, pasa a la 2 y luego a la 3 en la
+   misma respuesta. Una key agotada se vuelve a probar cada hora (`TAMA_CLOUD_KEY_COOLDOWN_S`) y
+   se vuelve a preferir en orden. Sin keys, esta capa queda apagada. Estado muestra cada key como
+   activa o agotada hasta tal hora (nunca la key). Las evals usan solo la key 3
+   (`TAMA_EVALS_OLLAMA_KEY`). Las keys se crean en ollama.com > Settings > Keys.
 2. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se superó el tope
    mensual (`TAMA_CLAUDE_MONTHLY_USD`, US$ 5 por defecto).
 3. **Ollama local**, siempre disponible y sin internet.
@@ -259,7 +263,9 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |
-| `OLLAMA_API_KEY` | vacío | Opcional: nube de Ollama directo a ollama.com (sin ella, vía `ollama signin`) |
+| `OLLAMA_API_KEY_1`, `_2`, `_3` | vacío | Keys de Ollama Cloud, en orden (`OLLAMA_API_KEY` vale como la 1) |
+| `TAMA_CLOUD_KEY_COOLDOWN_S` | `3600` | Cuánto queda de lado una key agotada antes de reintentarla |
+| `TAMA_EVALS_OLLAMA_KEY` | `3` | Key que usan las evals (0 = todas en orden) |
 | `TAMA_CLOUD_MODEL` | `gemma4:31b-cloud` | Modelo de la nube de Ollama |
 | `ANTHROPIC_API_KEY` | vacío | Activa la capa de Claude |
 | `TAMA_CLAUDE_ENABLED` | `true` | Usar la capa de Claude; las evals la apagan salvo con `--con-claude` |

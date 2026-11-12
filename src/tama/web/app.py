@@ -772,6 +772,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             local=not remote(request),
             passkeys=access.passkeys(),
             voice=voice.status() if voice is not None else None,
+            cloud_keys=cloud_keys_status(brain),
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
@@ -801,6 +802,14 @@ def preparing_html(brain: Brain) -> str:
         f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
         "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
     )
+
+
+def cloud_keys_status(brain: Brain) -> list[str]:
+    """Estado de las API keys de Ollama Cloud, por número (nunca la key)."""
+    for layer in brain.cascade.layers:
+        if hasattr(layer.provider, "keys_status"):
+            return layer.provider.keys_status()
+    return []
 
 
 def ntfy_link(settings: Settings) -> str:

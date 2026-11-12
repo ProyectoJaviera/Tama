@@ -32,6 +32,23 @@ Hablarle a Tama y escucharla, en el PC y en el celular, también sin internet.
 6. Al abrir Tama, Piper y whisper se cargan en segundo plano: la primera respuesta hablada no
    espera los ~5 s de carga de Piper.
 
+## Agregado: varias API keys de Ollama Cloud (pedido de Renzo, 2026-11-12)
+Ollama empezó a limitar más el uso de la nube por la sesión del PC. La capa 1 ahora va directo a
+`https://ollama.com/api/chat` con `Authorization: Bearer <key>` y el modelo sin el sufijo
+`-cloud` (`gemma4:31b`), con hasta 3 keys en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`;
+`OLLAMA_API_KEY` vale como la 1).
+- 429 o 402: key agotada; 401 o 403: rechazada. Se deja de lado (1 h, o Retry-After) y se prueba
+  la siguiente en la misma respuesta. Un error de red o un 5xx no marca la key: va al
+  cortacircuitos. Si todas fallan, se baja a Claude al tiro; las agotadas no se reintentan en cada
+  mensaje.
+- Estado persistido en `data/nube_keys.json`, sin las keys. Estado muestra cada key por número.
+- Sin keys, la capa 1 se apaga: ya no usa la sesión de `ollama signin`.
+- Las evals usan solo la key 3 (`TAMA_EVALS_OLLAMA_KEY=3`), para no gastar las del día a día.
+- Las 3 keys son de la misma cuenta. Según la página de precios de Ollama, la cuota es mensual y
+  por plan (cuenta), así que lo más probable es que se agoten las tres a la vez; en ese caso Tama
+  baja a Claude sin esperar. La documentación no dice qué código devuelve al agotarse: se tratan
+  429 y 402 como agotada.
+
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
 

@@ -6,6 +6,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Capa nube con varias API keys de Ollama Cloud en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`), directo
+  a ollama.com: si una agota su cuota se usa la siguiente en la misma respuesta, se reintenta cada
+  hora y Estado muestra cada key por número. Sin keys, la capa se apaga. Las evals usan la key 3.
 - Sprint 11 (voz): escuchar con whisper.cpp en CPU y hablar con ElevenLabs (flash) → Piper local,
   con tope mensual de caracteres y cortacircuitos; botón "Hablar" y lectura en voz alta en la web y
   el celular; Estado con la voz activa. Modelos descargados una vez con hash fijo

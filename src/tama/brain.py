@@ -14,7 +14,8 @@ from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.proactive import Engine, Rules
 from tama.providers.claude import ClaudeProvider
-from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
+from tama.providers.cloud_keys import KeyRing, OllamaCloudKeys
+from tama.providers.ollama import OllamaLocalProvider
 from tama.reflection import Reflector, Thinker, close_days, enough_ram, reflect
 from tama.selector import ToolFocus
 from tama.warmup import LocalWarmer
@@ -96,14 +97,16 @@ def build(
     )
     # La nube de Ollama pasa por el daemon local (sesión de `ollama signin`), salvo que haya
     # OLLAMA_API_KEY: entonces se habla directo con ollama.com.
-    cloud_key = settings.ollama_api_key
-    if cloud_key:
-        cloud_client = OllamaClient(
-            settings.cloud_host, timeout=60.0, api_key=cloud_key.get_secret_value()
-        )
-        cloud = OllamaCloudProvider(cloud_client, settings.cloud_model, direct=True)
-    else:
-        cloud = OllamaCloudProvider(local, settings.cloud_model)
+    # La nube va directo a ollama.com con API keys, en orden (ver providers/cloud_keys.py). Sin
+    # keys, la capa queda fuera y la cascada sigue con Claude y local.
+    clients = [
+        OllamaClient(settings.cloud_host, timeout=60.0, api_key=key)
+        for key in settings.cloud_keys()
+    ]
+    ring = KeyRing(
+        len(clients), settings.data_dir / "nube_keys.json", settings.cloud_key_cooldown_s
+    )
+    cloud = OllamaCloudKeys(clients, settings.cloud_model, ring, settings.cloud_key_only)
     claude_key = settings.anthropic_api_key
 
     def breaker() -> CircuitBreaker:

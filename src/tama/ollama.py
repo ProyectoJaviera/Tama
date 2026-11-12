@@ -14,9 +14,13 @@ Message = dict[str, Any]
 class OllamaError(RuntimeError):
     """Error al hablar con Ollama (servidor caído, modelo ausente, etc.)."""
 
-    def __init__(self, message: str, status: int | None = None) -> None:
+    def __init__(
+        self, message: str, status: int | None = None, retry_after: float | None = None
+    ) -> None:
         super().__init__(message)
         self.status = status
+        self.retry_after = retry_after
+        """Segundos que pidió esperar el servidor (cabecera Retry-After), si los dio."""
 
 
 class OllamaClient:
@@ -74,7 +78,9 @@ class OllamaClient:
             with self._http.stream("POST", "/api/chat", json=payload) as response:
                 if response.is_error:
                     response.read()
-                    raise OllamaError(_error_text(response), response.status_code)
+                    raise OllamaError(
+                        _error_text(response), response.status_code, _retry_after(response)
+                    )
                 for line in response.iter_lines():
                     if not line:
                         continue
@@ -158,7 +164,7 @@ class OllamaClient:
         except httpx.HTTPError as exc:
             raise OllamaError(f"no se pudo hablar con Ollama: {exc}") from exc
         if response.is_error:
-            raise OllamaError(_error_text(response), response.status_code)
+            raise OllamaError(_error_text(response), response.status_code, _retry_after(response))
         return response.json()
 
 
@@ -169,6 +175,14 @@ def _chat_payload(
     if think is not None:
         payload["think"] = think
     return payload
+
+
+def _retry_after(response: httpx.Response) -> float | None:
+    value = response.headers.get("retry-after", "")
+    try:
+        return float(value) if value else None
+    except ValueError:
+        return None
 
 
 def _error_text(response: httpx.Response) -> str:

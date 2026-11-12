@@ -37,6 +37,21 @@ class Settings(BaseSettings):
     ollama_api_key: SecretStr | None = Field(
         None, validation_alias=AliasChoices("OLLAMA_API_KEY", "TAMA_OLLAMA_API_KEY")
     )
+    # Varias API keys de Ollama Cloud, en orden: si una agota su cuota se usa la siguiente, y si
+    # ninguna sirve se baja a Claude. OLLAMA_API_KEY sola sigue valiendo como key 1.
+    ollama_api_key_1: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_1", "OLLAMA_API_KEY_1")
+    )
+    ollama_api_key_2: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_2", "OLLAMA_API_KEY_2")
+    )
+    ollama_api_key_3: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_3", "OLLAMA_API_KEY_3")
+    )
+    # Una key agotada o rechazada se vuelve a probar tras este tiempo (o lo que diga Retry-After).
+    cloud_key_cooldown_s: float = 3600.0
+    # Usar solo esa key (1, 2 o 3); 0 = todas en orden. Las evals: TAMA_EVALS_OLLAMA_KEY.
+    cloud_key_only: int = 0
     cloud_host: str = "https://ollama.com"
     cloud_model: str = "gemma4:31b-cloud"
     cloud_first_token_s: float = 8.0
@@ -149,10 +164,25 @@ class Settings(BaseSettings):
         value = value.strip().rstrip("/")
         return value if "://" in value else f"http://{value}"
 
-    @field_validator("ollama_api_key", "anthropic_api_key", "elevenlabs_api_key", mode="before")
+    @field_validator(
+        "ollama_api_key",
+        "ollama_api_key_1",
+        "ollama_api_key_2",
+        "ollama_api_key_3",
+        "anthropic_api_key",
+        "elevenlabs_api_key",
+        mode="before",
+    )
     @classmethod
     def empty_is_none(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
+
+    def cloud_keys(self) -> list[str]:
+        """Las keys de Ollama Cloud en orden, sin vacías ni repetidas."""
+        found = [self.ollama_api_key_1 or self.ollama_api_key, self.ollama_api_key_2]
+        found.append(self.ollama_api_key_3)
+        keys = [k.get_secret_value().strip() for k in found if k is not None]
+        return list(dict.fromkeys(k for k in keys if k))
 
     @property
     def events_db(self) -> Path:
