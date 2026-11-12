@@ -135,13 +135,13 @@
   "claude": {
     "fechas": {
       "ok": true,
-      "respuesta": "Tu historial médico, en orden:\n\n1. **3 de marzo de 2026:** Te operaron de la rodilla.\n2. **2 de agosto de 2026:** Te fracturaste la muñeca.\n3. **Fecha no indicada:** Tuviste una alergia fuerte a la penicilina en el pasado. No me dijiste cuándo.\n\nLa alergia a la penicilina es importante, así que conviene que el equipo médico la tenga registrada.",
+      "respuesta": "Este es tu historial médico, en orden:\n\n1. **3 de marzo de 2026:** operación de la rodilla.\n2. **2 de agosto de 2026:** fractura de la muñeca.\n3. **Fecha no indicada:** alergia fuerte a la penicilina. No dijiste cuándo ocurrió.\n\nSi quieres, puedo agregar la fecha de la alergia cuando la recuerdes, para que el historial quede completo.",
       "herramientas": [
         "linea_de_tiempo"
       ]
     },
     "planes": {
-      "correctos": 6,
+      "correctos": 7,
       "total": 7,
       "detalle": [
         {
@@ -149,7 +149,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo dice que se va a disfrazar de Shrek para la fiesta de la oficina.",
+              "Renzo va a disfrazarse de Shrek para la fiesta de la oficina.",
               "plan",
               "2026-11-12"
             ]
@@ -162,7 +162,7 @@
           "ok": true,
           "planes": [
             [
-              "Renzo dice: el sábado 14 de noviembre de 2026 voy a la playa con Ana",
+              "Renzo va a la playa con Ana el sábado 14 de noviembre de 2026",
               "plan",
               "2026-11-14"
             ]
@@ -198,7 +198,7 @@
         },
         {
           "caso": "En marzo pienso empezar un curso de cerámica.",
-          "ok": false,
+          "ok": true,
           "planes": [
             [
               "Renzo piensa empezar un curso de cerámica en marzo",
@@ -206,9 +206,7 @@
               "2027-03-01"
             ]
           ],
-          "duplicados": [
-            "En marzo piensa empezar un curso de cerámica"
-          ],
+          "duplicados": [],
           "esperado": "2027-03-01"
         },
         {
@@ -235,7 +233,7 @@
     },
     "sugerencias": {
       "ok": true,
-      "respuesta": "Sí. La que tienes pendiente es retomar las clases de portugués, porque llevas tres semanas sin avance. Si quieres, podemos armar un plan corto: dos sesiones de unos 20 minutos a la semana suelen ser más fáciles de sostener que una sesión larga. ¿Quieres que te agende un recordatorio para una de esas sesiones?",
+      "respuesta": "Tengo una pendiente para ti: retomar las clases de portugués, porque llevas tres semanas sin avance. Si te sirve, podemos pensar juntos un horario corto de dos o tres veces por semana para que vuelva a ser fácil. ¿Quieres que te deje un recordatorio para empezar?",
       "herramientas": [
         "list_suggestions"
       ]
@@ -247,12 +245,12 @@
         {
           "caso": "Avísame cuando empiece a llover.",
           "ok": true,
-          "respuesta": "Lo siento, no puedo vigilar el clima ni avisarte cuando empiece a llover: solo tengo avisos con hora fija. Si quieres, puedo agendarte un recordatorio para una hora concreta, por ejemplo para revisar el pronóstico antes de salir. ¿Te sirve algo así?"
+          "respuesta": "Lamentablemente no puedo vigilar el clima, así que no te avisaré cuando empiece a llover. Solo puedo agendar recordatorios a una hora específica. Si quieres, puedo dejarte uno para revisar el pronóstico a una hora concreta, por ejemplo mañana a las 8, o para cualquier otro momento que me digas."
         },
         {
           "caso": "Avísame si mi hermana me escribe un mensaje.",
           "ok": true,
-          "respuesta": "Lamento no poder hacer eso: no tengo forma de vigilar tus mensajes ni de avisarte cuando llegue uno. Lo que sí puedo hacer es agendarte un recordatorio con hora, por ejemplo para revisar si tu hermana te escribió a una hora determinada. ¿Te sirve que te lo deje así?"
+          "respuesta": "No puedo vigilar tus mensajes ni avisarte cuando llegue uno de tu hermana, porque solo tengo avisos con hora fija. Si quieres, puedo agendarte un recordatorio para revisar tu bandeja a una hora concreta, por ejemplo \"hoy a las 18\" o \"mañana a las 9\". ¿Te sirve algo así?"
         }
       ]
     },

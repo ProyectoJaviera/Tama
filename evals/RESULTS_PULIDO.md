@@ -5,4 +5,4 @@ Generado por `python -m evals.pulido`, con datos ficticios, en la nube y sin Cla
 | Capa | Fecha no indicada | Planes | Sugerencias | Avisos imposibles | Planes en la reflexión |
 |---|---|---:|---|---:|---:|
 | nube | ok | 7/7 | ok | 2/2 | 3/3 |
-| claude | ok | 6/7 | ok | 2/2 | 2/3 |
+| claude | ok | 7/7 | ok | 2/2 | 2/3 |

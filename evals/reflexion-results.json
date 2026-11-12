@@ -187,15 +187,15 @@
   "diario": {
     "fecha": "2026-11-12",
     "juez": [
-      "qwen3:4b"
+      "claude-haiku-5-5"
     ],
-    "diario": "# 2026-11-12\n\n## Conversamos:  \nRenzo fue al taller a arreglar la camioneta; era el alternador. Le cobraron 85 mil pesos. En la tarde habló con Lucía: se muda a Temuco en marzo. Avancé con el reloj Arduino: ya muestra la hora en la pantalla.\n\n## Aprendí:  \nDato sobre Lucía: Se muda a Temuco en marzo  \nAvance en Terminar el reloj Arduino: Ya muestra la hora en la pantalla  \n\n## Objetivos:  \nAvance en Terminar el reloj Arduino: Ya muestra la hora en la pantalla\n",
+    "diario": "# 2026-11-12\n\n## Conversamos:  \nRenzo fue al taller a arreglar la camioneta; era el alternador. Le cobraron 85 mil pesos. En la tarde habló con Lucía: se muda a Temuco en marzo. Avancé con el reloj Arduino: ya muestra la hora en la pantalla.\n\n## Aprendí:  \nDato sobre Lucía: Se muda a Temuco en marzo  \nAvance en Terminar el reloj Arduino: Ya muestra la hora en la pantalla\n\n## Objetivos:  \nAvance en Terminar el reloj Arduino: Ya muestra la hora en la pantalla\n",
     "puntajes": [
       5,
       5,
       5
     ],
-    "comentario": "El diario es preciso, incluye todos los elementos clave y está redactado de manera concisa y natural."
+    "comentario": "El diario refleja fielmente el registro sin inventar datos ni sentimientos, incluye el taller, el alternador, Lucía, Temuco y el reloj Arduino, y está escrito de forma breve y natural."
   },
   "objetivos claude": {
     "capa": "claude",

@@ -23,4 +23,4 @@ Soltar el modelo al escribir Renzo: 0.1 s.
 
 ## Diario
 
-Puntajes del juez (fidelidad, cobertura, estilo): [5, 5, 5]. El diario es preciso, incluye todos los elementos clave y está redactado de manera concisa y natural.
+Puntajes del juez (fidelidad, cobertura, estilo): [5, 5, 5]. El diario refleja fielmente el registro sin inventar datos ni sentimientos, incluye el taller, el alternador, Lucía, Temuco y el reloj Arduino, y está escrito de forma breve y natural.
