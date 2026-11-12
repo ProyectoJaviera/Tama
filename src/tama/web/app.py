@@ -773,6 +773,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             passkeys=access.passkeys(),
             voice=voice.status() if voice is not None else None,
             cloud_keys=cloud_keys_status(brain),
+            claude_spend=brain.spend.status() if getattr(brain, "spend", None) else "",
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])

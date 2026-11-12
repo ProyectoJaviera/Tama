@@ -3,6 +3,7 @@
 <h2>Capas</h2>
 {% for l in layers %}<div>{{ l.name }} <span class="muted">{{ l.model }} · {{ l.state }}</span></div>{% endfor %}
 {% if cloud_keys %}<div class="muted">Ollama Cloud: {{ cloud_keys|join(" · ") }}</div>{% endif %}
+{% if claude_spend %}<div class="muted">Claude: {{ claude_spend }}</div>{% endif %}
 <h2>Herramientas</h2>
 {% for name, state, names in tools %}
 <div>{{ name }} <span class="muted">{{ state }} · {{ names|join(", ") }}</span></div>

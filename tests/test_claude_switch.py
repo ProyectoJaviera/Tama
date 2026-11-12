@@ -18,7 +18,7 @@ def names(settings):
 
 
 def test_claude_layer_is_on_by_default(tmp_path):
-    assert names(Settings(data_dir=tmp_path)) == ["nube", "claude", "local"]
+    assert names(Settings(data_dir=tmp_path)) == ["claude", "nube", "local"]
 
 
 def test_switch_removes_the_claude_layer(tmp_path):
@@ -66,3 +66,16 @@ def test_evals_turn_claude_off_unless_asked(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["evals", "--con-claude"])
     importlib.reload(evals)
     assert "TAMA_CLAUDE_ENABLED" not in os.environ
+
+
+def test_cascade_order_is_configurable_and_local_always_stays(tmp_path):
+    from tama.brain import cascade_order
+
+    assert cascade_order("nube,claude,local") == ["nube", "claude", "local"]
+    assert cascade_order("claude, nube") == ["claude", "nube", "local"]
+    assert cascade_order("CLAUDE,otra,claude") == ["claude", "local"]
+    assert names(Settings(data_dir=tmp_path, TAMA_CASCADE_ORDER="nube,claude")) == [
+        "nube",
+        "claude",
+        "local",
+    ]

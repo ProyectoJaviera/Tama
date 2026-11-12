@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # Perfil (`nucleo.md`) y export del grafo; datos personales, nunca en el repo público.
     memory_dir: Path = Path("memoria")
 
+    # Orden de la cascada (decisión de Renzo, 2026-11-12: Claude primero, porque la nube de Ollama
+    # ya no tiene uso gratis). La capa local va siempre, al final si no se nombra.
+    cascade_order: str = Field(
+        "claude,nube,local",
+        validation_alias=AliasChoices("TAMA_CASCADE_ORDER", "TAMA_CASCADA"),
+    )
+
     # Capa 1: nube de Ollama.
     ollama_api_key: SecretStr | None = Field(
         None, validation_alias=AliasChoices("OLLAMA_API_KEY", "TAMA_OLLAMA_API_KEY")
