@@ -182,6 +182,11 @@ def main() -> int:
     if args.rejuzgar or args.rejuzgar_todos:
         return rejudge(settings, mode, scenarios, args.juez_local, args.rejuzgar_todos)
 
+    # Con --solo se reemplazan solo esos escenarios: lo anterior se lee antes de guardar nada.
+    previous = []
+    if args.solo and (runner.EVALS_DIR / f"results-{mode}.json").exists():
+        _, previous = runner.load_mode(mode)
+
     # Fase 1: Tama responde. Un turno de calentamiento carga el modelo antes de medir.
     brain = brain_module.build(settings, force_offline=args.offline, only=args.capas)
     problem = health_check(brain.local, settings.ollama_host, settings.local_model)
@@ -219,9 +224,7 @@ def main() -> int:
             close()
         judge_name = ", ".join(used) or "ninguno"
 
-    if args.solo and (runner.EVALS_DIR / f"results-{mode}.json").exists():
-        # Con --solo se reemplazan solo esos escenarios en los resultados guardados.
-        _, previous = runner.load_mode(mode)
+    if previous:
         fresh = {o.scenario: o for o in outcomes}
         outcomes = [fresh.pop(o.scenario, o) for o in previous] + list(fresh.values())
     runner.save_mode(mode, judge_name, outcomes)

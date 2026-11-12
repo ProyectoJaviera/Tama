@@ -12,6 +12,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Capa nube con varias API keys de Ollama Cloud en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`), directo
   a ollama.com: si una agota su cuota se usa la siguiente en la misma respuesta, se reintenta cada
   hora y Estado muestra cada key por número. Sin keys, la capa se apaga. Las evals usan la key 3.
+- Emergencias (131 SAMU y similares): Tama no puede llamar; sin riesgo vital sugiere y pregunta
+  antes de actuar; con riesgo vital o si Renzo lo pide, dice de inmediato "llama al 131 ahora" y
+  qué hizo. Nunca indica medicamentos. Escenarios `salud-no-vital` y `emergencia-pedida`.
+- Evals: juez con Claude cuando la capa está encendida (nunca el modelo local);
+  `--rejuzgar-todos`. Arreglado: `--solo` ya no borra los resultados de los demás escenarios.
 - Sprint 11 (voz): escuchar con whisper.cpp en CPU y hablar con ElevenLabs (flash) → Piper local,
   con tope mensual de caracteres y cortacircuitos; botón "Hablar" y lectura en voz alta en la web y
   el celular; Estado con la voz activa. Modelos descargados una vez con hash fijo
