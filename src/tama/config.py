@@ -143,6 +143,8 @@ class Settings(BaseSettings):
     voice_models_dir: Path = Path("models/voz")
     # "base" cuantizado: ~0,8 s por 4 s de audio en este PC; "small" tarda ~3 s (se decide en S13).
     whisper_model: str = "ggml-base-q5_1.bin"
+    # Procesa solo lo que dura el audio (audio_ctx): "small" queda tan rápido como "base".
+    whisper_fit_audio: bool = False
     piper_voice: str = "es_MX-ald-medium.onnx"
     # Solo para diagnosticar: si se define, guarda aquí cada audio que llega a /voz/escuchar con
     # lo que entendió whisper. Vacío (por defecto) = no se guarda nada.

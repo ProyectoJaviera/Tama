@@ -288,6 +288,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_ELEVENLABS_VOICE_ID` | (vacío) | Voz de ElevenLabs (de `tama voz disenar` o `listar`) |
 | `TAMA_ELEVENLABS_MONTHLY_CHARS` | `10000` | Tope de caracteres por mes en ElevenLabs |
 | `TAMA_WHISPER_MODEL` | `ggml-base-q5_1.bin` | Modelo de whisper.cpp en `models/voz` |
+| `TAMA_WHISPER_FIT_AUDIO` | `false` | Procesa solo lo que dura el audio: `small` queda en ~1 s, pero a veces repite la frase |
+| `TAMA_VOICE_DEBUG_DIR` | (vacío) | Solo para diagnosticar: guarda cada audio recibido y lo que entendió whisper |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
 | `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |

@@ -31,6 +31,7 @@ log = logging.getLogger(__name__)
 
 ELEVENLABS = "https://api.elevenlabs.io"
 WHISPER_PROMPT = "Conversación con Tama, la asistente de Renzo."
+PAD_S = 0.3  # segundos de silencio que se agregan antes y después del audio para whisper
 MAX_TEXT = 1200  # caracteres que se leen en voz alta por respuesta
 
 
@@ -91,10 +92,15 @@ def wav_to_pcm(data: bytes) -> Any:
 class Listener:
     """whisper.cpp en CPU. El modelo se carga la primera vez y queda en memoria."""
 
-    def __init__(self, model_path: Path, threads: int = 0, language: str = "es") -> None:
+    def __init__(
+        self, model_path: Path, threads: int = 0, language: str = "es", fit_audio: bool = False
+    ) -> None:
         self.model_path = model_path
         self.threads = threads
         self.language = language
+        # whisper procesa siempre 30 s de audio; con fit_audio, solo lo que dura el mensaje (más
+        # un margen). "small" baja de ~4 s a ~1 s en este PC; a large-v3-turbo lo empeora.
+        self.fit_audio = fit_audio
         self._model = None
         self._lock = threading.Lock()
 
@@ -124,14 +130,29 @@ class Listener:
         return self._model
 
     def transcribe(self, wav: bytes) -> str:
+        import numpy as np
+
         pcm = wav_to_pcm(wav)
         if len(pcm) < 16000 * 0.3:
             return ""
+        # Silencio antes y después: sin él, whisper suele perder la primera sílaba ("rueba").
+        pad = np.zeros(int(16000 * PAD_S), dtype=np.float32)
+        pcm = np.concatenate([pad, pcm, pad])
+        extra = {"audio_ctx": audio_context(len(pcm))} if self.fit_audio else {}
         with self._lock:  # whisper.cpp no admite dos transcripciones a la vez
             segments = self._load().transcribe(
-                pcm, language=self.language, initial_prompt=WHISPER_PROMPT
+                pcm,
+                language=self.language,
+                translate=False,
+                initial_prompt=WHISPER_PROMPT,
+                **extra,
             )
         return " ".join(s.text.strip() for s in segments).strip()
+
+
+def audio_context(samples: int) -> int:
+    """Ventana del codificador de whisper para un audio de 16 kHz: 50 por segundo, más margen."""
+    return min(1500, samples * 50 // 16000 + 128)
 
 
 # --- hablar ------------------------------------------------------------------------------
@@ -332,5 +353,9 @@ def build(settings: Any, online: Callable[[], bool] = lambda: True) -> Voice:
         settings.elevenlabs_monthly_chars,
         online,
         CircuitBreaker(settings.breaker_failures, settings.breaker_cooldown_s),
-        Listener(folder / settings.whisper_model, settings.num_thread),
+        Listener(
+            folder / settings.whisper_model,
+            settings.num_thread,
+            fit_audio=settings.whisper_fit_audio,
+        ),
     )

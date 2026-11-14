@@ -418,3 +418,25 @@ def test_a_tap_while_tama_speaks_silences_her_and_listens(tmp_path, monkeypatch)
         page.wait_for_selector("#hablar[data-estado='escuchando']")
         page.wait_for_function("document.querySelectorAll('.assistant').length >= 2", timeout=20000)
     assert len(heard) == 2
+
+
+def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_path, monkeypatch):
+    """Pre-roll: si Renzo empieza a hablar justo al tocar, la primera sílaba no se corta."""
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, _heard, voice):
+        one_tap_turn(page, voice, 1)  # abre el micrófono, que queda abierto
+        page.wait_for_timeout(1000)
+        sent = page.evaluate(
+            """() => new Promise((done) => {
+                const real = window.fetch;
+                window.fetch = (url, options) => {
+                  if (url === "/voz/escuchar") done([performance.now(), options.body.size]);
+                  return real(url, options);
+                };
+                window.tapAt = performance.now();
+                document.getElementById("hablar").click();
+            })"""
+        )
+        tapped = page.evaluate("window.tapAt")
+        listened_s = (sent[0] - tapped) / 1000
+        audio_s = (sent[1] - 44) / 32000
+        assert audio_s > listened_s + 0.3  # el audio empieza antes del toque

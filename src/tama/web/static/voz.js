@@ -29,7 +29,8 @@
   const PAUSE_MS = 1300;      // silencio tras haber hablado: fin del mensaje
   const WAIT_MS = 8000;       // si en este tiempo no se oye voz, se deja de escuchar
   const MAX_MS = 60000;       // tope de un mensaje
-  const CALIBRATE_MS = 250;   // primeros ms: ruido de fondo de la pieza
+  const CALIBRATE_MS = 250;   // sin audio previo: los primeros ms dan el ruido de fondo (se guardan)
+  const PREROLL_MS = 500;     // con el micrófono abierto, el último medio segundo antes del toque
   const MIN_LEVEL = 0.012;    // volumen mínimo para contar como voz
   const MAX_LEVEL = 0.05;     // el umbral nunca sube de aquí (si la calibración cayó sobre la voz)
   const KEEP_MIC_MS = 120000; // el micrófono queda abierto entre turnos y se cierra tras 2 min sin uso
@@ -63,7 +64,23 @@
       audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true },
     });
     const context = new AudioContext();
-    mic = { stream, context, source: context.createMediaStreamSource(stream) };
+    const source = context.createMediaStreamSource(stream);
+    // Un solo procesador mientras el micrófono esté abierto: entre turnos guarda el último medio
+    // segundo (pre-roll), para no cortar la primera sílaba si Renzo habla justo al tocar.
+    const node = context.createScriptProcessor(2048, 1, 1);
+    mic = { stream, context, source, node, ring: [], ringLength: 0 };
+    const keep = (PREROLL_MS / 1000) * context.sampleRate;
+    node.onaudioprocess = (e) => {
+      const samples = new Float32Array(e.inputBuffer.getChannelData(0));
+      if (recording) { recording.feed(samples); return; }
+      mic.ring.push(samples);
+      mic.ringLength += samples.length;
+      while (mic.ring.length > 1 && mic.ringLength - mic.ring[0].length >= keep) {
+        mic.ringLength -= mic.ring.shift().length;
+      }
+    };
+    source.connect(node);
+    node.connect(context.destination);
     return mic;
   }
 
@@ -71,6 +88,7 @@
     clearTimeout(micTimer);
     micTimer = setTimeout(() => {
       if (!mic || state === "abriendo" || state === "escuchando") return;
+      mic.node.onaudioprocess = null;
       mic.stream.getTracks().forEach((t) => t.stop());
       mic.context.close();
       mic = null;
@@ -117,34 +135,41 @@
   async function open() {
     setState("abriendo", "Abriendo el micrófono…");
     try {
-      const { context, source } = await microphone();
-      const node = context.createScriptProcessor(4096, 1, 1);
-      const chunks = [];
+      const current = await microphone();
+      const preroll = current.ring.splice(0);
+      current.ringLength = 0;
+      const chunks = [...preroll];
       const started = performance.now();
-      let floor = 0;
+      // El ruido de fondo se mide con el audio de antes del toque; si no hay (micrófono recién
+      // abierto), con los primeros 250 ms, que igual se guardan y se envían.
+      const levels = preroll.map(level).sort((a, b) => a - b);
+      let floor = levels.length ? levels[Math.floor(levels.length / 2)] : 0;
+      let calibrating = levels.length === 0;
       let calibrated = 0;
       let voiceAt = 0;
-      node.onaudioprocess = (e) => {
-        if (!recording || state !== "escuchando") return;
-        const samples = new Float32Array(e.inputBuffer.getChannelData(0));
-        chunks.push(samples);
-        const now = performance.now();
-        const rms = level(samples);
-        if (now - started < CALIBRATE_MS) {
-          floor = (floor * calibrated + rms) / (calibrated + 1);
-          calibrated += 1;
-          return;
-        }
-        if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) voiceAt = now;
-        if (voiceAt && now - voiceAt > PAUSE_MS) finish();
-        else if (!voiceAt && now - started > WAIT_MS) cancel("No te escuché. Toca Hablar y vuelve a intentarlo.");
-        else if (now - started > MAX_MS) finish();
+      recording = {
+        chunks,
+        rate: current.context.sampleRate,
+        feed(samples) {
+          if (state !== "escuchando") return;
+          chunks.push(samples);
+          const now = performance.now();
+          const rms = level(samples);
+          if (calibrating && now - started < CALIBRATE_MS) {
+            floor = (floor * calibrated + rms) / (calibrated + 1);
+            calibrated += 1;
+            return;
+          }
+          calibrating = false;
+          if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) voiceAt = now;
+          if (voiceAt && now - voiceAt > PAUSE_MS) finish();
+          else if (!voiceAt && now - started > WAIT_MS) cancel("No te escuché. Toca Hablar y vuelve a intentarlo.");
+          else if (now - started > MAX_MS) finish();
+        },
       };
-      source.connect(node);
-      node.connect(context.destination);
-      recording = { source, node, chunks, rate: context.sampleRate };
       setState("escuchando", "Te escucho… cuando hagas una pausa, lo envío.");
     } catch (error) {
+      recording = null;
       setState("idle", "No pude usar el micrófono: " + error.message);
     }
   }
@@ -153,9 +178,6 @@
     const taken = recording;
     recording = null;
     if (!taken) return null;
-    taken.node.onaudioprocess = null;
-    try { taken.source.disconnect(taken.node); } catch (e) {}
-    taken.node.disconnect();
     closeMicLater();
     return { chunks: taken.chunks, rate: taken.rate };
   }

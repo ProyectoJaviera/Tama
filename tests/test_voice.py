@@ -299,3 +299,10 @@ def test_clone_uploads_a_trimmed_normalized_sample(tmp_path):
 def test_commands_without_a_key_explain_what_to_add(capsys):
     assert voz_cli.main(Settings(elevenlabs_api_key=None), ["listar"]) == 1
     assert "ELEVENLABS_API_KEY" in capsys.readouterr().err
+
+
+def test_audio_context_fits_the_length_of_the_message():
+    from tama.voice import audio_context
+
+    assert audio_context(16000 * 4) == 4 * 50 + 128
+    assert audio_context(16000 * 60) == 1500  # nunca más que la ventana completa de 30 s
