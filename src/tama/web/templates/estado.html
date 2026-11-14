@@ -42,6 +42,8 @@
 <p>Voz activa: <b>{{ voice.active }}</b>{% if voice.reason %} <span class="muted">({{ voice.reason }})</span>{% endif %}</p>
 <p class="muted">ElevenLabs este mes: {{ voice.used }} de {{ voice.cap }} caracteres (contados en el PC).
   Escuchar: {{ "listo" if voice.listen else "falta el modelo (scripts/descargar_voz.py)" }}.
+  {% if voice.hearing %}Transcribe: <b>{{ voice.hearing.active }}</b>{% if voice.hearing.reason %} ({{ voice.hearing.reason }}){% endif %};
+  Scribe este mes: {{ voice.hearing.used_min }} de {{ voice.hearing.cap_min | int }} minutos.{% endif %}
   Voz local: {{ "lista" if voice.piper else "falta el modelo (scripts/descargar_voz.py)" }}.</p>
 {% else %}
 <p class="muted">La voz está apagada (TAMA_VOICE_ENABLED=false).</p>

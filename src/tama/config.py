@@ -157,6 +157,14 @@ class Settings(BaseSettings):
     elevenlabs_timeout_s: float = 8.0
     # Tope de caracteres por mes enviados a ElevenLabs (contados en el PC). Al pasarlo, habla Piper.
     elevenlabs_monthly_chars: int = 10000
+    # Escuchar en la nube: ElevenLabs Scribe (misma key) → whisper local sin red, si falla o tarda.
+    scribe_enabled: bool = True
+    scribe_model: str = "scribe_v2"
+    scribe_timeout_s: float = 5.0
+    # Tope de minutos de audio por mes enviados a Scribe (contados en el PC); aviso al 80 %.
+    scribe_monthly_minutes: float = Field(
+        60, validation_alias=AliasChoices("TAMA_SCRIBE_TOPE_MIN_MES", "TAMA_SCRIBE_MONTHLY_MINUTES")
+    )
 
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True

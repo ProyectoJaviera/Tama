@@ -306,3 +306,96 @@ def test_audio_context_fits_the_length_of_the_message():
 
     assert audio_context(16000 * 4) == 4 * 50 + 128
     assert audio_context(16000 * 60) == 1500  # nunca más que la ventana completa de 30 s
+
+
+# --- Escuchar en cascada: Scribe → whisper local ---------------------------------------------
+
+
+class LocalWhisper:
+    available = True
+
+    def __init__(self):
+        self.calls = 0
+
+    def transcribe(self, audio: bytes) -> str:
+        self.calls += 1
+        return "desde whisper"
+
+
+def scribe_post(response=None, error=None):
+    sent = []
+
+    def post(url, **kwargs):
+        sent.append({"url": url, **kwargs})
+        if error is not None:
+            raise error
+        return response
+
+    return post, sent
+
+
+def hearing_with(tmp_path, post, cap=60, online=True):
+    from tama.voice import Hearing, ScribeListener
+
+    local = LocalWhisper()
+    hearing = Hearing(
+        local,
+        Usage(tmp_path / "voz.db", "scribe"),
+        ScribeListener(KEY, post=post),
+        cap,
+        lambda: online,
+        CircuitBreaker(3, 300.0),
+    )
+    return hearing, local
+
+
+def test_scribe_transcribes_first_and_counts_the_seconds(tmp_path, capsys):
+    post, sent = scribe_post(httpx.Response(200, json={"text": " Esto es una prueba de sonido "}))
+    hearing, local = hearing_with(tmp_path, post)
+    assert hearing.transcribe(wav_bytes(3, rate=16000)) == "Esto es una prueba de sonido"
+    assert local.calls == 0 and hearing.last_provider == "Scribe"
+    assert sent[0]["url"].endswith("/v1/speech-to-text")
+    assert sent[0]["headers"]["xi-api-key"] == KEY
+    assert sent[0]["data"]["model_id"] == "scribe_v2" and sent[0]["data"]["language_code"] == "es"
+    assert sent[0]["timeout"] == 5.0
+    assert hearing.usage.month() == pytest.approx(3, abs=0.01)
+    assert "transcribió Scribe" in capsys.readouterr().err
+    assert hearing.status()["active"] == "Scribe"
+
+
+def test_scribe_refused_falls_back_to_whisper_without_showing_the_key(tmp_path, capsys):
+    post, _ = scribe_post(httpx.Response(401, json={"detail": "invalid api key"}))
+    hearing, local = hearing_with(tmp_path, post)
+    assert hearing.transcribe(wav_bytes(1, rate=16000)) == "desde whisper"
+    assert local.calls == 1 and "401" in hearing.last_reason
+    assert hearing.usage.month() == 0
+    err = capsys.readouterr().err
+    assert "whisper local" in err and KEY not in err
+
+
+def test_scribe_timeout_falls_back_and_three_failures_open_the_breaker(tmp_path):
+    post, sent = scribe_post(error=httpx.ReadTimeout("lento"))
+    hearing, _ = hearing_with(tmp_path, post)
+    assert hearing.transcribe(wav_bytes(1, rate=16000)) == "desde whisper"
+    assert hearing.last_reason == "Scribe no respondió en 5 s"
+    for _ in range(3):
+        assert hearing.transcribe(wav_bytes(1, rate=16000)) == "desde whisper"
+    assert len(sent) == 3  # al tercer fallo se deja de llamar a Scribe por unos minutos
+    assert "varias veces" in hearing.status()["reason"]
+
+
+def test_scribe_cap_reached_or_no_internet_uses_whisper(tmp_path, capsys):
+    post, sent = scribe_post(httpx.Response(200, json={"text": "nube"}))
+    hearing, _ = hearing_with(tmp_path, post, cap=0.05)  # 3 s al mes
+    assert hearing.transcribe(wav_bytes(2.5, rate=16000)) == "nube"
+    assert "80 %" in capsys.readouterr().err  # 2,5 de 3 s: pasó el 80 %, se avisa
+    assert hearing.transcribe(wav_bytes(1, rate=16000)) == "desde whisper"
+    assert "tope de 0.05 minutos" in hearing.last_reason
+    offline, _ = hearing_with(tmp_path / "otro", post, online=False)
+    assert offline.transcribe(wav_bytes(1, rate=16000)) == "desde whisper"
+    assert offline.last_reason == "sin internet" and len(sent) == 1
+
+
+def test_scribe_cap_reads_from_the_env_alias(monkeypatch):
+    monkeypatch.setenv("TAMA_SCRIBE_TOPE_MIN_MES", "15")
+    assert Settings(_env_file=None).scribe_monthly_minutes == 15

@@ -122,7 +122,8 @@ porque conservan el historial.
 ### Voz
 
 Toca "Hablar" en el chat (también en el celular), di lo que quieras y haz una pausa: Tama
-envía sola. Otro toque envía de inmediato. Con "Leer
+envía sola. Otro toque envía de inmediato. Con internet transcribe ElevenLabs Scribe (misma
+key, con tope de minutos al mes); sin red, si falla o al llegar al tope, whisper en el PC. Con "Leer
 respuestas en voz alta", Tama contesta con voz. Escucha con whisper.cpp en el PC (sin GPU) y habla
 con ElevenLabs si hay API key, o con Piper en el PC sin internet o si se pasa el tope del mes.
 
@@ -288,6 +289,7 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_ELEVENLABS_VOICE_ID` | (vacío) | Voz de ElevenLabs (de `tama voz disenar` o `listar`) |
 | `TAMA_ELEVENLABS_MONTHLY_CHARS` | `10000` | Tope de caracteres por mes en ElevenLabs |
 | `TAMA_WHISPER_MODEL` | `ggml-base-q5_1.bin` | Modelo de whisper.cpp en `models/voz` |
+| `TAMA_SCRIBE_TOPE_MIN_MES` | `60` | Minutos de audio al mes que transcribe ElevenLabs Scribe; después, whisper local |
 | `TAMA_WHISPER_FIT_AUDIO` | `false` | Procesa solo lo que dura el audio: `small` queda en ~1 s, pero a veces repite la frase |
 | `TAMA_VOICE_DEBUG_DIR` | (vacío) | Solo para diagnosticar: guarda cada audio recibido y lo que entendió whisper |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |

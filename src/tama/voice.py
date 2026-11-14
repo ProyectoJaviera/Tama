@@ -1,7 +1,8 @@
-"""Voz de Tama (Sprint 11): escuchar con whisper.cpp y hablar en cascada ElevenLabs → Piper.
+"""Voz de Tama (Sprint 11): escuchar en cascada Scribe → whisper.cpp y hablar ElevenLabs → Piper.
 
-- Escuchar: whisper.cpp en CPU (`pywhispercpp`), con un modelo descargado al instalar
-  (`scripts/descargar_voz.py`). El navegador manda el audio ya en 16 kHz mono (WAV).
+- Escuchar: ElevenLabs Scribe si hay key, red, cortacircuitos cerrado y minutos del mes bajo el
+  tope; si no, o si falla o tarda, whisper.cpp en CPU (`pywhispercpp`) con un modelo descargado al
+  instalar (`scripts/descargar_voz.py`). El navegador manda el audio ya en 16 kHz mono (WAV).
 - Hablar: ElevenLabs si hay key, voz, red, cortacircuitos cerrado y caracteres del mes bajo el
   tope; si no, o si falla, Piper local en español. Sin internet, Tama sigue hablando.
 
@@ -14,6 +15,7 @@ import json
 import logging
 import os
 import sqlite3
+import sys
 import threading
 import wave
 from collections.abc import Callable
@@ -44,26 +46,32 @@ def month_key(moment: datetime | None = None) -> str:
 
 
 class Usage:
-    """Caracteres enviados a ElevenLabs por mes, contados en el PC (`data/voz.db`)."""
+    """Uso de ElevenLabs por mes, contado en el PC (`data/voz.db`): caracteres de voz en la tabla
+    `usage` y segundos de audio de Scribe en `scribe`."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, table: str = "usage") -> None:
+        if table not in ("usage", "scribe"):
+            raise ValueError(table)
         self.path = path
+        self.table = table
         path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(path) as db:
-            db.execute("CREATE TABLE IF NOT EXISTS usage (month TEXT PRIMARY KEY, chars INTEGER)")
-
-    def add(self, chars: int, month: str | None = None) -> None:
-        with sqlite3.connect(self.path) as db:
             db.execute(
-                "INSERT INTO usage (month, chars) VALUES (?, ?) ON CONFLICT(month)"
-                " DO UPDATE SET chars = chars + excluded.chars",
-                (month or month_key(), chars),
+                f"CREATE TABLE IF NOT EXISTS {table} (month TEXT PRIMARY KEY, chars INTEGER)"
             )
 
-    def month(self, month: str | None = None) -> int:
+    def add(self, amount: float, month: str | None = None) -> None:
+        with sqlite3.connect(self.path) as db:
+            db.execute(
+                f"INSERT INTO {self.table} (month, chars) VALUES (?, ?) ON CONFLICT(month)"
+                " DO UPDATE SET chars = chars + excluded.chars",
+                (month or month_key(), amount),
+            )
+
+    def month(self, month: str | None = None) -> float:
         with sqlite3.connect(self.path) as db:
             row = db.execute(
-                "SELECT chars FROM usage WHERE month = ?", (month or month_key(),)
+                f"SELECT chars FROM {self.table} WHERE month = ?", (month or month_key(),)
             ).fetchone()
         return row[0] if row else 0
 
@@ -148,6 +156,139 @@ class Listener:
                 **extra,
             )
         return " ".join(s.text.strip() for s in segments).strip()
+
+
+def say(text: str) -> None:
+    """Aviso en la consola de Tama (sin keys): qué capa transcribió y por qué."""
+    print(f"Voz: {text}", file=sys.stderr, flush=True)
+
+
+def wav_seconds(wav: bytes) -> float:
+    with wave.open(io.BytesIO(wav)) as source:
+        return source.getnframes() / float(source.getframerate() or 16000)
+
+
+class ScribeListener:
+    """ElevenLabs Scribe (nube): transcribe en español. La key solo viaja en `xi-api-key`."""
+
+    name = "scribe"
+
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "scribe_v2",
+        timeout_s: float = 5.0,
+        post: Callable[..., Any] | None = None,
+    ) -> None:
+        self._key = api_key
+        self.model = model
+        self.timeout_s = timeout_s
+        self._post = post or self._http_post
+
+    def _http_post(self, url: str, **kwargs: Any) -> httpx.Response:
+        return httpx.post(url, verify=tls_context(), **kwargs)
+
+    def transcribe(self, wav: bytes) -> str:
+        try:
+            response = self._post(
+                f"{ELEVENLABS}/v1/speech-to-text",
+                headers={"xi-api-key": self._key},
+                data={"model_id": self.model, "language_code": "es", "tag_audio_events": "false"},
+                files={"file": ("voz.wav", wav, "audio/wav")},
+                timeout=self.timeout_s,
+            )
+        except httpx.TimeoutException as exc:
+            raise VoiceError(f"Scribe no respondió en {self.timeout_s:g} s") from exc
+        except httpx.HTTPError as exc:
+            raise VoiceError(f"Scribe no respondió ({type(exc).__name__})") from exc
+        if response.status_code != 200:
+            raise VoiceError(f"Scribe respondió {response.status_code}")
+        return str(response.json().get("text", "")).strip()
+
+
+class Hearing:
+    """Escuchar en cascada: Scribe (nube, con tope de minutos al mes) → whisper local.
+
+    Sin red, con el cortacircuitos abierto, con el tope alcanzado o si Scribe falla o tarda,
+    transcribe whisper: Tama siempre escucha sin internet.
+    """
+
+    def __init__(
+        self,
+        local: "Listener",
+        usage: Usage,
+        scribe: ScribeListener | None = None,
+        monthly_minutes: float = 60,
+        online: Callable[[], bool] = lambda: True,
+        breaker: CircuitBreaker | None = None,
+    ) -> None:
+        self.local = local
+        self.usage = usage
+        self.scribe = scribe
+        self.monthly_minutes = monthly_minutes
+        self.online = online
+        self.breaker = breaker or CircuitBreaker(3, 300.0)
+        self.last_provider = ""
+        self.last_reason = ""
+        self._warned = ""
+
+    @property
+    def available(self) -> bool:
+        return self.scribe is not None or self.local.available
+
+    def scribe_skip_reason(self, seconds: float) -> str:
+        """Por qué no se usa Scribe para este audio ("" si se puede)."""
+        if self.scribe is None:
+            return "sin API key de ElevenLabs"
+        if not self.online():
+            return "sin internet"
+        if not self.breaker.allow():
+            return "Scribe falló varias veces seguidas; se reintenta en unos minutos"
+        if (self.usage.month() + seconds) / 60 > self.monthly_minutes:
+            return f"se alcanzó el tope de {self.monthly_minutes:g} minutos del mes"
+        return ""
+
+    def transcribe(self, wav: bytes) -> str:
+        seconds = wav_seconds(wav)
+        reason = self.scribe_skip_reason(seconds)
+        if not reason and self.scribe is not None:
+            try:
+                text = self.scribe.transcribe(wav)
+            except VoiceError as exc:
+                self.breaker.failure()
+                reason = str(exc)
+            else:
+                self.breaker.success()
+                self.usage.add(seconds)
+                self.last_provider, self.last_reason = "Scribe", ""
+                say(f"transcribió Scribe ({seconds:.1f} s de audio)")
+                self._warn_near_cap()
+                return text
+        if not self.local.available:
+            raise VoiceError(f"No pude transcribir: {reason}, y falta el modelo de whisper.")
+        self.last_provider, self.last_reason = "whisper (local)", reason
+        say(f"transcribió whisper local ({reason})")
+        return self.local.transcribe(wav)
+
+    def _warn_near_cap(self) -> None:
+        used = self.usage.month() / 60
+        month = month_key()
+        if used >= 0.8 * self.monthly_minutes and self._warned != month:
+            self._warned = month
+            say(
+                f"Scribe lleva {used:.1f} de {self.monthly_minutes:g} minutos este mes (80 %);"
+                " al llegar al tope transcribe whisper local."
+            )
+
+    def status(self) -> dict[str, Any]:
+        reason = self.scribe_skip_reason(0)
+        return {
+            "active": "Scribe" if not reason else "whisper (local)",
+            "reason": reason,
+            "used_min": round(self.usage.month() / 60, 1),
+            "cap_min": self.monthly_minutes,
+            "local": self.local.available,
+        }
 
 
 def audio_context(samples: int) -> int:
@@ -268,7 +409,7 @@ class Voice:
         monthly_chars: int = 10000,
         online: Callable[[], bool] = lambda: True,
         breaker: CircuitBreaker | None = None,
-        listener: Listener | None = None,
+        listener: "Hearing | Listener | None" = None,
     ) -> None:
         self.piper = piper
         self.eleven = eleven
@@ -316,9 +457,10 @@ class Voice:
         hablada no espera los ~5 s de carga de Piper."""
         try:
             self.piper.warm()
-            if self.listener is not None and self.listener.available:
-                with self.listener._lock:
-                    self.listener._load()
+            local = getattr(self.listener, "local", self.listener)
+            if local is not None and local.available:
+                with local._lock:
+                    local._load()
         except Exception as exc:  # una voz que no carga no debe tumbar Tama
             log.warning("voz: no pude precargar (%s)", type(exc).__name__)
 
@@ -331,6 +473,7 @@ class Voice:
             "cap": self.monthly_chars,
             "piper": self.piper.available,
             "listen": self.listener.available if self.listener else False,
+            "hearing": self.listener.status() if isinstance(self.listener, Hearing) else None,
         }
 
 
@@ -346,6 +489,24 @@ def build(settings: Any, online: Callable[[], bool] = lambda: True) -> Voice:
             settings.elevenlabs_model,
             settings.elevenlabs_timeout_s,
         )
+    local = Listener(
+        folder / settings.whisper_model,
+        settings.num_thread,
+        fit_audio=settings.whisper_fit_audio,
+    )
+    scribe = None
+    if key is not None and settings.scribe_enabled:
+        scribe = ScribeListener(
+            key.get_secret_value(), settings.scribe_model, settings.scribe_timeout_s
+        )
+    hearing = Hearing(
+        local,
+        Usage(Path(settings.data_dir) / "voz.db", "scribe"),
+        scribe,
+        settings.scribe_monthly_minutes,
+        online,
+        CircuitBreaker(settings.breaker_failures, settings.breaker_cooldown_s),
+    )
     return Voice(
         PiperSpeaker(folder / settings.piper_voice, Path(settings.data_dir)),
         Usage(Path(settings.data_dir) / "voz.db"),
@@ -353,9 +514,5 @@ def build(settings: Any, online: Callable[[], bool] = lambda: True) -> Voice:
         settings.elevenlabs_monthly_chars,
         online,
         CircuitBreaker(settings.breaker_failures, settings.breaker_cooldown_s),
-        Listener(
-            folder / settings.whisper_model,
-            settings.num_thread,
-            fit_audio=settings.whisper_fit_audio,
-        ),
+        hearing,
     )

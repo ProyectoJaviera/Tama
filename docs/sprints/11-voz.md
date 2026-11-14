@@ -25,7 +25,7 @@ Hablarle a Tama y escucharla, en el PC y en el celular, también sin internet.
    - `tama voz probar ["texto"]`: dice algo con la voz activa y guarda el audio.
    No se clona la muestra "Raphael/Ciel" del backup: es la voz de un personaje interpretado por un
    actor real, sin su permiso.
-4. Web y PWA: botón "Hablar" (mantener apretado) con el micrófono del navegador, que en el
+4. Web y PWA: botón "Hablar" (un toque; Tama envía sola al detectar una pausa) con el micrófono del navegador, que en el
    celular funciona por el HTTPS de Tailscale, y "Leer respuestas en voz alta" (se recuerda en el
    dispositivo). Las rutas de voz respetan el login y las restricciones del S10.
 5. Estado muestra la voz activa (ElevenLabs o Piper, y por qué), los caracteres del mes y el tope.
@@ -58,6 +58,21 @@ Claude primero:
 - Prueba de humo `python -m evals.humo_claude --con-claude` (5 mensajes: charla, hora y memoria):
   US$ 0,0012 en total; la caché bajó el costo de los mensajes siguientes entre 3 y 10 veces.
   Suite completa con Claude estimada en unos US$ 0,03 (~122 turnos, sin el juez). No se corrió.
+
+## Agregado tras la demo: Hablar con un toque y escuchar con Scribe (pedidos de Renzo, 2026-11-14)
+- Hablar: un toque empieza a escuchar; Tama envía sola tras 1,3 s de silencio después de la voz
+  (volumen medido en el navegador, umbral calibrado con el ruido de la pieza). Sin voz en 8 s deja
+  de escuchar; máximo 60 s; otro toque envía de inmediato; tocar mientras Tama habla la calla. El
+  micrófono queda abierto entre turnos (se cierra tras 2 min sin uso) y guarda el último medio
+  segundo antes del toque, para no cortar la primera sílaba ("Rueva de Sonida").
+- Audio: remuestreo a 16 kHz con filtro, sin supresión de ruido del navegador y 0,3 s de silencio
+  antes y después para whisper. `TAMA_VOICE_DEBUG_DIR` guarda los audios para diagnosticar.
+- Escuchar en cascada: ElevenLabs Scribe v2 (misma key, español, 5 s de tiempo máximo) → whisper
+  local si no hay red, falla, tarda, se pasa el tope o el cortacircuitos está abierto. Tope de
+  minutos al mes contado en el PC (`TAMA_SCRIBE_TOPE_MIN_MES`, 60 por defecto) con aviso al 80 %
+  en la consola, que también dice qué capa transcribió. Estado muestra la capa y los minutos.
+- Medición con 5 frases (2 reales de Renzo con voz humana y 3 con ruido), solo CPU: Scribe 5/5 en
+  0,4 a 0,9 s; whisper base 4/5 en ~1 s; small 4/5 en ~4 s; large-v3-turbo 4/5 en ~18 s.
 
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
