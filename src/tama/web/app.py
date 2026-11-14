@@ -98,6 +98,14 @@ class Turn:
         return answer is True
 
 
+def save_voice_debug(folder: Path, audio: bytes, text: str) -> None:
+    """Guarda el WAV recibido y lo que entendió whisper (solo con TAMA_VOICE_DEBUG_DIR)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    (folder / f"{stamp}.wav").write_bytes(audio)
+    (folder / f"{stamp}.txt").write_text(text, encoding="utf-8")
+
+
 DAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 MONTHS = (
     "enero",
@@ -425,6 +433,8 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             text = await run_in_threadpool(voice.listener.transcribe, audio)
         except (VoiceError, wave.Error) as exc:
             return JSONResponse({"error": str(exc) or "No pude leer el audio."}, status_code=400)
+        if settings.voice_debug_dir:
+            save_voice_debug(Path(settings.voice_debug_dir), audio, text)
         return JSONResponse({"text": text})
 
     @app.post("/voz/hablar", dependencies=[Depends(check_csrf)])

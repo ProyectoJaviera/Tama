@@ -59,7 +59,8 @@
       return mic;
     }
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      // Sin supresión de ruido: deforma la voz y a whisper le va peor; el eco sí se cancela.
+      audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: true },
     });
     const context = new AudioContext();
     mic = { stream, context, source: context.createMediaStreamSource(stream) };
@@ -82,21 +83,32 @@
     return Math.sqrt(sum / samples.length);
   }
 
-  function wav16k(chunks, rate) {
-    let length = chunks.reduce((sum, c) => sum + c.length, 0);
+  // A 16 kHz con el remuestreador del navegador (filtra antes de bajar la frecuencia). Tomar 1 de
+  // cada 3 muestras de 48 kHz, como antes, metía ruido de aliasing que empeoraba a whisper.
+  async function wav16k(chunks, rate) {
+    const length = chunks.reduce((sum, c) => sum + c.length, 0);
     const all = new Float32Array(length);
     let offset = 0;
     for (const c of chunks) { all.set(c, offset); offset += c.length; }
-    const ratio = rate / 16000;
-    length = Math.floor(all.length / ratio);
-    const view = new DataView(new ArrayBuffer(44 + length * 2));
+    let samples = all;
+    if (rate !== 16000 && length > 0) {
+      const offline = new OfflineAudioContext(1, Math.ceil((length * 16000) / rate), 16000);
+      const buffer = offline.createBuffer(1, length, rate);
+      buffer.copyToChannel(all, 0);
+      const source = offline.createBufferSource();
+      source.buffer = buffer;
+      source.connect(offline.destination);
+      source.start();
+      samples = (await offline.startRendering()).getChannelData(0);
+    }
+    const view = new DataView(new ArrayBuffer(44 + samples.length * 2));
     const text = (at, s) => { for (let i = 0; i < s.length; i++) view.setUint8(at + i, s.charCodeAt(i)); };
-    text(0, "RIFF"); view.setUint32(4, 36 + length * 2, true); text(8, "WAVE"); text(12, "fmt ");
+    text(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); text(8, "WAVE"); text(12, "fmt ");
     view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
     view.setUint32(24, 16000, true); view.setUint32(28, 32000, true); view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true); text(36, "data"); view.setUint32(40, length * 2, true);
-    for (let i = 0; i < length; i++) {
-      const sample = Math.max(-1, Math.min(1, all[Math.floor(i * ratio)]));
+    view.setUint16(34, 16, true); text(36, "data"); view.setUint32(40, samples.length * 2, true);
+    for (let i = 0; i < samples.length; i++) {
+      const sample = Math.max(-1, Math.min(1, samples[i]));
       view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
     }
     return new Blob([view], { type: "audio/wav" });
@@ -162,7 +174,7 @@
       const response = await fetch("/voz/escuchar", {
         method: "POST",
         headers: { "Content-Type": "audio/wav", "X-CSRF-Token": csrf },
-        body: wav16k(taken.chunks, taken.rate),
+        body: await wav16k(taken.chunks, taken.rate),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No pude transcribir.");

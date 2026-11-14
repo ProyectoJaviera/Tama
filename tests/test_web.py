@@ -655,3 +655,12 @@ def test_day_label_names_today_yesterday_and_older_days():
     assert day_label(today, today) == "Hoy"
     assert day_label(date(2026, 11, 13), today) == "Ayer"
     assert day_label(date(2026, 11, 12), today) == "jueves 12 de noviembre"
+
+
+def test_voice_debug_saves_the_audio_and_what_whisper_heard(tmp_path):
+    from tama.web.app import save_voice_debug
+
+    save_voice_debug(tmp_path / "debug", b"RIFF...", "hola Tama")
+    wavs = list((tmp_path / "debug").glob("*.wav"))
+    assert len(wavs) == 1 and wavs[0].read_bytes() == b"RIFF..."
+    assert wavs[0].with_suffix(".txt").read_text(encoding="utf-8") == "hola Tama"
