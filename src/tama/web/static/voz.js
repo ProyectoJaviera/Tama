@@ -1,6 +1,7 @@
-// Voz en la web: mantener apretado "Hablar" (o tocarlo una vez para empezar y otra para terminar) graba con el micrófono del navegador (en el celular
-// funciona por el HTTPS de Tailscale), lo manda a Tama como WAV de 16 kHz para whisper.cpp y lo
-// envía como mensaje. Si "Leer respuestas" está activo, la respuesta se escucha en voz alta.
+// Voz en la web: un toque en "Hablar" empieza a escuchar con el micrófono del navegador (en el
+// celular funciona por el HTTPS de Tailscale). Cuando Renzo hace una pausa, Tama corta sola, manda
+// el audio como WAV de 16 kHz para whisper.cpp y lo envía como mensaje. Otro toque envía de
+// inmediato. Si "Leer respuestas" está activo, la respuesta se escucha en voz alta.
 (() => {
   const talk = document.getElementById("hablar");
   const options = document.getElementById("voz-opciones");
@@ -18,15 +19,23 @@
     try { localStorage.setItem("tama-voz-leer", readAloud.checked ? "1" : "0"); } catch (e) {}
   };
 
-  // Estado explícito: idle → abriendo (pidiendo el micrófono) → grabando → procesando → idle.
-  // Siempre se vuelve a idle (finally). Soltar mientras el micrófono abre no pierde la grabación:
-  // pasa al modo "toca para terminar" (antes quedaba grabando para siempre y el botón no respondía).
-  const LABEL = { idle: "Hablar", abriendo: "Abriendo…", grabando: "Grabando…", procesando: "Procesando…" };
-  const QUICK_MS = 350; // un toque más corto que esto es "toca para empezar, toca para terminar"
+  // Estado explícito: idle → abriendo → escuchando → procesando → idle (siempre vuelve, finally);
+  // "hablando" mientras suena la respuesta (un toque la calla y empieza a escuchar).
+  // La pausa se detecta por el volumen del audio, en el navegador: no se interpreta lo dicho.
+  const LABEL = {
+    idle: "Hablar", hablando: "Hablar", abriendo: "Abriendo…", escuchando: "Escuchando…",
+    procesando: "Procesando…",
+  };
+  const PAUSE_MS = 1300;      // silencio tras haber hablado: fin del mensaje
+  const WAIT_MS = 8000;       // si en este tiempo no se oye voz, se deja de escuchar
+  const MAX_MS = 60000;       // tope de un mensaje
+  const CALIBRATE_MS = 250;   // primeros ms: ruido de fondo de la pieza
+  const MIN_LEVEL = 0.012;    // volumen mínimo para contar como voz
+  const MAX_LEVEL = 0.05;     // el umbral nunca sube de aquí (si la calibración cayó sobre la voz)
+  const KEEP_MIC_MS = 120000; // el micrófono queda abierto entre turnos y se cierra tras 2 min sin uso
+  let mic = null;
+  let micTimer = null;
   let state = "idle";
-  let mode = "hold";
-  let pressed = false;
-  let pressedAt = 0;
   let recording = null;
   let playing = null;
 
@@ -34,12 +43,43 @@
     state = next;
     talk.dataset.estado = next;
     talk.textContent = LABEL[next];
-    talk.classList.toggle("on", next === "abriendo" || next === "grabando");
+    talk.classList.toggle("on", next === "abriendo" || next === "escuchando");
     if (message !== undefined) status.textContent = message;
   }
 
   function stopPlayback() {
     if (playing) { playing.pause(); playing = null; }
+    if (state === "hablando") setState("idle");
+  }
+
+  async function microphone() {
+    clearTimeout(micTimer);
+    if (mic && mic.stream.getAudioTracks().some((t) => t.readyState === "live")) {
+      if (mic.context.state === "suspended") await mic.context.resume();
+      return mic;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    const context = new AudioContext();
+    mic = { stream, context, source: context.createMediaStreamSource(stream) };
+    return mic;
+  }
+
+  function closeMicLater() {
+    clearTimeout(micTimer);
+    micTimer = setTimeout(() => {
+      if (!mic || state === "abriendo" || state === "escuchando") return;
+      mic.stream.getTracks().forEach((t) => t.stop());
+      mic.context.close();
+      mic = null;
+    }, KEEP_MIC_MS);
+  }
+
+  function level(samples) {
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+    return Math.sqrt(sum / samples.length);
   }
 
   function wav16k(chunks, rate) {
@@ -64,47 +104,65 @@
 
   async function open() {
     setState("abriendo", "Abriendo el micrófono…");
-    let stream = null;
-    let context = null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      context = new AudioContext();
-      const source = context.createMediaStreamSource(stream);
+      const { context, source } = await microphone();
       const node = context.createScriptProcessor(4096, 1, 1);
       const chunks = [];
-      node.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+      const started = performance.now();
+      let floor = 0;
+      let calibrated = 0;
+      let voiceAt = 0;
+      node.onaudioprocess = (e) => {
+        if (!recording || state !== "escuchando") return;
+        const samples = new Float32Array(e.inputBuffer.getChannelData(0));
+        chunks.push(samples);
+        const now = performance.now();
+        const rms = level(samples);
+        if (now - started < CALIBRATE_MS) {
+          floor = (floor * calibrated + rms) / (calibrated + 1);
+          calibrated += 1;
+          return;
+        }
+        if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) voiceAt = now;
+        if (voiceAt && now - voiceAt > PAUSE_MS) finish();
+        else if (!voiceAt && now - started > WAIT_MS) cancel("No te escuché. Toca Hablar y vuelve a intentarlo.");
+        else if (now - started > MAX_MS) finish();
+      };
       source.connect(node);
       node.connect(context.destination);
-      recording = { stream, context, node, chunks };
+      recording = { source, node, chunks, rate: context.sampleRate };
+      setState("escuchando", "Te escucho… cuando hagas una pausa, lo envío.");
     } catch (error) {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-      if (context) context.close();
       setState("idle", "No pude usar el micrófono: " + error.message);
-      return;
-    }
-    if (pressed) {
-      mode = "hold";
-      setState("grabando", "Grabando… suelta para enviar.");
-    } else {
-      mode = "toggle"; // ya soltó: sigue grabando hasta el próximo toque
-      setState("grabando", "Grabando… toca Hablar para enviar.");
     }
   }
 
-  async function finish() {
-    if (state !== "grabando" || !recording) return;
-    const { stream, context, node, chunks } = recording;
+  function release() {
+    const taken = recording;
     recording = null;
+    if (!taken) return null;
+    taken.node.onaudioprocess = null;
+    try { taken.source.disconnect(taken.node); } catch (e) {}
+    taken.node.disconnect();
+    closeMicLater();
+    return { chunks: taken.chunks, rate: taken.rate };
+  }
+
+  function cancel(message) {
+    release();
+    setState("idle", message);
+  }
+
+  async function finish() {
+    if (state !== "escuchando") return;
+    const taken = release();
+    if (!taken) { setState("idle"); return; }
     setState("procesando", "Transcribiendo…");
     try {
-      node.disconnect();
-      stream.getTracks().forEach((t) => t.stop());
-      const audio = wav16k(chunks, context.sampleRate);
-      context.close();
       const response = await fetch("/voz/escuchar", {
         method: "POST",
         headers: { "Content-Type": "audio/wav", "X-CSRF-Token": csrf },
-        body: audio,
+        body: wav16k(taken.chunks, taken.rate),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No pude transcribir.");
@@ -119,34 +177,14 @@
     }
   }
 
-  talk.addEventListener("pointerdown", (event) => {
+  // Un toque empieza a escuchar; otro toque mientras escucha envía de inmediato.
+  talk.addEventListener("click", (event) => {
     event.preventDefault();
-    if (event.button !== undefined && event.button !== 0) return;
-    if (state === "grabando" && mode === "toggle") { finish(); return; }
-    if (state !== "idle") return;
-    stopPlayback(); // apretar Hablar corta la respuesta que está sonando
-    pressed = true;
-    pressedAt = performance.now();
-    try { talk.setPointerCapture(event.pointerId); } catch (e) {}
+    if (state === "escuchando") { finish(); return; }
+    if (state !== "idle" && state !== "hablando") return;
+    stopPlayback(); // tocar Hablar corta la respuesta que está sonando
     open();
   });
-
-  function release(event) {
-    event.preventDefault();
-    if (!pressed) return;
-    pressed = false;
-    if (state !== "grabando" || mode !== "hold") return; // si aún abre, open() pasa a toggle
-    if (performance.now() - pressedAt < QUICK_MS) {
-      mode = "toggle";
-      status.textContent = "Grabando… toca Hablar para enviar.";
-      return;
-    }
-    finish();
-  }
-
-  talk.addEventListener("pointerup", release);
-  talk.addEventListener("pointercancel", release);
-  talk.addEventListener("contextmenu", (e) => e.preventDefault());
 
   document.addEventListener("tama:respuesta", async (event) => {
     if (!readAloud.checked || !event.detail) return;
@@ -159,12 +197,16 @@
       });
       if (!response.ok) throw new Error((await response.json()).error || "No pude hablar.");
       const blob = await response.blob();
-      if (state !== "idle") return; // Renzo ya está hablando de nuevo: no se le encima la voz
+      if (state !== "idle" && state !== "hablando") return; // Renzo ya habla: no se le encima la voz
       stopPlayback();
-      playing = new Audio(URL.createObjectURL(blob));
+      const audio = new Audio(URL.createObjectURL(blob));
+      playing = audio;
+      audio.onended = () => { if (playing === audio) { playing = null; setState("idle"); } };
       status.textContent = "Voz: " + (response.headers.get("X-Tama-Voz") || "");
-      await playing.play();
+      setState("hablando");
+      await audio.play();
     } catch (error) {
+      if (state === "hablando") setState("idle");
       if (error.name !== "AbortError") status.textContent = error.message;
     }
   });

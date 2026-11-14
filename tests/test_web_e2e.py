@@ -1,5 +1,6 @@
 """Extremo a extremo en un navegador real, con todo lo que no sea localhost bloqueado."""
 
+import contextlib
 import socket
 import threading
 import time
@@ -248,21 +249,43 @@ def test_the_phone_registers_a_passkey_and_signs_in(remote_site):
         browser.close()
 
 
-def test_hold_to_talk_sends_the_audio_and_reads_the_answer(tmp_path, monkeypatch):
+def wav_file(path, pattern, rate=16000):
+    """WAV para el micrófono falso: [(segundos, amplitud)], con un tono de 300 Hz donde suena."""
+    import math
+    import struct
+    import wave
+
+    frames = bytearray()
+    for seconds, amplitude in pattern:
+        for i in range(int(seconds * rate)):
+            value = amplitude * math.sin(2 * math.pi * 300 * i / rate)
+            frames += struct.pack("<h", int(value * 32767))
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(bytes(frames))
+    return path
+
+
+@contextlib.contextmanager
+def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2):
+    """Tama en un puerto libre con voz simulada y Chrome con un micrófono falso que reproduce
+    `mic_pattern` en bucle. El micrófono tarda 400 ms en abrir, como en el PC de Renzo."""
     from tama.voice import Speech
     from tama.web import app as web
 
     heard: list[int] = []
+    answer = wav_file(tmp_path / "respuesta.wav", [(answer_seconds, 0.0)]).read_bytes()
 
     class Voice:
-        listener = None
-
         def __init__(self):
             self.said: list[str] = []
+            self.listener = Listener()
 
         def speak(self, text):
             self.said.append(text)
-            return Speech(b"RIFF", "audio/wav", "piper")
+            return Speech(answer, "audio/wav", "piper")
 
         def warm(self):
             pass
@@ -285,15 +308,13 @@ def test_hold_to_talk_sends_the_audio_and_reads_the_answer(tmp_path, monkeypatch
             return "hola por voz"
 
     voice = Voice()
-    voice.listener = Listener()
     monkeypatch.setattr(web.voice_module, "build", lambda *a, **k: voice)
     monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
     (tmp_path / "data").mkdir()
     memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
     settings = Settings(data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria")
-    provider = Provider([Text("Te escuché."), Done(1, 1)])
     brain = Brain(
-        Cascade([Layer(provider)], FakeConnectivity()),
+        Cascade([Layer(Provider(*[[Text("Te escuché."), Done(1, 1)]] * 8))], FakeConnectivity()),
         EventStore(tmp_path / "data" / "events.db"),
         None,
         tools=Tools(),
@@ -306,136 +327,94 @@ def test_hold_to_talk_sends_the_audio_and_reads_the_answer(tmp_path, monkeypatch
     threading.Thread(target=server.run, daemon=True).start()
     while not server.started:
         time.sleep(0.01)
-    fake_mic = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
-    with sync_api.sync_playwright() as playwright:
-        browser = None
-        for options in ({"channel": "msedge"}, {"channel": "chrome"}, {}):
-            try:
-                browser = playwright.chromium.launch(args=fake_mic, **options)
-                break
-            except sync_api.Error:
-                continue
-        if browser is None:
-            pytest.skip("no hay un navegador disponible")
-        page = browser.new_page()
-        page.goto(f"http://127.0.0.1:{port}/")
-        page.check("#voz-leer")
-        button = page.locator("#hablar")
-        button.hover()
-        page.mouse.down()
-        page.wait_for_timeout(2500)  # el micrófono falso tarda en partir en la CI
-        page.mouse.up()
-        page.wait_for_selector(".user:has-text('hola por voz')")
+    mic = wav_file(tmp_path / "mic.wav", mic_pattern)
+    args = [
+        "--use-fake-ui-for-media-stream",
+        "--use-fake-device-for-media-stream",
+        f"--use-file-for-fake-audio-capture={mic}",
+        "--autoplay-policy=no-user-gesture-required",
+    ]
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = None
+            for options in ({"channel": "msedge"}, {"channel": "chrome"}, {}):
+                try:
+                    browser = playwright.chromium.launch(args=args, **options)
+                    break
+                except sync_api.Error:
+                    continue
+            if browser is None:
+                pytest.skip("no hay un navegador disponible")
+            page = browser.new_page()
+            page.add_init_script(
+                """
+                const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+                navigator.mediaDevices.getUserMedia = (c) =>
+                  new Promise((ok) => setTimeout(ok, 400)).then(() => real(c));
+                """
+            )
+            page.goto(f"http://127.0.0.1:{port}/")
+            page.check("#voz-leer")
+            yield page, heard, voice
+            browser.close()
+    finally:
+        server.should_exit = True
+
+
+SPEECH_THEN_PAUSE = [(1.2, 0.3), (3.0, 0.0)]  # habla 1,2 s y calla 3 s, en bucle
+
+
+def one_tap_turn(page, voice, turn):
+    page.click("#hablar")  # un solo toque, sin mantener
+    page.wait_for_function(
+        f"document.querySelectorAll('.assistant').length >= {turn}", timeout=20000
+    )
+    for _ in range(50):  # la respuesta se lee en voz alta
+        if len(voice.said) >= turn:
+            break
+        page.wait_for_timeout(100)
+    page.wait_for_selector("#hablar[data-estado='idle']", timeout=10000)
+
+
+def test_one_tap_listens_and_sends_by_itself_after_a_pause(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        assert page.text_content("#hablar") == "Escuchando…"
+        page.wait_for_selector(".user:has-text('hola por voz')", timeout=20000)
         page.wait_for_selector(".assistant:has-text('Te escuché.')")
-        for _ in range(50):  # la respuesta se manda a /voz/hablar al terminar el turno
-            if voice.said:
-                break
-            page.wait_for_timeout(100)
-        browser.close()
-    server.should_exit = True
-    assert heard and heard[0] > 16000  # más de medio segundo de WAV de 16 kHz
+        page.wait_for_selector("#hablar[data-estado='idle']", timeout=10000)
+        assert not page.is_disabled("#hablar")
+    assert len(heard) == 1 and heard[0] > 16000  # más de medio segundo de WAV de 16 kHz
     assert voice.said == ["Te escuché."]
 
 
-def test_talk_button_records_five_times_in_a_row(tmp_path, monkeypatch):
-    """Cinco veces seguidas, con respuesta hablada entre medio. El micrófono tarda en abrir
-    (como en el PC de Renzo): soltar antes de que abra no debe dejar el botón colgado."""
-    from tama.voice import Speech
-    from tama.web import app as web
-
-    heard: list[int] = []
-
-    class Voice:
-        listener = None
-
-        def __init__(self):
-            self.said: list[str] = []
-
-        def speak(self, text):
-            self.said.append(text)
-            return Speech(b"RIFF", "audio/wav", "piper")
-
-        def warm(self):
-            pass
-
-        def status(self):
-            return {
-                "active": "Piper (local)",
-                "reason": "",
-                "used": 0,
-                "cap": 1,
-                "piper": True,
-                "listen": True,
-            }
-
-    class Listener:
-        available = True
-
-        def transcribe(self, audio):
-            heard.append(len(audio))
-            return "hola por voz"
-
-    voice = Voice()
-    voice.listener = Listener()
-    monkeypatch.setattr(web.voice_module, "build", lambda *a, **k: voice)
-    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
-    (tmp_path / "data").mkdir()
-    memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
-    settings = Settings(data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria")
-    provider = Provider([Text("Te escuché."), Done(1, 1)])
-    brain = Brain(
-        Cascade([Layer(provider)], FakeConnectivity()),
-        EventStore(tmp_path / "data" / "events.db"),
-        None,
-        tools=Tools(),
-    )
-    app = create_app(brain, settings)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
-    server = uvicorn.Server(uvicorn.Config(app, port=port, log_level="error"))
-    threading.Thread(target=server.run, daemon=True).start()
-    while not server.started:
-        time.sleep(0.01)
-    fake_mic = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
-    with sync_api.sync_playwright() as playwright:
-        browser = None
-        for options in ({"channel": "msedge"}, {"channel": "chrome"}, {}):
-            try:
-                browser = playwright.chromium.launch(args=fake_mic, **options)
-                break
-            except sync_api.Error:
-                continue
-        if browser is None:
-            pytest.skip("no hay un navegador disponible")
-        page = browser.new_page()
-        page.add_init_script(
-            """
-            const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-            navigator.mediaDevices.getUserMedia = (c) =>
-              new Promise((ok) => setTimeout(ok, 400)).then(() => real(c));
-            """
-        )
-        page.goto(f"http://127.0.0.1:{port}/")
-        page.check("#voz-leer")
-        button = page.locator("#hablar")
-        presses = [1500, 150, 1500, 150, 1500]  # mantener, toque rápido (toca para enviar), ...
-        for turn, hold in enumerate(presses, 1):
-            button.hover()
-            page.mouse.down()
-            page.wait_for_timeout(hold)
-            page.mouse.up()
-            if hold < 350:  # toque corto: queda grabando hasta el próximo toque
-                page.wait_for_selector("#hablar[data-estado='grabando']")
-                page.wait_for_timeout(1200)
-                button.click()
-            page.wait_for_function(f"document.querySelectorAll('.assistant').length >= {turn}")
-            page.wait_for_selector("#hablar[data-estado='idle']")
-            for _ in range(50):  # la respuesta se lee en voz alta antes del siguiente turno
-                if len(voice.said) >= turn:
-                    break
-                page.wait_for_timeout(100)
-        browser.close()
-    server.should_exit = True
-    assert len(heard) == 5 and all(n > 16000 for n in heard)  # cinco grabaciones de más de 0,5 s
+def test_five_turns_in_a_row_with_one_tap_each(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
+        for turn in range(1, 6):
+            one_tap_turn(page, voice, turn)
+    assert len(heard) == 5 and all(n > 16000 for n in heard)
     assert len(voice.said) == 5
+
+
+def test_a_tap_without_voice_gives_up_and_sends_nothing(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)]) as (page, heard, _voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        page.wait_for_selector("#hablar[data-estado='idle']", timeout=15000)
+        assert "No te escuché" in page.text_content("#voz-estado")
+    assert heard == []
+
+
+def test_a_tap_while_tama_speaks_silences_her_and_listens(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=8) as (
+        page,
+        heard,
+        _voice,
+    ):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='hablando']", timeout=20000)
+        page.click("#hablar")  # Tama sigue hablando (8 s): el toque la calla y escucha
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        page.wait_for_function("document.querySelectorAll('.assistant').length >= 2", timeout=20000)
+    assert len(heard) == 2

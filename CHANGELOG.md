@@ -12,10 +12,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - Capa nube con varias API keys de Ollama Cloud en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`), directo
   a ollama.com: si una agota su cuota se usa la siguiente en la misma respuesta, se reintenta cada
   hora y Estado muestra cada key por número. Sin keys, la capa se apaga. Las evals usan la key 3.
-- Voz en la web, tras la demo: el botón Hablar tiene un estado explícito (Abriendo, Grabando,
-  Procesando) y siempre vuelve a quedar listo. Antes, soltarlo mientras el micrófono abría lo
-  dejaba grabando para siempre y no respondía. Un toque corto graba hasta el siguiente toque;
-  apretar Hablar corta la respuesta que está sonando. El chat muestra la fecha de cada día.
+- Voz en la web, tras la demo: un toque en Hablar empieza a escuchar y Tama envía sola cuando
+  Renzo hace una pausa (volumen medido en el navegador: umbral calibrado con el ruido de la
+  pieza, 1,3 s de silencio tras la voz; sin voz en 8 s deja de escuchar; máximo 60 s). Otro
+  toque envía de inmediato; tocar mientras Tama habla la calla y escucha. El micrófono queda
+  abierto entre turnos y se cierra tras 2 minutos sin uso. El chat muestra la fecha de cada día.
 - Emergencias (131 SAMU y similares): Tama no puede llamar; sin riesgo vital sugiere y pregunta
   antes de actuar; con riesgo vital o si Renzo lo pide, dice de inmediato "llama al 131 ahora" y
   qué hizo. Nunca indica medicamentos. Escenarios `salud-no-vital` y `emergencia-pedida`.

@@ -121,7 +121,8 @@ porque conservan el historial.
 
 ### Voz
 
-Mantén apretado "Hablar" en el chat (también en el celular) y suelta para enviar. Con "Leer
+Toca "Hablar" en el chat (también en el celular), di lo que quieras y haz una pausa: Tama
+envía sola. Otro toque envía de inmediato. Con "Leer
 respuestas en voz alta", Tama contesta con voz. Escucha con whisper.cpp en el PC (sin GPU) y habla
 con ElevenLabs si hay API key, o con Piper en el PC sin internet o si se pasa el tope del mes.
 
