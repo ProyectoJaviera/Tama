@@ -205,12 +205,19 @@ class EventStore:
         self, limit: int = 30, types: tuple[str, ...] = ("user_msg", "assistant_msg")
     ) -> list[tuple[str, str]]:
         """Últimos mensajes de la conversación, del más antiguo al más nuevo."""
+        return [(kind, content) for kind, content, _ in self.recent_messages_at(limit, types)]
+
+    def recent_messages_at(
+        self, limit: int = 30, types: tuple[str, ...] = ("user_msg", "assistant_msg")
+    ) -> list[tuple[str, str, str]]:
+        """Como `recent_messages`, con la hora de cada uno: (tipo, texto, ts)."""
         marks = ", ".join("?" * len(types))
         rows = self._db.execute(
-            f"SELECT type, content FROM events WHERE type IN ({marks}) ORDER BY id DESC LIMIT ?",
+            f"SELECT type, content, ts FROM events WHERE type IN ({marks})"
+            " ORDER BY id DESC LIMIT ?",
             (*types, limit),
         ).fetchall()
-        return [(r[0], r[1] or "") for r in reversed(rows)]
+        return [(r[0], r[1] or "", r[2]) for r in reversed(rows)]
 
     def user_messages_after(self, event_id: int, limit: int = 40) -> list[tuple[int, str, str]]:
         """Mensajes de Renzo posteriores a `event_id`, los más antiguos primero: (id, ts, texto)."""

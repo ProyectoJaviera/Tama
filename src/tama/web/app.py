@@ -14,7 +14,7 @@ import threading
 import time
 import wave
 from collections.abc import Callable, Iterator
-from datetime import date
+from datetime import date, datetime
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -96,6 +96,32 @@ class Turn:
             self.send("confirm_closed", id=self.question_id)
             return False
         return answer is True
+
+
+DAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+MONTHS = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def day_label(day: date, today: date) -> str:
+    """Separador de día en el chat: "Hoy", "Ayer" o "jueves 12 de noviembre"."""
+    if day == today:
+        return "Hoy"
+    if (today - day).days == 1:
+        return "Ayer"
+    return f"{DAYS[day.weekday()]} {day.day} de {MONTHS[day.month - 1]}"
 
 
 def stream_turn(
@@ -413,10 +439,17 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return Response(speech.audio, media_type=speech.media_type, headers={"X-Tama-Voz": label})
 
     def chat_history() -> list[tuple[str, str]]:
-        """La conversación, con los comandos y los avisos, tal como se vio."""
+        """La conversación, con los comandos y los avisos, tal como se vio. Cada día empieza con
+        su fecha: sin ella, el resumen matutino de dos días distintos parecía repetido."""
         types = ("user_msg", "assistant_msg", "command", "proactive")
         shown: list[tuple[str, str]] = []
-        for kind, content in brain.store.recent_messages(40, types):
+        today = memoria.local_now().date()
+        last_day = None
+        for kind, content, ts in brain.store.recent_messages_at(40, types):
+            day = datetime.fromisoformat(ts).astimezone(memoria.local_now().tzinfo).date()
+            if day != last_day:
+                shown.append(("day", day_label(day, today)))
+                last_day = day
             if kind == "command":
                 item = json.loads(content)
                 if item["texto"]:

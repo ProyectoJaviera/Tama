@@ -1,4 +1,4 @@
-// Voz en la web: mantener apretado "Hablar" graba con el micrófono del navegador (en el celular
+// Voz en la web: mantener apretado "Hablar" (o tocarlo una vez para empezar y otra para terminar) graba con el micrófono del navegador (en el celular
 // funciona por el HTTPS de Tailscale), lo manda a Tama como WAV de 16 kHz para whisper.cpp y lo
 // envía como mensaje. Si "Leer respuestas" está activo, la respuesta se escucha en voz alta.
 (() => {
@@ -18,7 +18,29 @@
     try { localStorage.setItem("tama-voz-leer", readAloud.checked ? "1" : "0"); } catch (e) {}
   };
 
+  // Estado explícito: idle → abriendo (pidiendo el micrófono) → grabando → procesando → idle.
+  // Siempre se vuelve a idle (finally). Soltar mientras el micrófono abre no pierde la grabación:
+  // pasa al modo "toca para terminar" (antes quedaba grabando para siempre y el botón no respondía).
+  const LABEL = { idle: "Hablar", abriendo: "Abriendo…", grabando: "Grabando…", procesando: "Procesando…" };
+  const QUICK_MS = 350; // un toque más corto que esto es "toca para empezar, toca para terminar"
+  let state = "idle";
+  let mode = "hold";
+  let pressed = false;
+  let pressedAt = 0;
   let recording = null;
+  let playing = null;
+
+  function setState(next, message) {
+    state = next;
+    talk.dataset.estado = next;
+    talk.textContent = LABEL[next];
+    talk.classList.toggle("on", next === "abriendo" || next === "grabando");
+    if (message !== undefined) status.textContent = message;
+  }
+
+  function stopPlayback() {
+    if (playing) { playing.pause(); playing = null; }
+  }
 
   function wav16k(chunks, rate) {
     let length = chunks.reduce((sum, c) => sum + c.length, 0);
@@ -40,12 +62,13 @@
     return new Blob([view], { type: "audio/wav" });
   }
 
-  async function start(event) {
-    event.preventDefault();
-    if (recording) return;
+  async function open() {
+    setState("abriendo", "Abriendo el micrófono…");
+    let stream = null;
+    let context = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const context = new AudioContext();
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      context = new AudioContext();
       const source = context.createMediaStreamSource(stream);
       const node = context.createScriptProcessor(4096, 1, 1);
       const chunks = [];
@@ -53,25 +76,31 @@
       source.connect(node);
       node.connect(context.destination);
       recording = { stream, context, node, chunks };
-      talk.classList.add("on");
-      status.textContent = "Escuchando… suelta para enviar.";
     } catch (error) {
-      status.textContent = "No pude usar el micrófono: " + error.message;
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      if (context) context.close();
+      setState("idle", "No pude usar el micrófono: " + error.message);
+      return;
+    }
+    if (pressed) {
+      mode = "hold";
+      setState("grabando", "Grabando… suelta para enviar.");
+    } else {
+      mode = "toggle"; // ya soltó: sigue grabando hasta el próximo toque
+      setState("grabando", "Grabando… toca Hablar para enviar.");
     }
   }
 
-  async function stop(event) {
-    event.preventDefault();
-    if (!recording) return;
+  async function finish() {
+    if (state !== "grabando" || !recording) return;
     const { stream, context, node, chunks } = recording;
     recording = null;
-    talk.classList.remove("on");
-    node.disconnect();
-    stream.getTracks().forEach((t) => t.stop());
-    const audio = wav16k(chunks, context.sampleRate);
-    context.close();
-    status.textContent = "Transcribiendo…";
+    setState("procesando", "Transcribiendo…");
     try {
+      node.disconnect();
+      stream.getTracks().forEach((t) => t.stop());
+      const audio = wav16k(chunks, context.sampleRate);
+      context.close();
       const response = await fetch("/voz/escuchar", {
         method: "POST",
         headers: { "Content-Type": "audio/wav", "X-CSRF-Token": csrf },
@@ -85,15 +114,40 @@
       form.requestSubmit();
     } catch (error) {
       status.textContent = error.message;
+    } finally {
+      setState("idle");
     }
   }
 
-  talk.addEventListener("pointerdown", start);
-  talk.addEventListener("pointerup", stop);
-  talk.addEventListener("pointerleave", stop);
+  talk.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    if (event.button !== undefined && event.button !== 0) return;
+    if (state === "grabando" && mode === "toggle") { finish(); return; }
+    if (state !== "idle") return;
+    stopPlayback(); // apretar Hablar corta la respuesta que está sonando
+    pressed = true;
+    pressedAt = performance.now();
+    try { talk.setPointerCapture(event.pointerId); } catch (e) {}
+    open();
+  });
+
+  function release(event) {
+    event.preventDefault();
+    if (!pressed) return;
+    pressed = false;
+    if (state !== "grabando" || mode !== "hold") return; // si aún abre, open() pasa a toggle
+    if (performance.now() - pressedAt < QUICK_MS) {
+      mode = "toggle";
+      status.textContent = "Grabando… toca Hablar para enviar.";
+      return;
+    }
+    finish();
+  }
+
+  talk.addEventListener("pointerup", release);
+  talk.addEventListener("pointercancel", release);
   talk.addEventListener("contextmenu", (e) => e.preventDefault());
 
-  let playing = null;
   document.addEventListener("tama:respuesta", async (event) => {
     if (!readAloud.checked || !event.detail) return;
     try {
@@ -104,12 +158,14 @@
         body,
       });
       if (!response.ok) throw new Error((await response.json()).error || "No pude hablar.");
-      if (playing) playing.pause();
-      playing = new Audio(URL.createObjectURL(await response.blob()));
+      const blob = await response.blob();
+      if (state !== "idle") return; // Renzo ya está hablando de nuevo: no se le encima la voz
+      stopPlayback();
+      playing = new Audio(URL.createObjectURL(blob));
       status.textContent = "Voz: " + (response.headers.get("X-Tama-Voz") || "");
       await playing.play();
     } catch (error) {
-      status.textContent = error.message;
+      if (error.name !== "AbortError") status.textContent = error.message;
     }
   });
 })();

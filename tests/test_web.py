@@ -644,3 +644,14 @@ def test_status_shows_server_and_topic_to_copy(tmp_path, monkeypatch):
     page = TestClient(create_app(brain, settings), base_url="http://127.0.0.1").get("/estado").text
     assert 'value="https://pc.tail1.ts.net:8443"' in page and 'value="tama-secreto"' in page
     assert "Usar otro servidor" in page
+
+
+def test_day_label_names_today_yesterday_and_older_days():
+    from datetime import date
+
+    from tama.web.app import day_label
+
+    today = date(2026, 11, 14)
+    assert day_label(today, today) == "Hoy"
+    assert day_label(date(2026, 11, 13), today) == "Ayer"
+    assert day_label(date(2026, 11, 12), today) == "jueves 12 de noviembre"

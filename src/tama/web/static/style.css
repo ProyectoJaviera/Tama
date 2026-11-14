@@ -225,3 +225,9 @@ button.plain.on, button.plain.on:disabled {
   #toasts { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); }
   .banner-row span { min-width: 0; }
 }
+
+/* Hablar: el dedo no debe hacer scroll ni seleccionar texto mientras se mantiene apretado. */
+#hablar { touch-action: none; user-select: none; -webkit-user-select: none; min-width: 7.5rem; }
+
+/* Separador de día en el chat. */
+.day { text-align: center; color: var(--dim); font-size: 0.8rem; margin: 10px 0 4px; }
