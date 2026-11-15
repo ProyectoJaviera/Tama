@@ -233,3 +233,24 @@ button.plain.on, button.plain.on:disabled {
 
 /* Separador de día en el chat. */
 .day { text-align: center; color: var(--dim); font-size: 0.8rem; margin: 10px 0 4px; }
+
+/* Raphael: en el modo conversación por voz (con lectura en voz alta) ocupa el lugar del chat.
+   Fondo oscuro propio, porque su luz se suma como en una pantalla. */
+#raphael {
+  height: calc(100vh - 170px);
+  height: calc(100dvh - 170px);
+  display: flex; flex-direction: column; align-items: center;
+  background: #1b1c1a; color: #e7e5de; border-radius: 12px; cursor: pointer;
+  padding: 6px 12px 10px; user-select: none; -webkit-user-select: none;
+}
+#raphael[hidden] { display: none; }
+#raphael canvas { flex: 1 1 auto; width: 100%; min-height: 0; display: block; }
+.raphael-renzo { margin: 4px 0 0; color: #9a978d; font-size: 0.85rem; text-align: center; max-width: 92%; }
+.raphael-tama {
+  margin: 2px 0 0; text-align: center; max-width: 92%; min-height: 1.4em;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.con-raphael #log { display: none; }
+@media (max-width: 640px) {
+  #raphael { height: calc(100dvh - 200px); }
+}

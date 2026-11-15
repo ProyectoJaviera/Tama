@@ -17,6 +17,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   pieza, 1,3 s de silencio tras la voz; sin voz en 8 s deja de escuchar; máximo 60 s). Otro
   toque envía de inmediato; tocar mientras Tama habla la calla y escucha. El micrófono queda
   abierto entre turnos y se cierra tras 2 minutos sin uso. El chat muestra la fecha de cada día.
+- Raphael: mientras se conversa por voz con "Leer respuestas en voz alta", el chat muestra un
+  sigilo de luz dibujado por código (`static/raphael.js`) que aparece, escucha (micrófono), piensa
+  (la banda gira) y habla siguiendo la voz real de Tama; se despide al terminar. Subtítulos con lo
+  último dicho; tocarlo termina la conversación. Respeta movimiento reducido y baja calidad si va lento.
 - Modo conversación por voz: un toque en Hablar y Tama escucha, responde en voz alta y vuelve a
   escuchar sola al terminar de hablar (nunca mientras habla). Termina con un toque, cuando el modelo
   llama `terminar_conversacion` (Renzo se despidió; la herramienta solo existe en este modo), tras

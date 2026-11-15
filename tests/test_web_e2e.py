@@ -270,7 +270,15 @@ def wav_file(path, pattern, rate=16000):
 
 
 @contextlib.contextmanager
-def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2, scripts=None, wait_ms=8000):
+def talk_site(
+    tmp_path,
+    monkeypatch,
+    mic_pattern,
+    answer_seconds=0.2,
+    scripts=None,
+    wait_ms=8000,
+    read_aloud=True,
+):
     """Tama en un puerto libre con voz simulada y Chrome con un micrófono falso que reproduce
     `mic_pattern` en bucle. El micrófono tarda 400 ms en abrir, como en el PC de Renzo."""
     from tama.voice import Speech
@@ -359,7 +367,8 @@ def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2, scripts=No
                 """
             )
             page.goto(f"http://127.0.0.1:{port}/")
-            page.check("#voz-leer")
+            if read_aloud:
+                page.check("#voz-leer")
             yield page, heard, voice
             browser.close()
     finally:
@@ -494,6 +503,51 @@ def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_pat
         listened_s = (sent[0] - tapped) / 1000
         audio_s = (sent[1] - 44) / 32000
         assert audio_s > listened_s + 0.3  # el audio empieza antes del toque
+
+
+def test_raphael_takes_the_chat_place_while_conversing_and_follows_the_states(
+    tmp_path, monkeypatch
+):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=2) as (
+        page,
+        _heard,
+        voice,
+    ):
+        page.evaluate(
+            """window.raphaelEstados = [];
+            new MutationObserver(() => {
+              const e = document.getElementById("raphael").dataset.estado;
+              const l = window.raphaelEstados;
+              if (l[l.length - 1] !== e) l.push(e);
+            }).observe(document.getElementById("raphael"), { attributes: true });"""
+        )
+        assert not page.is_visible("#raphael") and page.is_visible("#log")
+        page.click("#hablar")
+        page.wait_for_selector("#raphael", state="visible")
+        assert not page.is_visible("#log")  # el chat queda detrás; los mensajes se siguen guardando
+        wait_turns(page, voice, 1)
+        page.wait_for_selector("#raphael[data-estado='hablando']", timeout=10000)
+        assert page.text_content(".raphael-renzo") == "Tú: hola por voz"
+        assert page.text_content(".raphael-tama") == "Te escuché."
+        page.wait_for_selector("#raphael[data-estado='escuchando']", timeout=10000)
+        seen = page.evaluate("window.raphaelEstados")
+        assert {"escuchando", "pensando", "hablando"} <= set(seen)
+        page.click("#raphael")  # tocar a Raphael termina la conversación
+        page.wait_for_function("document.body.dataset.conversando === ''")
+        page.wait_for_selector("#raphael", state="hidden", timeout=5000)  # tras despedirse
+        assert page.is_visible("#log")
+        assert page.locator("#log .user").count() >= 1  # la conversación quedó en el chat
+
+
+def test_without_read_aloud_the_chat_stays(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)], read_aloud=False) as (page, _h, _v):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        assert not page.is_visible("#raphael") and page.is_visible("#log")
+        page.check("#voz-leer")  # al activar la lectura en plena conversación, aparece
+        page.wait_for_selector("#raphael", state="visible")
+        page.click("#hablar")
+        page.wait_for_selector("#raphael", state="hidden", timeout=5000)
 
 
 def test_on_a_phone_the_chat_box_uses_the_whole_width_below_the_buttons(site, phone):

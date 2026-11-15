@@ -19,6 +19,8 @@
   try { readAloud.checked = localStorage.getItem("tama-voz-leer") === "1"; } catch (e) {}
   readAloud.onchange = () => {
     try { localStorage.setItem("tama-voz-leer", readAloud.checked ? "1" : "0"); } catch (e) {}
+    if (readAloud.checked) showRaphael();
+    else if (raphael()) window.TamaRaphael.hide();
   };
 
   // Estado explícito: idle → abriendo → escuchando → procesando → idle (siempre vuelve, finally);
@@ -51,6 +53,13 @@
     talk.textContent = conv ? "Conversando… (toca para terminar)" : LABEL[next];
     talk.classList.toggle("on", next === "abriendo" || next === "escuchando");
     if (message !== undefined) status.textContent = message;
+    if (conv && raphael()) window.TamaRaphael.state(next);
+  }
+
+  // Raphael (raphael.js) se ve mientras se conversa con "Leer respuestas en voz alta" activo.
+  const raphael = () => window.TamaRaphael && window.TamaRaphael.visible;
+  function showRaphael() {
+    if (conv && readAloud.checked && window.TamaRaphael && !raphael()) window.TamaRaphael.show();
   }
 
   function stopPlayback() {
@@ -164,6 +173,7 @@
           chunks.push(samples);
           const now = performance.now();
           const rms = level(samples);
+          if (raphael()) window.TamaRaphael.input(rms);
           if (calibrating && now - started < CALIBRATE_MS) {
             floor = (floor * calibrated + rms) / (calibrated + 1);
             calibrated += 1;
@@ -215,6 +225,7 @@
     conv = { misses: 0, awaiting: false, ending: false, wake: null };
     document.body.dataset.conversando = "1";
     stopPlayback();
+    showRaphael();
     try { conv.wake = await navigator.wakeLock.request("screen"); } catch (e) {}
     if (conv) open(true);
   }
@@ -228,6 +239,7 @@
     stopPlayback();
     try { if (wake) wake.release(); } catch (e) {}
     beep([660, 440]);
+    if (raphael()) window.TamaRaphael.hide();
     setState("idle", message);
   }
 
@@ -268,6 +280,7 @@
         conv.awaiting = true;
         status.textContent = "";
         input.value = data.text;
+        if (raphael()) { window.TamaRaphael.renzo(data.text); window.TamaRaphael.tama(""); }
         form.requestSubmit();
         sent = true;
       }
@@ -283,6 +296,11 @@
     event.preventDefault();
     if (conv) { endConversation("Terminaste la conversación."); return; }
     startConversation();
+  });
+
+  // Tocar a Raphael también termina la conversación (y vuelve el chat).
+  document.addEventListener("tama:raphael-toque", () => {
+    if (conv) endConversation("Terminaste la conversación.");
   });
 
   // El modelo llamó terminar_conversacion: se cierra después de que Tama se despida.
@@ -309,6 +327,7 @@
   document.addEventListener("tama:respuesta", async (event) => {
     const talking = conv !== null;
     if (talking) conv.awaiting = false;
+    if (talking && raphael()) window.TamaRaphael.tama(event.detail);
     if ((!readAloud.checked && !talking) || !event.detail) {
       if (talking) afterSpeech();
       return;
@@ -336,6 +355,7 @@
       audio.onended = done;
       audio.onerror = done;
       status.textContent = "Voz: " + (response.headers.get("X-Tama-Voz") || "");
+      if (talking && raphael()) window.TamaRaphael.attach(audio); // la figura sigue su voz
       setState("hablando"); // mientras Tama habla no se escucha: no se transcribe a sí misma
       await audio.play();
     } catch (error) {
