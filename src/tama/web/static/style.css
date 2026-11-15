@@ -210,13 +210,15 @@ button.plain.on, button.plain.on:disabled {
     padding-top: max(8px, env(safe-area-inset-top));
   }
   header strong { display: none; }
-  /* Cada campo a lo ancho y los botones debajo; el chat sigue en una sola línea. */
+  /* Cada campo a lo ancho y los botones debajo. En el chat, Enviar y Hablar van en una fila
+     arriba del cuadro de texto, que usa todo el ancho (pedido de Renzo tras la demo del S11). */
   form.row > input, form.row > select { flex: 1 1 100%; }
-  #chat-form > input { flex: 1 1 0; }
+  #chat-form > input { flex: 1 1 100%; order: 2; }
+  #chat-form > button { flex: 1 1 0; order: 1; min-width: 0; }
   main {
     padding: 10px 10px max(10px, env(safe-area-inset-bottom));
   }
-  #log { height: calc(100dvh - 150px); }
+  #log { height: calc(100dvh - 200px); }
   .user, .assistant { max-width: 92%; }
   input, textarea, select { min-width: 0; }
   form.row > button, .row > button { flex: none; }

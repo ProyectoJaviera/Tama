@@ -1,6 +1,7 @@
 """Extremo a extremo en un navegador real, con todo lo que no sea localhost bloqueado."""
 
 import contextlib
+import os
 import socket
 import threading
 import time
@@ -440,3 +441,22 @@ def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_pat
         listened_s = (sent[0] - tapped) / 1000
         audio_s = (sent[1] - 44) / 32000
         assert audio_s > listened_s + 0.3  # el audio empieza antes del toque
+
+
+def test_on_a_phone_the_chat_box_uses_the_whole_width_below_the_buttons(site, phone):
+    url, _ = site
+    phone.goto(url)
+    phone.wait_for_selector("#hablar:not([hidden])")
+    form = phone.locator("#chat-form").bounding_box()
+    box = phone.locator("#chat-text").bounding_box()
+    send = phone.locator("#chat-form button[type=submit]").bounding_box()
+    talk = phone.locator("#hablar").bounding_box()
+    assert box["width"] >= 0.95 * form["width"]  # el cuadro usa todo el ancho
+    assert send["y"] + send["height"] <= box["y"] and talk["y"] + talk["height"] <= box["y"]
+    assert abs(send["y"] - talk["y"]) < 2  # Enviar y Hablar en la misma fila, arriba
+    assert phone.is_visible("#voz-leer")
+    if os.environ.get("E2E_CAPTURAS"):
+        phone.screenshot(path=os.path.join(os.environ["E2E_CAPTURAS"], "celular.png"))
+        desk = phone.context.browser.new_page(viewport={"width": 1280, "height": 800})
+        desk.goto(url)
+        desk.screenshot(path=os.path.join(os.environ["E2E_CAPTURAS"], "pc.png"))

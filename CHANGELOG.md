@@ -17,6 +17,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   pieza, 1,3 s de silencio tras la voz; sin voz en 8 s deja de escuchar; máximo 60 s). Otro
   toque envía de inmediato; tocar mientras Tama habla la calla y escucha. El micrófono queda
   abierto entre turnos y se cierra tras 2 minutos sin uso. El chat muestra la fecha de cada día.
+- Chat en el celular: Enviar y Hablar en una fila arriba del cuadro de texto, que usa todo el ancho.
 - Escuchar en cascada: ElevenLabs Scribe v2 (misma key) → whisper local sin red, si falla, tarda
   más de 5 s o se pasa el tope de minutos del mes (`TAMA_SCRIBE_TOPE_MIN_MES`, aviso al 80 %).
   La consola dice qué capa transcribió; Estado muestra la capa y los minutos del mes.
