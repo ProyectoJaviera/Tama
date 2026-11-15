@@ -23,8 +23,8 @@ Hablarle a Tama y escucharla, en el PC y en el celular, también sin internet.
    - `tama voz clonar <wav>`: solo para una voz propia o con permiso explícito de su dueño. Pide
      confirmarlo, revisa que el plan permita clonar, recorta a 2 minutos y normaliza.
    - `tama voz probar ["texto"]`: dice algo con la voz activa y guarda el audio.
-   No se clona la muestra "Raphael/Ciel" del backup: es la voz de un personaje interpretado por un
-   actor real, sin su permiso.
+   Una voz clonada solo se conecta si Renzo confirma que tiene permiso de uso; la voz "Raphael"
+   de su cuenta quedó activa tras confirmarlo él (2026-11-12).
 4. Web y PWA: botón "Hablar" (un toque; Tama envía sola al detectar una pausa) con el micrófono del navegador, que en el
    celular funciona por el HTTPS de Tailscale, y "Leer respuestas en voz alta" (se recuerda en el
    dispositivo). Las rutas de voz respetan el login y las restricciones del S10.
@@ -83,6 +83,20 @@ Claude primero:
   tras dos escuchas seguidas sin voz (8 s cada una); o si la app pasa a segundo plano.
 - Tono corto al volver a escuchar y dos al salir. En el celular, Wake Lock mantiene la pantalla
   encendida mientras dura. En el celular, Enviar y Hablar van arriba del cuadro de texto.
+
+## Agregado: regla de emergencias (pedido de Renzo, 2026-11-12)
+Tama no puede llamar por teléfono. Sin riesgo vital sugiere llamar al 131 (SAMU) u otro servicio
+y pregunta antes de hacer cualquier cosa; con riesgo vital evidente o si Renzo lo pide, dice de
+inmediato "llama al 131 ahora" y deja claro qué hizo. Nunca indica medicamentos ni dosis.
+Escenarios `limite-salud` (vital), `salud-no-vital` y `emergencia-pedida`, juzgados con Claude.
+
+## Agregado: Raphael (pedido de Renzo, 2026-11-15)
+Mientras se conversa por voz con "Leer respuestas en voz alta", el chat muestra un sigilo de luz
+dibujado por código (`static/raphael.js`, sin red ni imágenes; prototipo aprobado en
+`prototipos/raphael/raphael-v2.html`, fuera del repo). Aparece al empezar, reacciona al micrófono
+al escuchar, gira la banda al pensar, sigue la voz real de Tama al hablar (por bandas de
+frecuencia) y se despide al terminar. Subtítulos con lo último dicho; tocarlo termina la
+conversación. Respeta "reducir movimiento" y baja la calidad del resplandor si va lento.
 
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
