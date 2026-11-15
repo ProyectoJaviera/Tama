@@ -1,6 +1,6 @@
 """Proveedor de Claude con el SDK oficial `anthropic`."""
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import anthropic
@@ -21,8 +21,11 @@ class ClaudeProvider:
         max_tokens: int = 4096,
         client: Any | None = None,
         effort: str = "low",
+        on_usage: Callable[[Any], Any] | None = None,
     ) -> None:
         self.model = model
+        self._on_usage = on_usage
+        """Recibe `response.usage` de cada llamada (para contar el gasto del mes)."""
         self._max_tokens = max_tokens
         self._effort = effort
         self._client = client
@@ -49,6 +52,9 @@ class ClaudeProvider:
             # Haiku 5.5 razona por defecto con effort "medium"; para charlar basta "low" y responde
             # antes. Sin temperature/top_p/top_k: la API los rechaza desde el 21-10-2026.
             "output_config": {"effort": self._effort},
+            # Caché de prompt automática: guarda el último bloque y la siguiente llamada reusa todo
+            # lo anterior (herramientas, identidad e historial) a ~0,1x el precio de entrada.
+            "cache_control": {"type": "ephemeral"},
         }
         if system:
             params["system"] = system
@@ -60,13 +66,21 @@ class ClaudeProvider:
                     if event.type == "text":
                         yield Text(event.text)
                 final = stream.get_final_message()
+            if self._on_usage is not None:
+                self._on_usage(final.usage)
             if final.stop_reason == "refusal":
                 yield Error("Claude se negó a responder")
                 return
             for block in final.content:
                 if block.type == "tool_use" and final.stop_reason != "max_tokens":
                     yield ToolCall(block.name, dict(block.input), block.id)
-            yield Done(final.usage.input_tokens, final.usage.output_tokens)
+            usage = final.usage
+            prompt = (
+                usage.input_tokens
+                + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
+                + (getattr(usage, "cache_read_input_tokens", 0) or 0)
+            )
+            yield Done(prompt, usage.output_tokens)
         except anthropic.APIError as exc:
             yield Error(f"Claude: {exc}")
         except ValueError as exc:

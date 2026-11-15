@@ -5,7 +5,7 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from tama.cascade import Cascade, CircuitBreaker, Layer, claude_budget_gate
+from tama.cascade import Cascade, CircuitBreaker, Layer
 from tama.config import Settings
 from tama.events import EventStore
 from tama.mcp_hub import McpHub, load_config, server_env
@@ -14,9 +14,11 @@ from tama.net import Connectivity, tcp_probe, watch
 from tama.ollama import OllamaClient
 from tama.proactive import Engine, Rules
 from tama.providers.claude import ClaudeProvider
-from tama.providers.ollama import OllamaCloudProvider, OllamaLocalProvider
+from tama.providers.cloud_keys import KeyRing, OllamaCloudKeys
+from tama.providers.ollama import OllamaLocalProvider
 from tama.reflection import Reflector, Thinker, close_days, enough_ram, reflect
 from tama.selector import ToolFocus
+from tama.spend import Spend
 from tama.warmup import LocalWarmer
 
 
@@ -33,6 +35,7 @@ class Brain:
     proactive: Engine | None = None
     thinker: Thinker | None = None
     memory_dir: Path = Path("memoria")
+    spend: Spend | None = None
     _stop: threading.Event = field(default_factory=threading.Event)
 
     def preload(self) -> bool:
@@ -72,6 +75,15 @@ def keep_alive(settings: Settings) -> str | int:
     return int(value) if value.lstrip("-").isdigit() else value
 
 
+def cascade_order(value: str) -> list[str]:
+    """Orden de las capas desde TAMA_CASCADE_ORDER ("claude,nube,local"). Nombres desconocidos o
+    repetidos se ignoran; la capa local va siempre, al final si no se nombró: sin ella Tama no
+    respondería sin internet (regla 1)."""
+    names = [n.strip().lower() for n in value.split(",")]
+    order = list(dict.fromkeys(n for n in names if n in ("nube", "claude", "local")))
+    return order if "local" in order else [*order, "local"]
+
+
 def local_options(settings: Settings) -> dict:
     """Opciones del modelo local: las mismas al precargar, conversar y reflexionar."""
     options = {"num_ctx": settings.num_ctx, "num_gpu": settings.num_gpu}
@@ -96,14 +108,16 @@ def build(
     )
     # La nube de Ollama pasa por el daemon local (sesión de `ollama signin`), salvo que haya
     # OLLAMA_API_KEY: entonces se habla directo con ollama.com.
-    cloud_key = settings.ollama_api_key
-    if cloud_key:
-        cloud_client = OllamaClient(
-            settings.cloud_host, timeout=60.0, api_key=cloud_key.get_secret_value()
-        )
-        cloud = OllamaCloudProvider(cloud_client, settings.cloud_model, direct=True)
-    else:
-        cloud = OllamaCloudProvider(local, settings.cloud_model)
+    # La nube va directo a ollama.com con API keys, en orden (ver providers/cloud_keys.py). Sin
+    # keys, la capa queda fuera y la cascada sigue con Claude y local.
+    clients = [
+        OllamaClient(settings.cloud_host, timeout=60.0, api_key=key)
+        for key in settings.cloud_keys()
+    ]
+    ring = KeyRing(
+        len(clients), settings.data_dir / "nube_keys.json", settings.cloud_key_cooldown_s
+    )
+    cloud = OllamaCloudKeys(clients, settings.cloud_model, ring, settings.cloud_key_only)
     claude_key = settings.anthropic_api_key
 
     def breaker() -> CircuitBreaker:
@@ -123,30 +137,30 @@ def build(
     local_provider = OllamaLocalProvider(
         local, settings.local_model, settings.num_ctx, settings.num_gpu, settings.num_thread
     )
-    layers = [
-        Layer(
-            cloud,
-            settings.cloud_first_token_s,
-            breaker(),
-        ),
-        Layer(
+    # Gasto de Claude contado en cada llamada (incluidas las de herramientas y la caché).
+    spend = Spend(
+        settings.claude_spend_db or settings.data_dir / "claude_gasto.db",
+        settings.claude_usd_per_mtok_in,
+        settings.claude_usd_per_mtok_out,
+        settings.claude_monthly_usd,
+    )
+    by_name = {
+        "nube": Layer(cloud, settings.cloud_first_token_s, breaker()),
+        "claude": Layer(
             ClaudeProvider(
                 claude_key.get_secret_value() if claude_key else None,
                 settings.claude_model,
                 effort=settings.claude_effort,
+                on_usage=spend.add,
             ),
             settings.claude_first_token_s,
             breaker(),
-            claude_budget_gate(
-                lambda: store.month_tokens("claude"),
-                settings.claude_usd_per_mtok_in,
-                settings.claude_usd_per_mtok_out,
-                settings.claude_monthly_usd,
-            ),
+            spend.gate,
         ),
         # Sin tiempo máximo: es la última capa y cargar el modelo en CPU puede tardar.
-        Layer(local_provider, None, breaker()),
-    ]
+        "local": Layer(local_provider, None, breaker()),
+    }
+    layers = [by_name[name] for name in cascade_order(settings.cascade_order)]
     if not settings.claude_enabled:
         layers = [layer for layer in layers if layer.provider.name != "claude"]
     if only:
@@ -156,6 +170,7 @@ def build(
         local_provider.recall = lambda text: recall_context(tools, text)
     brain = Brain(Cascade(layers, connectivity), store, local, connectivity, warmer, tools)
     brain.memory_dir = settings.memory_dir
+    brain.spend = spend
     if tools is not None:
         brain.thinker = thinker(settings, local, threading.Event())
     if tools is not None and settings.reflection:

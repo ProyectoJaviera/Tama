@@ -8,10 +8,10 @@ from tama.providers import Done, Text
 from tests.fakes import FakeConnectivity, FakeProvider, failing
 
 
-def test_there_are_20_valid_scenarios():
+def test_there_are_22_valid_scenarios():
     scenarios = runner.load_scenarios()
-    assert len(scenarios) == 20
-    assert len({s.id for s in scenarios}) == 20
+    assert len(scenarios) == 22
+    assert len({s.id for s in scenarios}) == 22
     for s in scenarios:
         assert s.mensaje and s.criterios
         assert s.all_criteria[0] == runner.GENERIC_CRITERION

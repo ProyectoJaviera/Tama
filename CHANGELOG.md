@@ -6,6 +6,43 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Claude como capa principal: orden de la cascada configurable (`TAMA_CASCADE_ORDER`, por defecto
+  `claude,nube,local`), gasto contado en cada llamada con la caché, tope mensual con aviso al 80 % y
+  gasto en Estado, y caché de prompt automática. Prueba de humo `evals.humo_claude`.
+- Capa nube con varias API keys de Ollama Cloud en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`), directo
+  a ollama.com: si una agota su cuota se usa la siguiente en la misma respuesta, se reintenta cada
+  hora y Estado muestra cada key por número. Sin keys, la capa se apaga. Las evals usan la key 3.
+- Voz en la web, tras la demo: un toque en Hablar empieza a escuchar y Tama envía sola cuando
+  Renzo hace una pausa (volumen medido en el navegador: umbral calibrado con el ruido de la
+  pieza, 1,3 s de silencio tras la voz; sin voz en 8 s deja de escuchar; máximo 60 s). Otro
+  toque envía de inmediato; tocar mientras Tama habla la calla y escucha. El micrófono queda
+  abierto entre turnos y se cierra tras 2 minutos sin uso. El chat muestra la fecha de cada día.
+- Raphael: mientras se conversa por voz con "Leer respuestas en voz alta", el chat muestra un
+  sigilo de luz dibujado por código (`static/raphael.js`) que aparece, escucha (micrófono), piensa
+  (la banda gira) y habla siguiendo la voz real de Tama; se despide al terminar. Subtítulos con lo
+  último dicho; tocarlo termina la conversación. Respeta movimiento reducido y baja calidad si va lento.
+- Modo conversación por voz: un toque en Hablar y Tama escucha, responde en voz alta y vuelve a
+  escuchar sola al terminar de hablar (nunca mientras habla). Termina con un toque, cuando el modelo
+  llama `terminar_conversacion` (Renzo se despidió; la herramienta solo existe en este modo), tras
+  dos escuchas seguidas sin voz o si la app pasa a segundo plano. Tonos al escuchar y al salir;
+  en el celular la pantalla no se apaga mientras dura (Wake Lock).
+- Chat en el celular: Enviar y Hablar en una fila arriba del cuadro de texto, que usa todo el ancho.
+- Escuchar en cascada: ElevenLabs Scribe v2 (misma key) → whisper local sin red, si falla, tarda
+  más de 5 s o se pasa el tope de minutos del mes (`TAMA_SCRIBE_TOPE_MIN_MES`, aviso al 80 %).
+  La consola dice qué capa transcribió; Estado muestra la capa y los minutos del mes.
+- Voz, transcripción: no se corta el inicio (con el micrófono abierto se guarda el último medio
+  segundo antes del toque y el ruido se mide con ese audio), 0,3 s de silencio antes y después
+  para whisper, remuestreo a 16 kHz con filtro y sin supresión de ruido del navegador.
+  `TAMA_VOICE_DEBUG_DIR` guarda los audios para diagnosticar; `TAMA_WHISPER_FIT_AUDIO` opcional.
+- Emergencias (131 SAMU y similares): Tama no puede llamar; sin riesgo vital sugiere y pregunta
+  antes de actuar; con riesgo vital o si Renzo lo pide, dice de inmediato "llama al 131 ahora" y
+  qué hizo. Nunca indica medicamentos. Escenarios `salud-no-vital` y `emergencia-pedida`.
+- Evals: juez con Claude cuando la capa está encendida (nunca el modelo local);
+  `--rejuzgar-todos`. Arreglado: `--solo` ya no borra los resultados de los demás escenarios.
+- Sprint 11 (voz): escuchar con whisper.cpp en CPU y hablar con ElevenLabs (flash) → Piper local,
+  con tope mensual de caracteres y cortacircuitos; botón "Hablar" y lectura en voz alta en la web y
+  el celular; Estado con la voz activa. Modelos descargados una vez con hash fijo
+  (`scripts/descargar_voz.py`). `tama voz disenar/listar/clonar/probar`.
 - Sprint 10 (passkey): desde fuera del PC se entra con passkey (WebAuthn con `webauthn` 2.7.0,
   todo local, sin internet). Alta solo con un código de un solo uso del PC (`tama passkey nueva`
   o Estado); `tama passkey listar` y `revocar`. Sesión con cookie HttpOnly, Secure y

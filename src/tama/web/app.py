@@ -12,8 +12,9 @@ import secrets
 import sys
 import threading
 import time
+import wave
 from collections.abc import Callable, Iterator
-from datetime import date
+from datetime import date, datetime
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -30,9 +31,11 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.concurrency import run_in_threadpool
 
 from tama import agent, chat, commands, history
 from tama import brain as brain_module
+from tama import voice as voice_module
 from tama.auth import CODE_MINUTES, Access, AuthError
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -43,6 +46,7 @@ from tama.ollama import OllamaError
 from tama.proactive import act_on
 from tama.providers import Error, Message, Text, ToolCall
 from tama.reflection import diary_path, write_diary
+from tama.voice import VoiceError
 
 HERE = Path(__file__).parent
 CARD_PAGE = 20  # datos por página en la ficha de la web
@@ -62,6 +66,7 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 # porque Tama solo escucha en 127.0.0.1.
 TAILSCALE_USER = "tailscale-user-login"
 END = object()
+MAX_AUDIO_BYTES = 16000 * 2 * 60  # un minuto de WAV de 16 kHz y 16 bits
 SESSION_COOKIE = "tama_sesion"
 # Sin datos: se sirven sin sesión también desde fuera del PC.
 PUBLIC_PATHS = ("/sw.js", "/manifest.webmanifest", "/entrar", "/registrar")
@@ -93,6 +98,40 @@ class Turn:
         return answer is True
 
 
+def save_voice_debug(folder: Path, audio: bytes, text: str) -> None:
+    """Guarda el WAV recibido y lo que entendió whisper (solo con TAMA_VOICE_DEBUG_DIR)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    (folder / f"{stamp}.wav").write_bytes(audio)
+    (folder / f"{stamp}.txt").write_text(text, encoding="utf-8")
+
+
+DAYS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+MONTHS = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def day_label(day: date, today: date) -> str:
+    """Separador de día en el chat: "Hoy", "Ayer" o "jueves 12 de noviembre"."""
+    if day == today:
+        return "Hoy"
+    if (today - day).days == 1:
+        return "Ayer"
+    return f"{DAYS[day.weekday()]} {day.day} de {MONTHS[day.month - 1]}"
+
+
 def stream_turn(
     brain: Brain,
     session: "Session",
@@ -100,6 +139,7 @@ def stream_turn(
     text: str,
     turn_id: str = "",
     remote: bool = False,
+    voice: bool = False,
 ) -> None:
     answered: Answered | None = None
     try:
@@ -111,6 +151,7 @@ def stream_turn(
             session.max_tools,
             turn.confirm,
             remote,
+            voice,
         ):
             if isinstance(event, Text):
                 turn.send("text", text=chat.without_emojis(event.text))
@@ -172,7 +213,7 @@ class Session:
         with self._guard:
             return time.monotonic() - self._current[1] if self._current else 0.0
 
-    def start(self, text: str, remote: bool = False) -> str | None:
+    def start(self, text: str, remote: bool = False, voice: bool = False) -> str | None:
         """Lanza un turno; devuelve su id, o None si ya hay uno en curso."""
         with self._guard:
             now = time.monotonic()
@@ -185,7 +226,7 @@ class Session:
         turn = self.turns[turn_id] = Turn(self.timeout_s)
         threading.Thread(
             target=stream_turn,
-            args=(self.brain, self, turn, text, turn_id, remote),
+            args=(self.brain, self, turn, text, turn_id, remote, voice),
             daemon=True,
         ).start()
         return turn_id
@@ -224,6 +265,9 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     app.state.session = session
     access = Access(settings.data_dir / "acceso.db")
     app.state.access = access
+    online = brain.connectivity.online if brain.connectivity is not None else (lambda: True)
+    voice = voice_module.build(settings, online) if settings.voice_enabled else None
+    app.state.voice = voice
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
     @app.middleware("http")
@@ -379,11 +423,45 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         access.revoke(passkey_id)
         return page(request, "passkeys.html", passkeys=access.passkeys())
 
+    @app.post("/voz/escuchar", dependencies=[Depends(check_csrf)])
+    async def listen(request: Request) -> Response:
+        """Audio WAV (16 kHz, mono) desde el micrófono del navegador → texto con whisper.cpp."""
+        if voice is None or voice.listener is None:
+            return JSONResponse({"error": "La voz está apagada."}, status_code=503)
+        audio = await request.body()
+        if len(audio) > MAX_AUDIO_BYTES:
+            return JSONResponse({"error": "El audio es demasiado largo."}, status_code=413)
+        try:
+            text = await run_in_threadpool(voice.listener.transcribe, audio)
+        except (VoiceError, wave.Error) as exc:
+            return JSONResponse({"error": str(exc) or "No pude leer el audio."}, status_code=400)
+        if settings.voice_debug_dir:
+            save_voice_debug(Path(settings.voice_debug_dir), audio, text)
+        return JSONResponse({"text": text})
+
+    @app.post("/voz/hablar", dependencies=[Depends(check_csrf)])
+    def speak(texto: str = Form(...)) -> Response:
+        if voice is None:
+            return JSONResponse({"error": "La voz está apagada."}, status_code=503)
+        try:
+            speech = voice.speak(texto)
+        except VoiceError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=503)
+        label = "ElevenLabs" if speech.provider == "elevenlabs" else "Piper (local)"
+        return Response(speech.audio, media_type=speech.media_type, headers={"X-Tama-Voz": label})
+
     def chat_history() -> list[tuple[str, str]]:
-        """La conversación, con los comandos y los avisos, tal como se vio."""
+        """La conversación, con los comandos y los avisos, tal como se vio. Cada día empieza con
+        su fecha: sin ella, el resumen matutino de dos días distintos parecía repetido."""
         types = ("user_msg", "assistant_msg", "command", "proactive")
         shown: list[tuple[str, str]] = []
-        for kind, content in brain.store.recent_messages(40, types):
+        today = memoria.local_now().date()
+        last_day = None
+        for kind, content, ts in brain.store.recent_messages_at(40, types):
+            day = datetime.fromisoformat(ts).astimezone(memoria.local_now().tzinfo).date()
+            if day != last_day:
+                shown.append(("day", day_label(day, today)))
+                last_day = day
             if kind == "command":
                 item = json.loads(content)
                 if item["texto"]:
@@ -421,7 +499,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(request: Request, text: str = Form(...)) -> dict[str, Any]:
+    def send(request: Request, text: str = Form(...), voz: str = Form("")) -> dict[str, Any]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
@@ -446,7 +524,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 ]
                 return answer_command(text, preview, choices=choices)
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
-        turn_id = session.start(text, remote(request))
+        turn_id = session.start(text, remote(request), voice=voz == "conversacion")
         if turn_id is None:
             waited = int(session.running_for())
             raise HTTPException(
@@ -738,6 +816,9 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             ntfy_topic=settings.ntfy_topic.strip(),
             local=not remote(request),
             passkeys=access.passkeys(),
+            voice=voice.status() if voice is not None else None,
+            cloud_keys=cloud_keys_status(brain),
+            claude_spend=brain.spend.status() if getattr(brain, "spend", None) else "",
         )
 
     @app.post("/estado/aviso-prueba", dependencies=[Depends(check_csrf)])
@@ -767,6 +848,14 @@ def preparing_html(brain: Brain) -> str:
         f'hx-swap="outerHTML">Sin internet: preparando el modelo local… ({warmer.seconds()} s). '
         "Puedes escribir; la respuesta llegará cuando esté listo.</div>"
     )
+
+
+def cloud_keys_status(brain: Brain) -> list[str]:
+    """Estado de las API keys de Ollama Cloud, por número (nunca la key)."""
+    for layer in brain.cascade.layers:
+        if hasattr(layer.provider, "keys_status"):
+            return layer.provider.keys_status()
+    return []
 
 
 def ntfy_link(settings: Settings) -> str:
@@ -884,10 +973,16 @@ def serve(settings: Settings) -> int:
             brain.reflector.start()
         if settings.local_preload:
             brain.preload()
+        voice = app.state.voice
+        if voice is not None:
+            threading.Thread(target=voice.warm, name="tama-voz", daemon=True).start()
         if settings.connectivity_watch_s > 0:
             brain.watch_network(settings.connectivity_watch_s, settings.local_keep_warm)
         if brain.proactive is not None:
             brain.proactive.start()
+        for layer in brain.cascade.layers:
+            if hasattr(layer.provider, "startup_line"):
+                print(f"Ollama Cloud: {layer.provider.startup_line()}", flush=True)
         print("Tama lista.", flush=True)
         return app
 

@@ -119,6 +119,25 @@ notas u objetivos, `/olvidar`): eso se hace en el PC. Corregir un dato, editar u
 la versión anterior), descartar un objetivo o cancelar un recordatorio siguen disponibles,
 porque conservan el historial.
 
+### Voz
+
+Toca "Hablar" en el chat (también en el celular) y conversa: Tama envía cuando haces una
+pausa, responde en voz alta y vuelve a escuchar sola. Termina con otro toque, despidiéndote
+("chao, Tama") o tras dos escuchas sin voz. Con internet transcribe ElevenLabs Scribe (misma
+key, con tope de minutos al mes); sin red, si falla o al llegar al tope, whisper en el PC. Con "Leer
+respuestas en voz alta", Tama contesta con voz. Escucha con whisper.cpp en el PC (sin GPU) y habla
+con ElevenLabs si hay API key, o con Piper en el PC sin internet o si se pasa el tope del mes.
+
+1. Modelos (una vez, con internet): `uv run python scripts/descargar_voz.py`.
+2. ElevenLabs (opcional): en tu `.env`, `ELEVENLABS_API_KEY=<tu key>` (elevenlabs.io > Developers
+   > API Keys). Luego crea la voz de Tama con `uv run tama voz disenar` (o elige una con
+   `uv run tama voz listar`) y pega en el `.env` la línea `TAMA_ELEVENLABS_VOICE_ID=...` que
+   muestra. Reinicia Tama.
+3. `uv run tama voz probar` dice una frase con la voz activa. Estado muestra la voz activa y los
+   caracteres usados del mes (`TAMA_ELEVENLABS_MONTHLY_CHARS`, 10.000 por defecto).
+
+`uv run tama voz clonar <wav>` existe solo para tu propia voz o la de alguien que te dio permiso.
+
 ### Avisos
 
 Tama recuerda y sugiere por su cuenta, sin molestar: nada de 22:00 a 8:00 (salvo urgentes), hasta 3
@@ -137,13 +156,19 @@ Los recordatorios llegan a ntfy con prioridad alta (suenan y salen con el celula
 
 ### Cerebro en cascada
 
-Tama prueba tres capas en orden y usa la primera que responda:
+Tama prueba tres capas en orden y usa la primera que responda. Por defecto (desde que la nube de
+Ollama dejó de tener uso gratis), `TAMA_CASCADE_ORDER=claude,nube,local`:
 
-1. **Nube de Ollama** (`gemma4:31b-cloud`), si hay internet y el Ollama del PC tiene la sesión
-   iniciada (`ollama signin`); no necesita clave. Con `OLLAMA_API_KEY` va directo a ollama.com.
-2. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se superó el tope
-   mensual (`TAMA_CLAUDE_MONTHLY_USD`, US$ 5 por defecto).
-3. **Ollama local**, siempre disponible y sin internet.
+1. **Claude** (`claude-haiku-5-5`), si hay `ANTHROPIC_API_KEY`, internet y no se pasó el tope del
+   mes (`TAMA_CLAUDE_MONTHLY_USD` o `TAMA_CLAUDE_TOPE_USD_MES`, US$ 5 por defecto). El gasto se
+   cuenta en el PC con lo que informa cada llamada (incluida la caché de prompt, que abarata los
+   mensajes siguientes); al 80 % avisa en la consola y Estado muestra el gasto del mes.
+2. **Nube de Ollama** (`gemma4:31b`), directo a ollama.com con API keys, en orden: usa la key 1
+   (`OLLAMA_API_KEY_1`); si se agota o queda sin saldo, pasa a la 2 y luego a la 3 en la misma
+   respuesta. Una key agotada se vuelve a probar cada hora (`TAMA_CLOUD_KEY_COOLDOWN_S`) y se
+   vuelve a preferir en orden. Sin keys, esta capa queda apagada. `uv run tama nube` muestra cada
+   key y `uv run tama nube reintentar` las vuelve a probar al tiro. Las evals usan solo la key 3.
+3. **Ollama local**, siempre disponible y sin internet (siempre va, al final si no se nombra).
 
 Si una capa no da el primer token en 8 s o falla a mitad de la respuesta, el turno se repite
 completo en la siguiente y Tama lo avisa ("seguí en local"). Tres fallos seguidos dejan una capa
@@ -243,7 +268,10 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_THINK` | `false` | Razonamiento del modelo (lento en CPU) |
 | `TAMA_TIMEOUT` | `300` | Segundos máximos por respuesta |
 | `TAMA_DATA_DIR` | Docker: `/data` (volumen `tama-data`) | Datos de Tama (`events.db`, memoria) |
-| `OLLAMA_API_KEY` | vacío | Opcional: nube de Ollama directo a ollama.com (sin ella, vía `ollama signin`) |
+| `TAMA_CASCADE_ORDER` | `claude,nube,local` | Orden de las capas (la local va siempre) |
+| `OLLAMA_API_KEY_1`, `_2`, `_3` | vacío | Keys de Ollama Cloud, en orden (`OLLAMA_API_KEY` vale como la 1) |
+| `TAMA_CLOUD_KEY_COOLDOWN_S` | `3600` | Cuánto queda de lado una key agotada antes de reintentarla |
+| `TAMA_EVALS_OLLAMA_KEY` | `3` | Key que usan las evals (0 = todas en orden) |
 | `TAMA_CLOUD_MODEL` | `gemma4:31b-cloud` | Modelo de la nube de Ollama |
 | `ANTHROPIC_API_KEY` | vacío | Activa la capa de Claude |
 | `TAMA_CLAUDE_ENABLED` | `true` | Usar la capa de Claude; las evals la apagan salvo con `--con-claude` |
@@ -258,6 +286,13 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_WEB_TAILSCALE_USER` | (vacío) | Si se indica, solo esa cuenta de Tailscale puede entrar |
 | `TAMA_WEB_LOGIN_REMOTE` | `true` | Pedir passkey a todo lo que llega por Tailscale |
 | `TAMA_WEB_SESSION_DAYS` | `30` | Días que dura una sesión abierta con passkey |
+| `ELEVENLABS_API_KEY` | (vacío) | Key de ElevenLabs; sin ella habla Piper |
+| `TAMA_ELEVENLABS_VOICE_ID` | (vacío) | Voz de ElevenLabs (de `tama voz disenar` o `listar`) |
+| `TAMA_ELEVENLABS_MONTHLY_CHARS` | `10000` | Tope de caracteres por mes en ElevenLabs |
+| `TAMA_WHISPER_MODEL` | `ggml-base-q5_1.bin` | Modelo de whisper.cpp en `models/voz` |
+| `TAMA_SCRIBE_TOPE_MIN_MES` | `60` | Minutos de audio al mes que transcribe ElevenLabs Scribe; después, whisper local |
+| `TAMA_WHISPER_FIT_AUDIO` | `false` | Procesa solo lo que dura el audio: `small` queda en ~1 s, pero a veces repite la frase |
+| `TAMA_VOICE_DEBUG_DIR` | (vacío) | Solo para diagnosticar: guarda cada audio recibido y lo que entendió whisper |
 | `TAMA_LOCAL_PRELOAD` | `true` | Precargar el modelo local en segundo plano al abrir Tama |
 | `TAMA_LOCAL_KEEP_ALIVE` | `-1` | Cuánto queda el modelo local en RAM tras cada petición (`-1`: hasta cerrar Ollama, ~5 GB; o `30m`, `2h`) |
 | `TAMA_LOCAL_AUTO_RECALL` | `true` | La capa local busca en la memoria antes de responder (ADR 0003) |

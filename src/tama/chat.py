@@ -12,6 +12,7 @@ from tama.cascade import Answered, Switch
 from tama.mcp_servers import memoria, notas
 from tama.providers import Error, Message, Text, ToolCall
 from tama.remote import RemoteTools
+from tama.voice_tools import VoiceTools
 
 EMOJIS = re.compile("[\U0001f000-\U0001faff\u2600-\u27bf\ufe0f\u200d]")
 
@@ -124,6 +125,7 @@ def run_turn(
     max_tools: int,
     confirm: agent.Confirm,
     remote: bool = False,
+    voice: bool = False,
 ) -> Iterator[agent.AgentEvent]:
     """Corre un turno completo; si falla, el historial queda como estaba.
 
@@ -135,6 +137,8 @@ def run_turn(
     if brain.tools is not None:
         brain.tools.current_event = event_id
     tools = RemoteTools(brain.tools) if remote and brain.tools is not None else brain.tools
+    if voice:  # conversación por voz: el modelo puede terminarla (ver voice_tools.py)
+        tools = VoiceTools(tools)
     answered: Answered | None = None
     for event in whole_words(
         agent.run_turn(

@@ -9,6 +9,37 @@ from tama.ollama import OllamaClient, OllamaError
 from tama.providers import Done, Error, Event, Message, Text, Tool, ToolCall
 
 
+def chat_events(
+    client: OllamaClient,
+    model: str,
+    messages: list[Message],
+    tools: list[Tool] | None,
+    think: bool | None,
+    options: dict[str, Any] | None,
+) -> Iterator[Event]:
+    """Un chat en streaming como eventos de Tama. Deja pasar OllamaError (con su código HTTP):
+    quien llama decide, p. ej. cambiar de API key si la cuota se agotó."""
+    for chunk in client.stream_raw(model, messages, tools=tools, think=think, options=options):
+        message = chunk.get("message", {})
+        if message.get("content"):
+            yield Text(message["content"])
+        for call in message.get("tool_calls") or []:
+            fn = call.get("function", {})
+            args = fn.get("arguments") or {}
+            if isinstance(args, str):
+                args = json.loads(args or "{}")
+            yield ToolCall(fn.get("name", ""), args, call.get("id") or "")
+        if chunk.get("done"):
+            eval_ns = chunk.get("eval_duration")
+            yield Done(
+                chunk.get("prompt_eval_count", 0),
+                chunk.get("eval_count", 0),
+                eval_ns / 1e9 if eval_ns else None,
+            )
+            return
+    yield Error("Ollama cortó la respuesta sin terminar")
+
+
 class _OllamaProvider:
     name = "ollama"
     needs_network = False
@@ -32,27 +63,9 @@ class _OllamaProvider:
         self, messages: list[Message], tools: list[Tool] | None = None
     ) -> Iterator[Event]:
         try:
-            for chunk in self._client.stream_raw(
-                self._api_model, messages, tools=tools, think=self._think, options=self._options
-            ):
-                message = chunk.get("message", {})
-                if message.get("content"):
-                    yield Text(message["content"])
-                for call in message.get("tool_calls") or []:
-                    fn = call.get("function", {})
-                    args = fn.get("arguments") or {}
-                    if isinstance(args, str):
-                        args = json.loads(args or "{}")
-                    yield ToolCall(fn.get("name", ""), args, call.get("id") or "")
-                if chunk.get("done"):
-                    eval_ns = chunk.get("eval_duration")
-                    yield Done(
-                        chunk.get("prompt_eval_count", 0),
-                        chunk.get("eval_count", 0),
-                        eval_ns / 1e9 if eval_ns else None,
-                    )
-                    return
-            yield Error("Ollama cortó la respuesta sin terminar")
+            yield from chat_events(
+                self._client, self._api_model, messages, tools, self._think, self._options
+            )
         except OllamaError as exc:
             self._on_error(exc)
             yield Error(str(exc))

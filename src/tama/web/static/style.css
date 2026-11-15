@@ -210,13 +210,15 @@ button.plain.on, button.plain.on:disabled {
     padding-top: max(8px, env(safe-area-inset-top));
   }
   header strong { display: none; }
-  /* Cada campo a lo ancho y los botones debajo; el chat sigue en una sola línea. */
+  /* Cada campo a lo ancho y los botones debajo. En el chat, Enviar y Hablar van en una fila
+     arriba del cuadro de texto, que usa todo el ancho (pedido de Renzo tras la demo del S11). */
   form.row > input, form.row > select { flex: 1 1 100%; }
-  #chat-form > input { flex: 1 1 0; }
+  #chat-form > input { flex: 1 1 100%; order: 2; }
+  #chat-form > button { flex: 1 1 0; order: 1; min-width: 0; }
   main {
     padding: 10px 10px max(10px, env(safe-area-inset-bottom));
   }
-  #log { height: calc(100dvh - 150px); }
+  #log { height: calc(100dvh - 200px); }
   .user, .assistant { max-width: 92%; }
   input, textarea, select { min-width: 0; }
   form.row > button, .row > button { flex: none; }
@@ -224,4 +226,31 @@ button.plain.on, button.plain.on:disabled {
   dialog { max-width: calc(100vw - 24px); }
   #toasts { right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); }
   .banner-row span { min-width: 0; }
+}
+
+/* Hablar: el dedo no debe hacer scroll ni seleccionar texto mientras se mantiene apretado. */
+#hablar { touch-action: none; user-select: none; -webkit-user-select: none; min-width: 7.5rem; }
+
+/* Separador de día en el chat. */
+.day { text-align: center; color: var(--dim); font-size: 0.8rem; margin: 10px 0 4px; }
+
+/* Raphael: en el modo conversación por voz (con lectura en voz alta) ocupa el lugar del chat.
+   Fondo oscuro propio, porque su luz se suma como en una pantalla. */
+#raphael {
+  height: calc(100vh - 170px);
+  height: calc(100dvh - 170px);
+  display: flex; flex-direction: column; align-items: center;
+  background: #1b1c1a; color: #e7e5de; border-radius: 12px; cursor: pointer;
+  padding: 6px 12px 10px; user-select: none; -webkit-user-select: none;
+}
+#raphael[hidden] { display: none; }
+#raphael canvas { flex: 1 1 auto; width: 100%; min-height: 0; display: block; }
+.raphael-renzo { margin: 4px 0 0; color: #9a978d; font-size: 0.85rem; text-align: center; max-width: 92%; }
+.raphael-tama {
+  margin: 2px 0 0; text-align: center; max-width: 92%; min-height: 1.4em;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+body.con-raphael #log { display: none; }
+@media (max-width: 640px) {
+  #raphael { height: calc(100dvh - 200px); }
 }

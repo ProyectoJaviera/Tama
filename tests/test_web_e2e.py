@@ -1,5 +1,7 @@
 """Extremo a extremo en un navegador real, con todo lo que no sea localhost bloqueado."""
 
+import contextlib
+import os
 import socket
 import threading
 import time
@@ -246,3 +248,322 @@ def test_the_phone_registers_a_passkey_and_signs_in(remote_site):
         page.click("#chat-form button")
         page.wait_for_selector(".assistant:has-text('Hola desde el celular.')")
         browser.close()
+
+
+def wav_file(path, pattern, rate=16000):
+    """WAV para el micrófono falso: [(segundos, amplitud)], con un tono de 300 Hz donde suena."""
+    import math
+    import struct
+    import wave
+
+    frames = bytearray()
+    for seconds, amplitude in pattern:
+        for i in range(int(seconds * rate)):
+            value = amplitude * math.sin(2 * math.pi * 300 * i / rate)
+            frames += struct.pack("<h", int(value * 32767))
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes(bytes(frames))
+    return path
+
+
+@contextlib.contextmanager
+def talk_site(
+    tmp_path,
+    monkeypatch,
+    mic_pattern,
+    answer_seconds=0.2,
+    scripts=None,
+    wait_ms=8000,
+    read_aloud=True,
+):
+    """Tama en un puerto libre con voz simulada y Chrome con un micrófono falso que reproduce
+    `mic_pattern` en bucle. El micrófono tarda 400 ms en abrir, como en el PC de Renzo."""
+    from tama.voice import Speech
+    from tama.web import app as web
+
+    heard: list[int] = []
+    answer = wav_file(tmp_path / "respuesta.wav", [(answer_seconds, 0.0)]).read_bytes()
+
+    class Voice:
+        def __init__(self):
+            self.said: list[str] = []
+            self.listener = Listener()
+
+        def speak(self, text):
+            self.said.append(text)
+            return Speech(answer, "audio/wav", "piper")
+
+        def warm(self):
+            pass
+
+        def status(self):
+            return {
+                "active": "Piper (local)",
+                "reason": "",
+                "used": 0,
+                "cap": 1,
+                "piper": True,
+                "listen": True,
+            }
+
+    class Listener:
+        available = True
+
+        def transcribe(self, audio):
+            heard.append(len(audio))
+            return "hola por voz"
+
+    voice = Voice()
+    monkeypatch.setattr(web.voice_module, "build", lambda *a, **k: voice)
+    monkeypatch.setenv("TAMA_DATA_DIR", str(tmp_path / "data"))
+    (tmp_path / "data").mkdir()
+    memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
+    settings = Settings(data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria")
+    brain = Brain(
+        Cascade(
+            [Layer(Provider(*(scripts or [[Text("Te escuché."), Done(1, 1)]] * 8)))],
+            FakeConnectivity(),
+        ),
+        EventStore(tmp_path / "data" / "events.db"),
+        None,
+        tools=Tools(),
+    )
+    app = create_app(brain, settings)
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(app, port=port, log_level="error"))
+    threading.Thread(target=server.run, daemon=True).start()
+    while not server.started:
+        time.sleep(0.01)
+    mic = wav_file(tmp_path / "mic.wav", mic_pattern)
+    args = [
+        "--use-fake-ui-for-media-stream",
+        "--use-fake-device-for-media-stream",
+        f"--use-file-for-fake-audio-capture={mic}",
+        "--autoplay-policy=no-user-gesture-required",
+    ]
+    try:
+        with sync_api.sync_playwright() as playwright:
+            browser = None
+            for options in ({"channel": "msedge"}, {"channel": "chrome"}, {}):
+                try:
+                    browser = playwright.chromium.launch(args=args, **options)
+                    break
+                except sync_api.Error:
+                    continue
+            if browser is None:
+                pytest.skip("no hay un navegador disponible")
+            page = browser.new_page()
+            page.add_init_script(f"window.TAMA_VOZ = {{ waitMs: {wait_ms} }};")
+            page.add_init_script(
+                """
+                const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+                navigator.mediaDevices.getUserMedia = (c) =>
+                  new Promise((ok) => setTimeout(ok, 400)).then(() => real(c));
+                """
+            )
+            page.goto(f"http://127.0.0.1:{port}/")
+            if read_aloud:
+                page.check("#voz-leer")
+            yield page, heard, voice
+            browser.close()
+    finally:
+        server.should_exit = True
+
+
+SPEECH_THEN_PAUSE = [(1.2, 0.3), (3.0, 0.0)]  # habla 1,2 s y calla 3 s, en bucle
+
+# Guarda cada cambio de estado del botón con su hora, para revisar el orden del ciclo.
+TIMELINE = """
+window.estados = [];
+const talkButton = document.getElementById("hablar");
+new MutationObserver(() => {
+  const now = talkButton.dataset.estado;
+  const last = window.estados[window.estados.length - 1];
+  if (!last || last[0] !== now) window.estados.push([now, performance.now()]);
+}).observe(talkButton, { attributes: true, attributeFilter: ["data-estado"] });
+"""
+
+
+def wait_turns(page, voice, turns, timeout=40000):
+    page.wait_for_function(
+        f"document.querySelectorAll('.assistant').length >= {turns}", timeout=timeout
+    )
+    for _ in range(100):
+        if len(voice.said) >= turns:
+            break
+        page.wait_for_timeout(100)
+
+
+def test_one_tap_holds_a_three_turn_conversation_without_touching_again(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        assert page.text_content("#hablar") == "Conversando… (toca para terminar)"
+        assert page.evaluate("document.body.dataset.conversando") == "1"
+        wait_turns(page, voice, 3)
+        page.wait_for_selector("#hablar[data-estado='escuchando']")  # sigue escuchando sola
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='idle']")
+    assert len(heard) >= 3 and all(n > 16000 for n in heard[:3])
+    assert voice.said[:3] == ["Te escuché."] * 3
+
+
+def test_it_never_listens_while_tama_speaks(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=2) as (
+        page,
+        _heard,
+        voice,
+    ):
+        page.evaluate(TIMELINE)
+        page.click("#hablar")
+        wait_turns(page, voice, 2)
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        timeline = page.evaluate("window.estados")
+        page.click("#hablar")
+    names = [name for name, _ in timeline]
+    assert "hablando" in names
+    for i, (name, at) in enumerate(timeline):
+        if name == "hablando":
+            following = timeline[i + 1 :]
+            assert following and following[0][0] == "idle"  # termina de hablar y recién ahí...
+            listening = next(t for n, t in following if n == "escuchando")
+            assert listening - at >= 1900  # ...vuelve a escuchar (la voz dura 2 s)
+
+
+def test_when_renzo_says_goodbye_the_model_ends_the_conversation(tmp_path, monkeypatch):
+    scripts = [
+        [Text("Te escuché."), Done(1, 1)],
+        [ToolCall("terminar_conversacion", {}, "c1"), Done(1, 1)],
+        [Text("Chao, Renzo."), Done(1, 1)],
+    ]
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, scripts=scripts) as (
+        page,
+        heard,
+        voice,
+    ):
+        page.click("#hablar")
+        wait_turns(page, voice, 2)
+        page.wait_for_function("document.body.dataset.conversando === ''", timeout=10000)
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        assert "Conversación terminada" in page.text_content("#voz-estado")
+        page.wait_for_timeout(2500)  # ya no vuelve a escuchar
+        assert page.get_attribute("#hablar", "data-estado") == "idle"
+    assert voice.said == ["Te escuché.", "Chao, Renzo."]
+    assert len(heard) == 2
+
+
+def test_two_silent_listens_end_the_conversation(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)], wait_ms=1500) as (page, heard, _voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        page.wait_for_function("document.body.dataset.conversando === ''", timeout=15000)
+        assert "no te escuché" in page.text_content("#voz-estado")
+    assert heard == []
+
+
+def test_a_tap_ends_the_conversation_at_once(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)]) as (page, heard, _voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        assert page.text_content("#hablar") == "Hablar"
+        assert "Terminaste" in page.text_content("#voz-estado")
+        page.wait_for_timeout(2000)
+        assert page.get_attribute("#hablar", "data-estado") == "idle"
+    assert heard == []
+
+
+def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_path, monkeypatch):
+    """Pre-roll: si Renzo empieza a hablar justo al tocar, la primera sílaba no se corta."""
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, _heard, voice):
+        page.click("#hablar")  # abre el micrófono, que queda abierto
+        wait_turns(page, voice, 1)
+        page.click("#hablar")  # termina la conversación
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        page.wait_for_timeout(1000)
+        sent = page.evaluate(
+            """() => new Promise((done) => {
+                const real = window.fetch;
+                window.fetch = (url, options) => {
+                  if (url === "/voz/escuchar") done([performance.now(), options.body.size]);
+                  return real(url, options);
+                };
+                window.tapAt = performance.now();
+                document.getElementById("hablar").click();
+            })"""
+        )
+        tapped = page.evaluate("window.tapAt")
+        page.click("#hablar")
+        listened_s = (sent[0] - tapped) / 1000
+        audio_s = (sent[1] - 44) / 32000
+        assert audio_s > listened_s + 0.3  # el audio empieza antes del toque
+
+
+def test_raphael_takes_the_chat_place_while_conversing_and_follows_the_states(
+    tmp_path, monkeypatch
+):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=2) as (
+        page,
+        _heard,
+        voice,
+    ):
+        page.evaluate(
+            """window.raphaelEstados = [];
+            new MutationObserver(() => {
+              const e = document.getElementById("raphael").dataset.estado;
+              const l = window.raphaelEstados;
+              if (l[l.length - 1] !== e) l.push(e);
+            }).observe(document.getElementById("raphael"), { attributes: true });"""
+        )
+        assert not page.is_visible("#raphael") and page.is_visible("#log")
+        page.click("#hablar")
+        page.wait_for_selector("#raphael", state="visible")
+        assert not page.is_visible("#log")  # el chat queda detrás; los mensajes se siguen guardando
+        wait_turns(page, voice, 1)
+        page.wait_for_selector("#raphael[data-estado='hablando']", timeout=10000)
+        assert page.text_content(".raphael-renzo") == "Tú: hola por voz"
+        assert page.text_content(".raphael-tama") == "Te escuché."
+        page.wait_for_selector("#raphael[data-estado='escuchando']", timeout=10000)
+        seen = page.evaluate("window.raphaelEstados")
+        assert {"escuchando", "pensando", "hablando"} <= set(seen)
+        page.click("#raphael")  # tocar a Raphael termina la conversación
+        page.wait_for_function("document.body.dataset.conversando === ''")
+        page.wait_for_selector("#raphael", state="hidden", timeout=5000)  # tras despedirse
+        assert page.is_visible("#log")
+        assert page.locator("#log .user").count() >= 1  # la conversación quedó en el chat
+
+
+def test_without_read_aloud_the_chat_stays(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)], read_aloud=False) as (page, _h, _v):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        assert not page.is_visible("#raphael") and page.is_visible("#log")
+        page.check("#voz-leer")  # al activar la lectura en plena conversación, aparece
+        page.wait_for_selector("#raphael", state="visible")
+        page.click("#hablar")
+        page.wait_for_selector("#raphael", state="hidden", timeout=5000)
+
+
+def test_on_a_phone_the_chat_box_uses_the_whole_width_below_the_buttons(site, phone):
+    url, _ = site
+    phone.goto(url)
+    phone.wait_for_selector("#hablar:not([hidden])")
+    form = phone.locator("#chat-form").bounding_box()
+    box = phone.locator("#chat-text").bounding_box()
+    send = phone.locator("#chat-form button[type=submit]").bounding_box()
+    talk = phone.locator("#hablar").bounding_box()
+    assert box["width"] >= 0.95 * form["width"]  # el cuadro usa todo el ancho
+    assert send["y"] + send["height"] <= box["y"] and talk["y"] + talk["height"] <= box["y"]
+    assert abs(send["y"] - talk["y"]) < 2  # Enviar y Hablar en la misma fila, arriba
+    assert phone.is_visible("#voz-leer")
+    if os.environ.get("E2E_CAPTURAS"):
+        phone.screenshot(path=os.path.join(os.environ["E2E_CAPTURAS"], "celular.png"))
+        desk = phone.context.browser.new_page(viewport={"width": 1280, "height": 800})
+        desk.goto(url)
+        desk.screenshot(path=os.path.join(os.environ["E2E_CAPTURAS"], "pc.png"))

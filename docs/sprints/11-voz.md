@@ -1,0 +1,147 @@
+# Sprint 11: Voz
+
+Estado: cerrado (demo aprobada por Renzo, 2026-11-15)
+
+## Objetivo
+Hablarle a Tama y escucharla, en el PC y en el celular, también sin internet.
+
+## Alcance
+1. Escuchar: whisper.cpp en CPU (`pywhispercpp` 1.5.1, sin GPU). Modelo `ggml-base-q5_1`
+   descargado una vez con versión y hash fijos (`scripts/descargar_voz.py`, en `models/voz/`, fuera
+   del repo); nunca en ejecución. El navegador manda el audio ya en WAV de 16 kHz mono, así no hace
+   falta ffmpeg. Una pista de vocabulario ("Tama") ayuda a escribir bien el nombre.
+2. Hablar en cascada: ElevenLabs (`eleven_flash_v2_5`, API key y voice_id en `.env`) → Piper local
+   (`piper-tts` 1.8.0, voz `es_MX-ald-medium` con hash fijo) si no hay red, falta la key o la
+   voz, se pasa el tope del mes, el cortacircuitos está abierto o la API falla. El tope mensual de
+   caracteres (`TAMA_ELEVENLABS_MONTHLY_CHARS`, 10.000 por defecto) se cuenta en el PC
+   (`data/voz.db`). La key solo viaja en la cabecera `xi-api-key`: nunca en logs ni mensajes.
+3. Voz propia para Tama, con comandos que ejecuta Renzo en su cuenta de ElevenLabs:
+   - `tama voz disenar ["descripción"]`: Voice Design crea voces originales desde una descripción
+     (por defecto, serena y analítica en español neutro, sin nombrar ni imitar a nadie). Renzo
+     escucha las pruebas, elige una y queda guardada; el comando muestra la línea para el `.env`.
+   - `tama voz listar`: voces propias y de la biblioteca en español.
+   - `tama voz clonar <wav>`: solo para una voz propia o con permiso explícito de su dueño. Pide
+     confirmarlo, revisa que el plan permita clonar, recorta a 2 minutos y normaliza.
+   - `tama voz probar ["texto"]`: dice algo con la voz activa y guarda el audio.
+   Una voz clonada solo se conecta si Renzo confirma que tiene permiso de uso; la voz "Raphael"
+   de su cuenta quedó activa tras confirmarlo él (2026-11-12).
+4. Web y PWA: botón "Hablar" (un toque; Tama envía sola al detectar una pausa) con el micrófono del navegador, que en el
+   celular funciona por el HTTPS de Tailscale, y "Leer respuestas en voz alta" (se recuerda en el
+   dispositivo). Las rutas de voz respetan el login y las restricciones del S10.
+5. Estado muestra la voz activa (ElevenLabs o Piper, y por qué), los caracteres del mes y el tope.
+6. Al abrir Tama, Piper y whisper se cargan en segundo plano: la primera respuesta hablada no
+   espera los ~5 s de carga de Piper.
+
+## Agregado: varias API keys de Ollama Cloud (pedido de Renzo, 2026-11-12)
+Ollama empezó a limitar más el uso de la nube por la sesión del PC. La capa 1 ahora va directo a
+`https://ollama.com/api/chat` con `Authorization: Bearer <key>` y el modelo sin el sufijo
+`-cloud` (`gemma4:31b`), con hasta 3 keys en orden (`OLLAMA_API_KEY_1`, `_2`, `_3`;
+`OLLAMA_API_KEY` vale como la 1).
+- 429 o 402: key agotada; 401 o 403: rechazada. Se deja de lado (1 h, o Retry-After) y se prueba
+  la siguiente en la misma respuesta. Un error de red o un 5xx no marca la key: va al
+  cortacircuitos. Si todas fallan, se baja a Claude al tiro; las agotadas no se reintentan en cada
+  mensaje.
+- Estado persistido en `data/nube_keys.json`, sin las keys. Estado muestra cada key por número.
+- Sin keys, la capa 1 se apaga: ya no usa la sesión de `ollama signin`.
+- Las evals usan solo la key 3 (`TAMA_EVALS_OLLAMA_KEY=3`), para no gastar las del día a día.
+- Si todas se agotan a la vez, Tama baja a Claude sin esperar.
+
+## Agregado: Claude como capa principal (decisión de Renzo, 2026-11-12)
+Las keys de Ollama Cloud responden 402 (la cuenta no tiene uso gratis con API key). Renzo eligió
+Claude primero:
+- Orden configurable `TAMA_CASCADE_ORDER`, por defecto `claude,nube,local`; la local va siempre.
+- Gasto de Claude contado en el PC en cada llamada (las de herramientas también) con los precios
+  de Haiku 5.5 (US$ 0,10 entrada y 0,50 salida por millón; caché escrita 1,25x y leída 0,1x).
+  Al llegar al tope (`TAMA_CLAUDE_MONTHLY_USD` / `TAMA_CLAUDE_TOPE_USD_MES`, US$ 5) la capa se
+  salta; al 80 % avisa una vez en la consola. Estado muestra el gasto del mes.
+- Caché de prompt automática (`cache_control` en la petición).
+- Prueba de humo `python -m evals.humo_claude --con-claude` (5 mensajes: charla, hora y memoria):
+  US$ 0,0012 en total; la caché bajó el costo de los mensajes siguientes entre 3 y 10 veces.
+  Suite completa con Claude estimada en unos US$ 0,03 (~122 turnos, sin el juez). No se corrió.
+
+## Agregado tras la demo: Hablar con un toque y escuchar con Scribe (pedidos de Renzo, 2026-11-14)
+- Hablar: un toque empieza a escuchar; Tama envía sola tras 1,3 s de silencio después de la voz
+  (volumen medido en el navegador, umbral calibrado con el ruido de la pieza). Sin voz en 8 s deja
+  de escuchar; máximo 60 s; otro toque envía de inmediato; tocar mientras Tama habla la calla. El
+  micrófono queda abierto entre turnos (se cierra tras 2 min sin uso) y guarda el último medio
+  segundo antes del toque, para no cortar la primera sílaba ("Rueva de Sonida").
+- Audio: remuestreo a 16 kHz con filtro, sin supresión de ruido del navegador y 0,3 s de silencio
+  antes y después para whisper. `TAMA_VOICE_DEBUG_DIR` guarda los audios para diagnosticar.
+- Escuchar en cascada: ElevenLabs Scribe v2 (misma key, español, 5 s de tiempo máximo) → whisper
+  local si no hay red, falla, tarda, se pasa el tope o el cortacircuitos está abierto. Tope de
+  minutos al mes contado en el PC (`TAMA_SCRIBE_TOPE_MIN_MES`, 60 por defecto) con aviso al 80 %
+  en la consola, que también dice qué capa transcribió. Estado muestra la capa y los minutos.
+- Medición con 5 frases (2 reales de Renzo con voz humana y 3 con ruido), solo CPU: Scribe 5/5 en
+  0,4 a 0,9 s; whisper base 4/5 en ~1 s; small 4/5 en ~4 s; large-v3-turbo 4/5 en ~18 s.
+
+## Agregado: modo conversación por voz (pedido de Renzo, 2026-11-15)
+- Un toque en Hablar empieza a conversar: escuchar → pausa → enviar → Tama responde y lo dice en
+  voz alta (aunque "Leer respuestas" esté apagado) → al terminar de hablar vuelve a escuchar sola.
+  No escucha mientras Tama habla, para no transcribirse a sí misma.
+- Termina con un toque; cuando el modelo llama `terminar_conversacion` porque Renzo se despidió
+  (regla 3: lo decide el modelo, no una lista de frases; la herramienta solo existe en este modo);
+  tras dos escuchas seguidas sin voz (8 s cada una); o si la app pasa a segundo plano.
+- Tono corto al volver a escuchar y dos al salir. En el celular, Wake Lock mantiene la pantalla
+  encendida mientras dura. En el celular, Enviar y Hablar van arriba del cuadro de texto.
+
+## Agregado: regla de emergencias (pedido de Renzo, 2026-11-12)
+Tama no puede llamar por teléfono. Sin riesgo vital sugiere llamar al 131 (SAMU) u otro servicio
+y pregunta antes de hacer cualquier cosa; con riesgo vital evidente o si Renzo lo pide, dice de
+inmediato "llama al 131 ahora" y deja claro qué hizo. Nunca indica medicamentos ni dosis.
+Escenarios `limite-salud` (vital), `salud-no-vital` y `emergencia-pedida`, juzgados con Claude.
+
+## Agregado: Raphael (pedido de Renzo, 2026-11-15)
+Mientras se conversa por voz con "Leer respuestas en voz alta", el chat muestra un sigilo de luz
+dibujado por código (`static/raphael.js`, sin red ni imágenes; prototipo aprobado en
+`prototipos/raphael/raphael-v2.html`, fuera del repo). Aparece al empezar, reacciona al micrófono
+al escuchar, gira la banda al pensar, sigue la voz real de Tama al hablar (por bandas de
+frecuencia) y se despide al terminar. Subtítulos con lo último dicho; tocarlo termina la
+conversación. Respeta "reducir movimiento" y baja la calidad del resplandor si va lento.
+
+## Fuera de alcance
+La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
+
+## Evals
+- Tests: cascada (ElevenLabs falla → Piper y el cortacircuitos se abre; tope → Piper; sin red o
+  sin key → Piper), la key nunca aparece en errores ni logs, pedido con flash y la cabecera,
+  audio a 16 kHz, configuración antigua de Piper, rutas web de voz y su login, `disenar`
+  (elige y guarda), `clonar` (pide permiso, revisa el plan, recorta) con la API simulada.
+- `bench/voz_ida_vuelta.py`: ida y vuelta hablada con la nube y Piper en frases cortas.
+- Evals sin regresión en la nube, sin Claude.
+
+## Pasos de la demo
+Con una memoria de demo aparte (`demo-s11\`): tus datos no se tocan. Los modelos de voz ya están
+descargados en `Tama-s11\models\voz` (en otra carpeta: `uv run python scripts/descargar_voz.py`).
+En PowerShell, desde `D:\Estudio\IA\Proyecto_Tama\Tama-s11`.
+
+En el PC:
+1. Cierra la Tama abierta (Ctrl+C) y abre esta:
+   ```powershell
+   $env:TAMA_DATA_DIR="demo-s11\data"; $env:TAMA_MEMORY_DIR="demo-s11\memoria"; $env:TAMA_WORKDIR="demo-s11\trabajo"
+   uv run tama web
+   ```
+2. En http://127.0.0.1:8765, marca "Leer respuestas en voz alta". Mantén apretado "Hablar", di
+   "Hola Tama, ¿qué hora es?" y suelta (la primera vez Chrome pide el micrófono). Debe aparecer
+   tu mensaje escrito, la respuesta y su voz (Piper, sin key todavía).
+3. Estado > Voz: "Piper (local)", con el motivo, y 0 de 10.000 caracteres.
+
+ElevenLabs (cuando tengas la key):
+4. En tu `.env` (el de `Tama-s11`), agrega `ELEVENLABS_API_KEY=<tu key>`.
+5. `uv run tama voz disenar`: escucha las voces de prueba (se abren solas), elige un número y pega
+   en el `.env` la línea `TAMA_ELEVENLABS_VOICE_ID=...` que muestra. Reinicia Tama (paso 1).
+6. `uv run tama voz probar` y Estado deben decir ElevenLabs; los caracteres del mes suben.
+
+En el celular (datos móviles, Tailscale conectado):
+7. Esta memoria de demo no tiene passkeys: en el PC, Estado > "Generar código para un celular";
+   en el celular, "Registrar esta passkey" con el código y luego entra.
+8. Marca "Leer respuestas en voz alta", mantén "Hablar" (el celular pide el micrófono), habla y
+   suelta: escribe tu mensaje, responde y lo dice en voz alta.
+
+Sin internet (opcional): desconecta el PC y repite el paso 2 en el PC: escucha y habla con
+whisper y Piper. Al terminar, puedes borrar `demo-s11\`.
+
+## Criterio de cierre
+- Tests y CI en verde.
+- Ida y vuelta hablada en menos de 6 s en frases cortas, con la nube.
+- Sin internet, Tama escucha y habla con whisper y Piper.
+- Demo de Renzo en el PC y en el celular.

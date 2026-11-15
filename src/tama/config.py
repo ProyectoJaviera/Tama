@@ -33,10 +33,32 @@ class Settings(BaseSettings):
     # Perfil (`nucleo.md`) y export del grafo; datos personales, nunca en el repo público.
     memory_dir: Path = Path("memoria")
 
+    # Orden de la cascada (decisión de Renzo, 2026-11-12: Claude primero, porque la nube de Ollama
+    # ya no tiene uso gratis). La capa local va siempre, al final si no se nombra.
+    cascade_order: str = Field(
+        "claude,nube,local",
+        validation_alias=AliasChoices("TAMA_CASCADE_ORDER", "TAMA_CASCADA"),
+    )
+
     # Capa 1: nube de Ollama.
     ollama_api_key: SecretStr | None = Field(
         None, validation_alias=AliasChoices("OLLAMA_API_KEY", "TAMA_OLLAMA_API_KEY")
     )
+    # Varias API keys de Ollama Cloud, en orden: si una agota su cuota se usa la siguiente, y si
+    # ninguna sirve se baja a Claude. OLLAMA_API_KEY sola sigue valiendo como key 1.
+    ollama_api_key_1: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_1", "OLLAMA_API_KEY_1")
+    )
+    ollama_api_key_2: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_2", "OLLAMA_API_KEY_2")
+    )
+    ollama_api_key_3: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("TAMA_OLLAMA_API_KEY_3", "OLLAMA_API_KEY_3")
+    )
+    # Una key agotada o rechazada se vuelve a probar tras este tiempo (o lo que diga Retry-After).
+    cloud_key_cooldown_s: float = 3600.0
+    # Usar solo esa key (1, 2 o 3); 0 = todas en orden. Las evals: TAMA_EVALS_OLLAMA_KEY.
+    cloud_key_only: int = 0
     cloud_host: str = "https://ollama.com"
     cloud_model: str = "gemma4:31b-cloud"
     cloud_first_token_s: float = 8.0
@@ -50,8 +72,14 @@ class Settings(BaseSettings):
     claude_first_token_s: float = 8.0
     # low | medium | high | xhigh | max. "low" baja la latencia en conversación.
     claude_effort: str = "low"
-    claude_monthly_usd: float = 5.0
+    claude_monthly_usd: float = Field(
+        5.0,
+        validation_alias=AliasChoices("TAMA_CLAUDE_MONTHLY_USD", "TAMA_CLAUDE_TOPE_USD_MES"),
+    )
     # Precios en US$ por millón de tokens (Haiku 5.5, prompts de hasta 100K tokens).
+    # Dónde se cuenta el gasto de Claude (por defecto, data/claude_gasto.db). Las evals lo comparten
+    # entre corridas para cortar la suite completa en un solo tope.
+    claude_spend_db: Path | None = None
     claude_usd_per_mtok_in: float = 0.10
     claude_usd_per_mtok_out: float = 0.50
 
@@ -109,6 +137,35 @@ class Settings(BaseSettings):
     # Un turno que pasa de esto se da por perdido y el chat acepta un mensaje nuevo.
     web_turn_limit_s: float = 600.0
 
+    # Voz (Sprint 11). Escuchar: whisper.cpp en CPU. Hablar: ElevenLabs → Piper local.
+    # Los modelos se descargan al instalar con `scripts/descargar_voz.py`, nunca en ejecución.
+    voice_enabled: bool = True
+    voice_models_dir: Path = Path("models/voz")
+    # "base" cuantizado: ~0,8 s por 4 s de audio en este PC; "small" tarda ~3 s (se decide en S13).
+    whisper_model: str = "ggml-base-q5_1.bin"
+    # Procesa solo lo que dura el audio (audio_ctx): "small" queda tan rápido como "base".
+    whisper_fit_audio: bool = False
+    piper_voice: str = "es_MX-ald-medium.onnx"
+    # Solo para diagnosticar: si se define, guarda aquí cada audio que llega a /voz/escuchar con
+    # lo que entendió whisper. Vacío (por defecto) = no se guarda nada.
+    voice_debug_dir: Path | None = None
+    elevenlabs_api_key: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("ELEVENLABS_API_KEY", "TAMA_ELEVENLABS_API_KEY")
+    )
+    elevenlabs_voice_id: str = ""
+    elevenlabs_model: str = "eleven_flash_v2_5"
+    elevenlabs_timeout_s: float = 8.0
+    # Tope de caracteres por mes enviados a ElevenLabs (contados en el PC). Al pasarlo, habla Piper.
+    elevenlabs_monthly_chars: int = 10000
+    # Escuchar en la nube: ElevenLabs Scribe (misma key) → whisper local sin red, si falla o tarda.
+    scribe_enabled: bool = True
+    scribe_model: str = "scribe_v2"
+    scribe_timeout_s: float = 5.0
+    # Tope de minutos de audio por mes enviados a Scribe (contados en el PC); aviso al 80 %.
+    scribe_monthly_minutes: float = Field(
+        60, validation_alias=AliasChoices("TAMA_SCRIBE_TOPE_MIN_MES", "TAMA_SCRIBE_MONTHLY_MINUTES")
+    )
+
     # Herramientas (servidores MCP locales).
     mcp_enabled: bool = True
     mcp_config: Path = Path("config/mcp.toml")
@@ -133,10 +190,25 @@ class Settings(BaseSettings):
         value = value.strip().rstrip("/")
         return value if "://" in value else f"http://{value}"
 
-    @field_validator("ollama_api_key", "anthropic_api_key", mode="before")
+    @field_validator(
+        "ollama_api_key",
+        "ollama_api_key_1",
+        "ollama_api_key_2",
+        "ollama_api_key_3",
+        "anthropic_api_key",
+        "elevenlabs_api_key",
+        mode="before",
+    )
     @classmethod
     def empty_is_none(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
+
+    def cloud_keys(self) -> list[str]:
+        """Las keys de Ollama Cloud en orden, sin vacías ni repetidas."""
+        found = [self.ollama_api_key_1 or self.ollama_api_key, self.ollama_api_key_2]
+        found.append(self.ollama_api_key_3)
+        keys = [k.get_secret_value().strip() for k in found if k is not None]
+        return list(dict.fromkeys(k for k in keys if k))
 
     @property
     def events_db(self) -> Path:

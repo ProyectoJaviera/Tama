@@ -440,3 +440,13 @@ def test_reflection_plan_turns_the_chat_fact_into_the_plan():
     with memoria.connect() as db:
         rows = db.execute("SELECT kind FROM observations").fetchall()
     assert [r["kind"] for r in rows] == ["plan"]
+
+
+def test_same_plan_with_words_in_another_order_is_one():
+    memoria.ensure_owner("Renzo")
+    plan = entity("Curso de cerámica", "plan", "Renzo piensa empezar un curso de cerámica en marzo")
+    fact = entity("Renzo", "persona", "En marzo piensa empezar un curso de cerámica")
+    memoria.create_entities([plan, fact], source=9)
+    with memoria.connect() as db:
+        rows = db.execute("SELECT kind FROM observations").fetchall()
+    assert [r["kind"] for r in rows] == ["plan"]
