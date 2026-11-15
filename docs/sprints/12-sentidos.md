@@ -39,6 +39,33 @@ Video, audio adjunto, Word y Excel, y la elección final del modelo local de vis
 - Evals con Claude (modelo y juez, tope US$ 0,20 por tanda): describir una foto de taller y
   resumir un PDF de 20 páginas; corrección de un dato.
 
+## Resultados de evals (Claude como modelo y juez)
+- Foto de taller: usa `ver_imagen` y nombra las herramientas (6/6 palabras clave); juez 5, 5, 5, 3
+  (el 3: agrega un detalle que no verifica, como "espacio libre en el panel").
+- PDF de 20 páginas: usa `resumir_documento` y trae los 5 datos clave con sus páginas (5/5);
+  juez 4, 5, 5, 5.
+- Corrección de un dato (S11 pendiente): ningún dato antiguo queda vigente; recuerda el nuevo y
+  el anterior. La eval ya no cuenta como antiguo el dato vigente que nombra los planes viejos.
+- Visión en el PC (humo, `gemma4:e4b`, solo CPU): describe bien una imagen en 19 s.
+- Gasto de la tanda: US$ 0,015.
+
+## Pasos de la demo
+Con una memoria de demo aparte (`demo-s12\`): tus datos no se tocan. En `demo-s12\muestras\`
+hay un manual ficticio de 20 páginas y un dibujo de taller, por si no tienes otros a mano.
+1. Cierra el Tama del S11 si está abierto (usa el mismo puerto) y abre el del S12 (PowerShell):
+   `cd D:\Estudio\IA\Proyecto_Tama\Tama-s12`,
+   `$env:TAMA_DATA_DIR = "D:\Estudio\IA\Proyecto_Tama\Tama-s12\demo-s12\data"` y
+   `uv run tama web`. Abre http://127.0.0.1:8765 y recarga con Ctrl+F5.
+2. "Adjuntar" → una foto de tu taller → aparece la miniatura y el aviso de privacidad. Escribe
+   "¿qué ves?" y envía: Tama la describe (Claude).
+3. "Adjuntar" → un PDF largo (o el manual de muestra) → "resúmemelo". Luego pregunta algo de una
+   página: "¿qué dice de los frenos?".
+4. Pídele que guarde algo de lo que vio ("anota que la llave 13 está en el tablero") y revisa
+   que quede en Memoria; lo que no pidas no se guarda.
+5. En el celular (cierra y abre la app): "Adjuntar" → Cámara → saca una foto → "¿qué es esto?".
+6. Sin internet (opcional): desconecta el PC, adjunta una foto y pregunta: la mira Gemma 4 en el
+   PC (unos 20 a 60 s); un PDF se sigue leyendo en el PC.
+
 ## Criterio de cierre
 - Describe una foto del taller y resume un PDF de 20 páginas.
 - Sin internet, describe una foto en el PC (humo) y lee un PDF.
