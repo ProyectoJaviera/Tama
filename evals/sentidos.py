@@ -89,7 +89,9 @@ CASES = [
         "criterios": [
             "Describe un taller o banco de trabajo con herramientas",
             "Nombra al menos dos herramientas que se ven (llave, martillo, destornillador, caja)",
-            "No inventa cosas que no aparecen en una foto así (personas, autos, marcas)",
+            "No inventa: la foto (que el juez no ve) tiene un tablero perforado verde con una "
+            "llave, un martillo y un destornillador de mango rojo rotulados, un banco de madera, "
+            "una caja azul rotulada CAJA y el título TALLER FLORES - BANCO DE TRABAJO; nada más",
         ],
         "palabras": ["herramienta", "martillo", "destornillador", "llave", "banco", "taller"],
         "herramienta": "ver_imagen",
@@ -102,7 +104,10 @@ CASES = [
             "Resume el documento en puntos claros y breves",
             "Incluye los datos clave: aceite cada 10.000 km, neumáticos 32/30 psi, frenos cada "
             "20.000 km, garantía de 12 meses y pago a 30 días",
-            "No inventa datos que no están en el manual",
+            "No inventa: el manual (que el juez no ve) tiene 20 páginas sobre el trabajo diario "
+            "del taller, el orden y la limpieza, la ficha del vehículo y esos cinco datos (en las "
+            "páginas 3, 7, 11, 15 y 19); nada "
+            "más. Tama lo resumió con la herramienta resumir_documento",
         ],
         "palabras": ["10.000", "32", "20.000", "12 meses", "30 días"],
         "herramienta": "resumir_documento",

@@ -273,7 +273,9 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
     answer = normalize(turn["respuesta"])
 
     def mentions_old(text: str) -> bool:
-        return any(word in normalize(text) for word in OUTDATED)
+        # El dato vigente de piratas puede nombrar los planes que reemplazó: no es antiguo.
+        plain = normalize(text)
+        return "pirata" not in plain and any(word in plain for word in OUTDATED)
 
     return {
         "capa": layer,

@@ -1,0 +1,36 @@
+[
+  {
+    "caso": "foto-taller",
+    "capa": "claude",
+    "herramientas": [
+      "ver_imagen"
+    ],
+    "uso_herramienta": true,
+    "palabras": "6/6",
+    "respuesta": "Se ve un banco de trabajo bien ordenado, con un panel perforado verde donde cuelgan una llave, un martillo y un destornillador, cada uno con su etiqueta y su lugar propio. Hay espacio libre en la cuadrícula del panel por si quieres sumar más herramientas. Abajo, sobre la superficie de trabajo casi vacía, hay una caja azul en la esquina.\n\n¿Estás armando el taller o quieres ordenarlo mejor?",
+    "puntajes": [
+      5,
+      5,
+      5,
+      3
+    ],
+    "comentario": "Responde en español natural y cercano, describe el taller con herramientas nombradas, pero agrega detalles no verificables como el espacio libre en el panel y la superficie casi vacía, y omite el título y el mango rojo."
+  },
+  {
+    "caso": "pdf-20-paginas",
+    "capa": "claude",
+    "herramientas": [
+      "resumir_documento"
+    ],
+    "uso_herramienta": true,
+    "palabras": "5/5",
+    "respuesta": "Este es el resumen del manual del taller (20 páginas):\n\n1. **Trabajo diario:** orden de las herramientas, limpieza del puesto y registro de cada técnico en la ficha del vehículo.\n2. **Aceite del motor:** se cambia cada 10.000 km o una vez al año, lo que ocurra primero (pág. 3).\n3. **Neumáticos:** presión de 32 psi adelante y 30 psi atrás (pág. 7).\n4. **Frenos:** las pastillas se revisan cada 20.000 km (pág. 11).\n5. **Garantía:** 12 meses en repuestos y mano de obra (pág. 15).\n6. **Pago:** 30 días desde la entrega del vehículo (pág. 19).\n\nEl resumen indica que el resto del documento repite la introducción, así que no encontré más datos específicos. Si quieres, puedo leer páginas concretas para confirmar estos valores.",
+    "puntajes": [
+      4,
+      5,
+      5,
+      5
+    ],
+    "comentario": "Responde en español cercano y resume bien los datos clave en puntos breves, sin inventar nada más allá de lo que el manual contiene según los criterios."
+  }
+]

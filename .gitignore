@@ -42,3 +42,6 @@ vendor/wheels/
 trabajo/
 # Memoria vacía para las demos sin red
 demo-limpia/
+
+# Permisos locales de Claude Code (de Renzo, no se versionan)
+.claude/settings.local.json
