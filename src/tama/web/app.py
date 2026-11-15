@@ -139,6 +139,7 @@ def stream_turn(
     text: str,
     turn_id: str = "",
     remote: bool = False,
+    voice: bool = False,
 ) -> None:
     answered: Answered | None = None
     try:
@@ -150,6 +151,7 @@ def stream_turn(
             session.max_tools,
             turn.confirm,
             remote,
+            voice,
         ):
             if isinstance(event, Text):
                 turn.send("text", text=chat.without_emojis(event.text))
@@ -211,7 +213,7 @@ class Session:
         with self._guard:
             return time.monotonic() - self._current[1] if self._current else 0.0
 
-    def start(self, text: str, remote: bool = False) -> str | None:
+    def start(self, text: str, remote: bool = False, voice: bool = False) -> str | None:
         """Lanza un turno; devuelve su id, o None si ya hay uno en curso."""
         with self._guard:
             now = time.monotonic()
@@ -224,7 +226,7 @@ class Session:
         turn = self.turns[turn_id] = Turn(self.timeout_s)
         threading.Thread(
             target=stream_turn,
-            args=(self.brain, self, turn, text, turn_id, remote),
+            args=(self.brain, self, turn, text, turn_id, remote, voice),
             daemon=True,
         ).start()
         return turn_id
@@ -497,7 +499,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(request: Request, text: str = Form(...)) -> dict[str, Any]:
+    def send(request: Request, text: str = Form(...), voz: str = Form("")) -> dict[str, Any]:
         text = text.strip()
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
@@ -522,7 +524,7 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 ]
                 return answer_command(text, preview, choices=choices)
             return answer_command(text, commands.run(brain, command, settings.memory_dir))
-        turn_id = session.start(text, remote(request))
+        turn_id = session.start(text, remote(request), voice=voz == "conversacion")
         if turn_id is None:
             waited = int(session.running_for())
             raise HTTPException(

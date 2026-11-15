@@ -74,6 +74,16 @@ Claude primero:
 - Medición con 5 frases (2 reales de Renzo con voz humana y 3 con ruido), solo CPU: Scribe 5/5 en
   0,4 a 0,9 s; whisper base 4/5 en ~1 s; small 4/5 en ~4 s; large-v3-turbo 4/5 en ~18 s.
 
+## Agregado: modo conversación por voz (pedido de Renzo, 2026-11-15)
+- Un toque en Hablar empieza a conversar: escuchar → pausa → enviar → Tama responde y lo dice en
+  voz alta (aunque "Leer respuestas" esté apagado) → al terminar de hablar vuelve a escuchar sola.
+  No escucha mientras Tama habla, para no transcribirse a sí misma.
+- Termina con un toque; cuando el modelo llama `terminar_conversacion` porque Renzo se despidió
+  (regla 3: lo decide el modelo, no una lista de frases; la herramienta solo existe en este modo);
+  tras dos escuchas seguidas sin voz (8 s cada una); o si la app pasa a segundo plano.
+- Tono corto al volver a escuchar y dos al salir. En el celular, Wake Lock mantiene la pantalla
+  encendida mientras dura. En el celular, Enviar y Hablar van arriba del cuadro de texto.
+
 ## Fuera de alcance
 La calidad del modelo local y la elección final del tamaño de whisper (`13-modelo-local-v2.md`).
 

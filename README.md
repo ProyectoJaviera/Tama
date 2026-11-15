@@ -121,8 +121,9 @@ porque conservan el historial.
 
 ### Voz
 
-Toca "Hablar" en el chat (también en el celular), di lo que quieras y haz una pausa: Tama
-envía sola. Otro toque envía de inmediato. Con internet transcribe ElevenLabs Scribe (misma
+Toca "Hablar" en el chat (también en el celular) y conversa: Tama envía cuando haces una
+pausa, responde en voz alta y vuelve a escuchar sola. Termina con otro toque, despidiéndote
+("chao, Tama") o tras dos escuchas sin voz. Con internet transcribe ElevenLabs Scribe (misma
 key, con tope de minutos al mes); sin red, si falla o al llegar al tope, whisper en el PC. Con "Leer
 respuestas en voz alta", Tama contesta con voz. Escucha con whisper.cpp en el PC (sin GPU) y habla
 con ElevenLabs si hay API key, o con Piper en el PC sin internet o si se pasa el tope del mes.

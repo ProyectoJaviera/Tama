@@ -270,7 +270,7 @@ def wav_file(path, pattern, rate=16000):
 
 
 @contextlib.contextmanager
-def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2):
+def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2, scripts=None, wait_ms=8000):
     """Tama en un puerto libre con voz simulada y Chrome con un micrófono falso que reproduce
     `mic_pattern` en bucle. El micrófono tarda 400 ms en abrir, como en el PC de Renzo."""
     from tama.voice import Speech
@@ -315,7 +315,10 @@ def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2):
     memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
     settings = Settings(data_dir=tmp_path / "data", memory_dir=tmp_path / "memoria")
     brain = Brain(
-        Cascade([Layer(Provider(*[[Text("Te escuché."), Done(1, 1)]] * 8))], FakeConnectivity()),
+        Cascade(
+            [Layer(Provider(*(scripts or [[Text("Te escuché."), Done(1, 1)]] * 8)))],
+            FakeConnectivity(),
+        ),
         EventStore(tmp_path / "data" / "events.db"),
         None,
         tools=Tools(),
@@ -347,6 +350,7 @@ def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2):
             if browser is None:
                 pytest.skip("no hay un navegador disponible")
             page = browser.new_page()
+            page.add_init_script(f"window.TAMA_VOZ = {{ waitMs: {wait_ms} }};")
             page.add_init_script(
                 """
                 const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -364,67 +368,115 @@ def talk_site(tmp_path, monkeypatch, mic_pattern, answer_seconds=0.2):
 
 SPEECH_THEN_PAUSE = [(1.2, 0.3), (3.0, 0.0)]  # habla 1,2 s y calla 3 s, en bucle
 
+# Guarda cada cambio de estado del botón con su hora, para revisar el orden del ciclo.
+TIMELINE = """
+window.estados = [];
+const talkButton = document.getElementById("hablar");
+new MutationObserver(() => {
+  const now = talkButton.dataset.estado;
+  const last = window.estados[window.estados.length - 1];
+  if (!last || last[0] !== now) window.estados.push([now, performance.now()]);
+}).observe(talkButton, { attributes: true, attributeFilter: ["data-estado"] });
+"""
 
-def one_tap_turn(page, voice, turn):
-    page.click("#hablar")  # un solo toque, sin mantener
+
+def wait_turns(page, voice, turns, timeout=40000):
     page.wait_for_function(
-        f"document.querySelectorAll('.assistant').length >= {turn}", timeout=20000
+        f"document.querySelectorAll('.assistant').length >= {turns}", timeout=timeout
     )
-    for _ in range(50):  # la respuesta se lee en voz alta
-        if len(voice.said) >= turn:
+    for _ in range(100):
+        if len(voice.said) >= turns:
             break
         page.wait_for_timeout(100)
-    page.wait_for_selector("#hablar[data-estado='idle']", timeout=10000)
 
 
-def test_one_tap_listens_and_sends_by_itself_after_a_pause(tmp_path, monkeypatch):
+def test_one_tap_holds_a_three_turn_conversation_without_touching_again(tmp_path, monkeypatch):
     with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
         page.click("#hablar")
         page.wait_for_selector("#hablar[data-estado='escuchando']")
-        assert page.text_content("#hablar") == "Escuchando…"
-        page.wait_for_selector(".user:has-text('hola por voz')", timeout=20000)
-        page.wait_for_selector(".assistant:has-text('Te escuché.')")
-        page.wait_for_selector("#hablar[data-estado='idle']", timeout=10000)
-        assert not page.is_disabled("#hablar")
-    assert len(heard) == 1 and heard[0] > 16000  # más de medio segundo de WAV de 16 kHz
-    assert voice.said == ["Te escuché."]
+        assert page.text_content("#hablar") == "Conversando… (toca para terminar)"
+        assert page.evaluate("document.body.dataset.conversando") == "1"
+        wait_turns(page, voice, 3)
+        page.wait_for_selector("#hablar[data-estado='escuchando']")  # sigue escuchando sola
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='idle']")
+    assert len(heard) >= 3 and all(n > 16000 for n in heard[:3])
+    assert voice.said[:3] == ["Te escuché."] * 3
 
 
-def test_five_turns_in_a_row_with_one_tap_each(tmp_path, monkeypatch):
-    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
-        for turn in range(1, 6):
-            one_tap_turn(page, voice, turn)
-    assert len(heard) == 5 and all(n > 16000 for n in heard)
-    assert len(voice.said) == 5
+def test_it_never_listens_while_tama_speaks(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=2) as (
+        page,
+        _heard,
+        voice,
+    ):
+        page.evaluate(TIMELINE)
+        page.click("#hablar")
+        wait_turns(page, voice, 2)
+        page.wait_for_selector("#hablar[data-estado='escuchando']")
+        timeline = page.evaluate("window.estados")
+        page.click("#hablar")
+    names = [name for name, _ in timeline]
+    assert "hablando" in names
+    for i, (name, at) in enumerate(timeline):
+        if name == "hablando":
+            following = timeline[i + 1 :]
+            assert following and following[0][0] == "idle"  # termina de hablar y recién ahí...
+            listening = next(t for n, t in following if n == "escuchando")
+            assert listening - at >= 1900  # ...vuelve a escuchar (la voz dura 2 s)
 
 
-def test_a_tap_without_voice_gives_up_and_sends_nothing(tmp_path, monkeypatch):
-    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)]) as (page, heard, _voice):
+def test_when_renzo_says_goodbye_the_model_ends_the_conversation(tmp_path, monkeypatch):
+    scripts = [
+        [Text("Te escuché."), Done(1, 1)],
+        [ToolCall("terminar_conversacion", {}, "c1"), Done(1, 1)],
+        [Text("Chao, Renzo."), Done(1, 1)],
+    ]
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, scripts=scripts) as (
+        page,
+        heard,
+        voice,
+    ):
+        page.click("#hablar")
+        wait_turns(page, voice, 2)
+        page.wait_for_function("document.body.dataset.conversando === ''", timeout=10000)
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        assert "Conversación terminada" in page.text_content("#voz-estado")
+        page.wait_for_timeout(2500)  # ya no vuelve a escuchar
+        assert page.get_attribute("#hablar", "data-estado") == "idle"
+    assert voice.said == ["Te escuché.", "Chao, Renzo."]
+    assert len(heard) == 2
+
+
+def test_two_silent_listens_end_the_conversation(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)], wait_ms=1500) as (page, heard, _voice):
         page.click("#hablar")
         page.wait_for_selector("#hablar[data-estado='escuchando']")
-        page.wait_for_selector("#hablar[data-estado='idle']", timeout=15000)
-        assert "No te escuché" in page.text_content("#voz-estado")
+        page.wait_for_function("document.body.dataset.conversando === ''", timeout=15000)
+        assert "no te escuché" in page.text_content("#voz-estado")
     assert heard == []
 
 
-def test_a_tap_while_tama_speaks_silences_her_and_listens(tmp_path, monkeypatch):
-    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=8) as (
-        page,
-        heard,
-        _voice,
-    ):
+def test_a_tap_ends_the_conversation_at_once(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, [(2.0, 0.0)]) as (page, heard, _voice):
         page.click("#hablar")
-        page.wait_for_selector("#hablar[data-estado='hablando']", timeout=20000)
-        page.click("#hablar")  # Tama sigue hablando (8 s): el toque la calla y escucha
         page.wait_for_selector("#hablar[data-estado='escuchando']")
-        page.wait_for_function("document.querySelectorAll('.assistant').length >= 2", timeout=20000)
-    assert len(heard) == 2
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        assert page.text_content("#hablar") == "Hablar"
+        assert "Terminaste" in page.text_content("#voz-estado")
+        page.wait_for_timeout(2000)
+        assert page.get_attribute("#hablar", "data-estado") == "idle"
+    assert heard == []
 
 
 def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_path, monkeypatch):
     """Pre-roll: si Renzo empieza a hablar justo al tocar, la primera sílaba no se corta."""
     with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, _heard, voice):
-        one_tap_turn(page, voice, 1)  # abre el micrófono, que queda abierto
+        page.click("#hablar")  # abre el micrófono, que queda abierto
+        wait_turns(page, voice, 1)
+        page.click("#hablar")  # termina la conversación
+        page.wait_for_selector("#hablar[data-estado='idle']")
         page.wait_for_timeout(1000)
         sent = page.evaluate(
             """() => new Promise((done) => {
@@ -438,6 +490,7 @@ def test_with_the_microphone_open_the_half_second_before_the_tap_is_sent(tmp_pat
             })"""
         )
         tapped = page.evaluate("window.tapAt")
+        page.click("#hablar")
         listened_s = (sent[0] - tapped) / 1000
         audio_s = (sent[1] - 44) / 32000
         assert audio_s > listened_s + 0.3  # el audio empieza antes del toque

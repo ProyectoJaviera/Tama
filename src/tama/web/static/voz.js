@@ -1,7 +1,9 @@
-// Voz en la web: un toque en "Hablar" empieza a escuchar con el micrófono del navegador (en el
-// celular funciona por el HTTPS de Tailscale). Cuando Renzo hace una pausa, Tama corta sola, manda
-// el audio como WAV de 16 kHz para whisper.cpp y lo envía como mensaje. Otro toque envía de
-// inmediato. Si "Leer respuestas" está activo, la respuesta se escucha en voz alta.
+// Voz en la web, modo conversación: un toque en "Hablar" empieza a conversar con el micrófono del
+// navegador (en el celular funciona por el HTTPS de Tailscale). Ciclo: escuchar → pausa → enviar
+// (WAV de 16 kHz) → Tama responde y lo dice en voz alta → al terminar de hablar, vuelve a escuchar
+// sola. No escucha mientras Tama habla. Termina con un toque, cuando el modelo llama
+// `terminar_conversacion` (Renzo se despidió), tras dos escuchas seguidas sin voz o si la página
+// pasa a segundo plano. En el celular, la pantalla no se apaga mientras dura (Wake Lock).
 (() => {
   const talk = document.getElementById("hablar");
   const options = document.getElementById("voz-opciones");
@@ -26,8 +28,10 @@
     idle: "Hablar", hablando: "Hablar", abriendo: "Abriendo…", escuchando: "Escuchando…",
     procesando: "Procesando…",
   };
-  const PAUSE_MS = 1300;      // silencio tras haber hablado: fin del mensaje
-  const WAIT_MS = 8000;       // si en este tiempo no se oye voz, se deja de escuchar
+  // Los tiempos se pueden ajustar con window.TAMA_VOZ (los tests los acortan).
+  const CFG = Object.assign({ pauseMs: 1300, waitMs: 8000, misses: 2 }, window.TAMA_VOZ || {});
+  const PAUSE_MS = CFG.pauseMs; // silencio tras haber hablado: fin del mensaje
+  const WAIT_MS = CFG.waitMs;   // si en este tiempo no se oye voz, esa escucha no cuenta
   const MAX_MS = 60000;       // tope de un mensaje
   const CALIBRATE_MS = 250;   // sin audio previo: los primeros ms dan el ruido de fondo (se guardan)
   const PREROLL_MS = 500;     // con el micrófono abierto, el último medio segundo antes del toque
@@ -39,11 +43,12 @@
   let state = "idle";
   let recording = null;
   let playing = null;
+  let conv = null; // { misses, awaiting, ending, wake } mientras dura la conversación
 
   function setState(next, message) {
     state = next;
     talk.dataset.estado = next;
-    talk.textContent = LABEL[next];
+    talk.textContent = conv ? "Conversando… (toca para terminar)" : LABEL[next];
     talk.classList.toggle("on", next === "abriendo" || next === "escuchando");
     if (message !== undefined) status.textContent = message;
   }
@@ -132,11 +137,15 @@
     return new Blob([view], { type: "audio/wav" });
   }
 
-  async function open() {
+  // `withPreroll`: al tocar Hablar se incluye el medio segundo anterior; al volver a escuchar
+  // después de que Tama habló, no (traería el final de su propia voz).
+  async function open(withPreroll = true) {
     setState("abriendo", "Abriendo el micrófono…");
     try {
       const current = await microphone();
-      const preroll = current.ring.splice(0);
+      if (!conv) return setState("idle"); // la conversación terminó mientras abría
+      const kept = current.ring.splice(0);
+      const preroll = withPreroll ? kept : [];
       current.ringLength = 0;
       const chunks = [...preroll];
       const started = performance.now();
@@ -163,11 +172,12 @@
           calibrating = false;
           if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) voiceAt = now;
           if (voiceAt && now - voiceAt > PAUSE_MS) finish();
-          else if (!voiceAt && now - started > WAIT_MS) cancel("No te escuché. Toca Hablar y vuelve a intentarlo.");
+          else if (!voiceAt && now - started > WAIT_MS) missed();
           else if (now - started > MAX_MS) finish();
         },
       };
       setState("escuchando", "Te escucho… cuando hagas una pausa, lo envío.");
+      beep([880]);
     } catch (error) {
       recording = null;
       setState("idle", "No pude usar el micrófono: " + error.message);
@@ -182,9 +192,61 @@
     return { chunks: taken.chunks, rate: taken.rate };
   }
 
-  function cancel(message) {
+  // Un tono corto: al empezar a escuchar (agudo) y al terminar la conversación (dos, bajando).
+  function beep(freqs) {
+    try {
+      const ctx = mic ? mic.context : new AudioContext();
+      let at = ctx.currentTime;
+      for (const freq of freqs) {
+        const tone = ctx.createOscillator();
+        const gain = ctx.createGain();
+        tone.frequency.value = freq;
+        gain.gain.setValueAtTime(0.06, at);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.12);
+        tone.connect(gain).connect(ctx.destination);
+        tone.start(at);
+        tone.stop(at + 0.13);
+        at += 0.16;
+      }
+    } catch (e) {}
+  }
+
+  async function startConversation() {
+    conv = { misses: 0, awaiting: false, ending: false, wake: null };
+    document.body.dataset.conversando = "1";
+    stopPlayback();
+    try { conv.wake = await navigator.wakeLock.request("screen"); } catch (e) {}
+    if (conv) open(true);
+  }
+
+  function endConversation(message) {
+    if (!conv) return;
+    const { wake } = conv;
+    conv = null;
+    document.body.dataset.conversando = "";
     release();
+    stopPlayback();
+    try { if (wake) wake.release(); } catch (e) {}
+    beep([660, 440]);
     setState("idle", message);
+  }
+
+  // Volver a escuchar sola (después de que Tama habló o de una escucha vacía).
+  function listenAgain() {
+    if (!conv) return;
+    setState("idle", "Te escucho de nuevo…");
+    setTimeout(() => { if (conv && state === "idle") open(false); }, 250);
+  }
+
+  function missed() {
+    release();
+    if (!conv) return setState("idle");
+    conv.misses += 1;
+    if (conv.misses >= CFG.misses) {
+      endConversation("Terminé la conversación: no te escuché. Toca Hablar para seguir.");
+    } else {
+      listenAgain();
+    }
   }
 
   async function finish() {
@@ -192,6 +254,7 @@
     const taken = release();
     if (!taken) { setState("idle"); return; }
     setState("procesando", "Transcribiendo…");
+    let sent = false;
     try {
       const response = await fetch("/voz/escuchar", {
         method: "POST",
@@ -200,28 +263,56 @@
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No pude transcribir.");
-      if (!data.text) { status.textContent = "No te escuché. Vuelve a intentarlo."; return; }
-      status.textContent = "";
-      input.value = data.text;
-      form.requestSubmit();
+      if (data.text && conv) {
+        conv.misses = 0;
+        conv.awaiting = true;
+        status.textContent = "";
+        input.value = data.text;
+        form.requestSubmit();
+        sent = true;
+      }
     } catch (error) {
       status.textContent = error.message;
     } finally {
-      setState("idle");
+      if (!sent && conv) { setState("procesando"); missed(); } else setState(conv ? "procesando" : "idle");
     }
   }
 
-  // Un toque empieza a escuchar; otro toque mientras escucha envía de inmediato.
+  // Un toque empieza la conversación; otro toque, en cualquier momento, la termina.
   talk.addEventListener("click", (event) => {
     event.preventDefault();
-    if (state === "escuchando") { finish(); return; }
-    if (state !== "idle" && state !== "hablando") return;
-    stopPlayback(); // tocar Hablar corta la respuesta que está sonando
-    open();
+    if (conv) { endConversation("Terminaste la conversación."); return; }
+    startConversation();
+  });
+
+  // El modelo llamó terminar_conversacion: se cierra después de que Tama se despida.
+  document.addEventListener("tama:fin-conversacion", () => { if (conv) conv.ending = true; });
+
+  // El turno terminó sin respuesta para leer (un error, un comando): seguir escuchando.
+  document.addEventListener("tama:turno-fin", () => {
+    if (!conv || !conv.awaiting) return;
+    conv.awaiting = false;
+    afterSpeech();
+  });
+
+  function afterSpeech() {
+    if (!conv) return;
+    if (conv.ending) endConversation("Conversación terminada. Toca Hablar para empezar otra.");
+    else listenAgain();
+  }
+
+  // Android suspende la página al bloquear o cambiar de app: se sale limpio del modo.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && conv) endConversation("Conversación terminada: la app quedó en segundo plano.");
   });
 
   document.addEventListener("tama:respuesta", async (event) => {
-    if (!readAloud.checked || !event.detail) return;
+    const talking = conv !== null;
+    if (talking) conv.awaiting = false;
+    if ((!readAloud.checked && !talking) || !event.detail) {
+      if (talking) afterSpeech();
+      return;
+    }
     try {
       const body = new URLSearchParams({ texto: event.detail });
       const response = await fetch("/voz/hablar", {
@@ -231,17 +322,26 @@
       });
       if (!response.ok) throw new Error((await response.json()).error || "No pude hablar.");
       const blob = await response.blob();
-      if (state !== "idle" && state !== "hablando") return; // Renzo ya habla: no se le encima la voz
+      if (talking && !conv) return; // la conversación terminó mientras se preparaba la voz
+      if (!talking && state !== "idle" && state !== "hablando") return;
       stopPlayback();
       const audio = new Audio(URL.createObjectURL(blob));
       playing = audio;
-      audio.onended = () => { if (playing === audio) { playing = null; setState("idle"); } };
+      const done = () => {
+        if (playing !== audio) return;
+        playing = null;
+        setState("idle");
+        afterSpeech();
+      };
+      audio.onended = done;
+      audio.onerror = done;
       status.textContent = "Voz: " + (response.headers.get("X-Tama-Voz") || "");
-      setState("hablando");
+      setState("hablando"); // mientras Tama habla no se escucha: no se transcribe a sí misma
       await audio.play();
     } catch (error) {
       if (state === "hablando") setState("idle");
       if (error.name !== "AbortError") status.textContent = error.message;
+      afterSpeech();
     }
   });
 })();

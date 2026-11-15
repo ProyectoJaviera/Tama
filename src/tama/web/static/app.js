@@ -99,6 +99,10 @@
       } else if (event.kind === "tool") {
         tool = addTool(event);
         reply = null;
+        // El modelo decidió terminar la conversación por voz (voz.js la cierra tras despedirse).
+        if (event.name === "terminar_conversacion") {
+          document.dispatchEvent(new CustomEvent("tama:fin-conversacion"));
+        }
       } else if (event.kind === "tool_result") {
         if (tool) tool.textContent += "\n-> " + event.text;
         if (event.skipped) add("line", "no se ejecutó (sin confirmación)");
@@ -125,7 +129,8 @@
       log.querySelectorAll(".assistant").forEach(emphasize);
       source.close();
       button.disabled = false;
-      input.focus();
+      document.dispatchEvent(new CustomEvent("tama:turno-fin"));
+      if (!conversing()) input.focus(); // en el celular, el teclado taparía la conversación
     });
   }
 
@@ -154,6 +159,9 @@
     form.requestSubmit();
   });
 
+  // Modo conversación por voz (voz.js): cada mensaje lo indica y el teclado no se abre solo.
+  const conversing = () => document.body.dataset.conversando === "1";
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
@@ -161,16 +169,20 @@
     button.disabled = true;
     input.value = "";
     add("user", text);
-    const response = await post("/chat", { text: text });
+    const fields = { text: text };
+    if (conversing()) fields.voz = "conversacion";
+    const response = await post("/chat", fields);
     if (!response.ok) {
       const problem = await response.json().catch(() => ({}));
       add("error", problem.detail || "Tama aún está respondiendo.");
       button.disabled = false;
+      document.dispatchEvent(new CustomEvent("tama:turno-fin"));
       return;
     }
     const result = await response.json();
     if (result.reply !== undefined) {
       add("command", result.reply);
+      document.dispatchEvent(new CustomEvent("tama:turno-fin"));
       if (result.choices) addChoices(result.choices);
       if (result.confirm) {
         pendingCommand = true;
