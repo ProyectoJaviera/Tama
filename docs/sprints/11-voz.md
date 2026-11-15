@@ -1,6 +1,6 @@
 # Sprint 11: Voz
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-15)
 
 ## Objetivo
 Hablarle a Tama y escucharla, en el PC y en el celular, también sin internet.
