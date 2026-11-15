@@ -450,3 +450,27 @@ def test_same_plan_with_words_in_another_order_is_one():
     with memoria.connect() as db:
         rows = db.execute("SELECT kind FROM observations").fetchall()
     assert [r["kind"] for r in rows] == ["plan"]
+
+
+def test_changing_a_shared_plan_points_at_the_partner_fact_that_is_still_valid():
+    memoria.create_entities([entity("Renzo", "persona", "Para Halloween se disfrazará de Shrek")])
+    memoria.create_entities(
+        [entity("Esposa de Renzo", "persona", "Se disfrazará de Fiona para Halloween")]
+    )
+    with memoria.connect() as db:
+        shrek, fiona = (
+            db.execute("SELECT id FROM observations WHERE content LIKE ?", (f"%{w}%",)).fetchone()[
+                0
+            ]
+            for w in ("Shrek", "Fiona")
+        )
+    text = memoria.update_observation(
+        [f"o{shrek}"], "Para Halloween irá con su esposa de la Bella y la Bestia"
+    )
+    # El modelo decide: se le muestra el dato de la esposa, aún vigente, y se le pide revisarlo.
+    assert f"[o{fiona}]" in text and "llama ahora update_observation" in text
+    assert valid("Se disfrazará de Fiona para Halloween") == 1
+    memoria.update_observation(
+        [f"o{fiona}"], "Para Halloween irá con su esposa de la Bella y la Bestia"
+    )
+    assert valid("Se disfrazará de Fiona para Halloween") == 0

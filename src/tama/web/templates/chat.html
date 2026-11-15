@@ -18,8 +18,11 @@
 <form id="chat-form" class="row">
   <input id="chat-text" name="text" list="comandos" autocomplete="off" autofocus placeholder="Escríbele a Tama, o /ayuda para ver los comandos" aria-label="Mensaje">
   <button type="submit">Enviar</button>
+  <button type="button" id="adjuntar" class="plain" aria-label="Adjuntar una foto o un documento">Adjuntar</button>
+  <input type="file" id="archivo" accept="image/jpeg,image/png,image/webp,application/pdf,.txt,.md" hidden>
   <button type="button" id="hablar" class="plain" hidden aria-label="Toca para hablar; Tama envía cuando haces una pausa">Hablar</button>
 </form>
+<div id="adjuntos-pendientes" class="row" hidden></div>
 <div class="row muted" id="voz-opciones" hidden>
   <label><input type="checkbox" id="voz-leer" style="flex:none;min-width:0"> Leer respuestas en voz alta</label>
   <span id="voz-estado" aria-live="polite"></span>

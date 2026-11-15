@@ -157,6 +157,12 @@ class Settings(BaseSettings):
     elevenlabs_timeout_s: float = 8.0
     # Tope de caracteres por mes enviados a ElevenLabs (contados en el PC). Al pasarlo, habla Piper.
     elevenlabs_monthly_chars: int = 10000
+    # Sentidos (Sprint 12): fotos y documentos adjuntos. Las fotos las mira Claude (mismo tope de
+    # gasto) y, sin red o con TAMA_VISION_CLOUD=false, un modelo local de visión en CPU.
+    attachments_enabled: bool = True
+    vision_cloud: bool = True
+    vision_local_model: str = "gemma4:e4b"
+    vision_timeout_s: float = 300.0
     # Escuchar en la nube: ElevenLabs Scribe (misma key) → whisper local sin red, si falla o tarda.
     scribe_enabled: bool = True
     scribe_model: str = "scribe_v2"

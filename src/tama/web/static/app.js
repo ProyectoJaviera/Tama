@@ -162,14 +162,74 @@
   // Modo conversación por voz (voz.js): cada mensaje lo indica y el teclado no se abre solo.
   const conversing = () => document.body.dataset.conversando === "1";
 
+  // Adjuntos: una foto (en el celular, de la cámara o la galería), un PDF o un texto. Se suben al
+  // elegirlos y van con el próximo mensaje; Tama decide cómo mirarlos (ver attachments.py).
+  const attachButton = document.getElementById("adjuntar");
+  const fileInput = document.getElementById("archivo");
+  const pendingBox = document.getElementById("adjuntos-pendientes");
+  let pendingFiles = [];
+  function showPending() {
+    pendingBox.replaceChildren();
+    pendingBox.hidden = pendingFiles.length === 0;
+    for (const item of pendingFiles) {
+      const chip = document.createElement("span");
+      chip.className = "adjunto";
+      if (item.kind === "foto") {
+        const img = document.createElement("img");
+        img.src = "/adjuntos/" + item.id;
+        img.alt = item.name;
+        chip.appendChild(img);
+      }
+      chip.appendChild(document.createTextNode(item.name + (item.pages ? " (" + item.pages + " pág.)" : "")));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "plain";
+      remove.textContent = "Quitar";
+      remove.onclick = () => { pendingFiles = pendingFiles.filter((p) => p !== item); showPending(); };
+      chip.appendChild(remove);
+      pendingBox.appendChild(chip);
+    }
+  }
+  if (attachButton && fileInput) {
+    attachButton.onclick = () => fileInput.click();
+    fileInput.onchange = async () => {
+      const file = fileInput.files[0];
+      fileInput.value = "";
+      if (!file) return;
+      attachButton.disabled = true;
+      attachButton.textContent = "Subiendo…";
+      try {
+        const body = new FormData();
+        body.append("archivo", file);
+        const response = await fetch("/adjuntos", { method: "POST", headers: { "X-CSRF-Token": csrf }, body });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || "No pude subir el archivo.");
+        pendingFiles.push(data);
+        showPending();
+        if (data.notice) add("line", data.notice);
+        input.focus();
+      } catch (error) {
+        add("error", error.message);
+      } finally {
+        attachButton.disabled = false;
+        attachButton.textContent = "Adjuntar";
+      }
+    };
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
-    if (!text || button.disabled) return;
+    if ((!text && pendingFiles.length === 0) || button.disabled) return;
     button.disabled = true;
     input.value = "";
-    add("user", text);
+    const sending = pendingFiles;
+    pendingFiles = [];
+    showPending();
+    const names = sending.map((f) => f.name).join(", ");
+    add("user", text + (sending.length ? (text ? "\n" : "") + "[" + names + "]" : ""));
     const fields = { text: text };
+    if (sending.length) fields.adjuntos = sending.map((f) => f.id).join(",");
     if (conversing()) fields.voz = "conversacion";
     const response = await post("/chat", fields);
     if (!response.ok) {

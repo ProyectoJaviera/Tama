@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import queue
+import re
 import secrets
 import sys
 import threading
@@ -20,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
@@ -36,6 +37,13 @@ from starlette.concurrency import run_in_threadpool
 from tama import agent, chat, commands, history
 from tama import brain as brain_module
 from tama import voice as voice_module
+from tama.attachments import (
+    AttachmentError,
+    Attachments,
+    AttachmentStore,
+    Senses,
+    for_vision,
+)
 from tama.auth import CODE_MINUTES, Access, AuthError
 from tama.brain import Brain
 from tama.cascade import Answered, Switch
@@ -67,6 +75,8 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "testserver"}
 TAILSCALE_USER = "tailscale-user-login"
 END = object()
 MAX_AUDIO_BYTES = 16000 * 2 * 60  # un minuto de WAV de 16 kHz y 16 bits
+MAX_UPLOAD_BYTES = 30 * 1024 * 1024  # el adjunto más grande (un PDF de 30 MB)
+UPLOAD_FIELD = File(...)
 SESSION_COOKIE = "tama_sesion"
 # Sin datos: se sirven sin sesión también desde fuera del PC.
 PUBLIC_PATHS = ("/sw.js", "/manifest.webmanifest", "/entrar", "/registrar")
@@ -140,6 +150,7 @@ def stream_turn(
     turn_id: str = "",
     remote: bool = False,
     voice: bool = False,
+    attachments: Any = None,
 ) -> None:
     answered: Answered | None = None
     try:
@@ -152,6 +163,7 @@ def stream_turn(
             turn.confirm,
             remote,
             voice,
+            attachments,
         ):
             if isinstance(event, Text):
                 turn.send("text", text=chat.without_emojis(event.text))
@@ -200,6 +212,8 @@ class Session:
         self._guard = threading.Lock()
         self._current: tuple[str, float] | None = None
         """El turno en curso y cuándo empezó."""
+        self.attachments: Any = None
+        """Las herramientas de adjuntos, desde el primer mensaje con un adjunto."""
 
     def busy(self) -> bool:
         with self._guard:
@@ -226,7 +240,7 @@ class Session:
         turn = self.turns[turn_id] = Turn(self.timeout_s)
         threading.Thread(
             target=stream_turn,
-            args=(self.brain, self, turn, text, turn_id, remote, voice),
+            args=(self.brain, self, turn, text, turn_id, remote, voice, self.attachments),
             daemon=True,
         ).start()
         return turn_id
@@ -268,6 +282,19 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     online = brain.connectivity.online if brain.connectivity is not None else (lambda: True)
     voice = voice_module.build(settings, online) if settings.voice_enabled else None
     app.state.voice = voice
+    attachments = (
+        Attachments(
+            AttachmentStore(settings.data_dir),
+            Senses(
+                settings,
+                brain.spend,
+                brain.connectivity.online if brain.connectivity else (lambda: True),
+            ),
+        )
+        if settings.attachments_enabled
+        else None
+    )
+    app.state.attachments = attachments
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 
     @app.middleware("http")
@@ -499,8 +526,19 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
         return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
-    def send(request: Request, text: str = Form(...), voz: str = Form("")) -> dict[str, Any]:
+    def send(
+        request: Request, text: str = Form(""), voz: str = Form(""), adjuntos: str = Form("")
+    ) -> dict[str, Any]:
         text = text.strip()
+        refs = [r for r in re.split(r"[,\s]+", adjuntos) if r]
+        if refs and attachments is not None:
+            # La nota con el id va en el mensaje: el modelo decide qué herramienta usar (regla 3).
+            try:
+                note = attachments.note(refs)
+            except AttachmentError as exc:
+                raise HTTPException(status_code=422, detail=str(exc)) from exc
+            text = f"{text}\n\n{note}" if text else note
+            session.attachments = attachments
         if not text:
             raise HTTPException(status_code=422, detail="Mensaje vacío")
         if text.startswith("/"):
@@ -533,6 +571,57 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
                 "termine.",
             )
         return {"turn": turn_id}
+
+    @app.post("/adjuntos", dependencies=[Depends(check_csrf)])
+    async def upload(archivo: UploadFile = UPLOAD_FIELD) -> dict[str, Any]:
+        """Guarda una foto o un documento. También desde el celular: solo toca la carpeta de
+        adjuntos, no los archivos del PC (las reglas del S10 siguen para lo demás)."""
+        if attachments is None:
+            raise HTTPException(status_code=503, detail="Los adjuntos están apagados.")
+        data = await archivo.read(MAX_UPLOAD_BYTES + 1)
+        if len(data) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="El archivo es demasiado grande.")
+        try:
+            item = await run_in_threadpool(
+                attachments.store.save,
+                archivo.filename or "adjunto",
+                archivo.content_type or "",
+                data,
+            )
+        except AttachmentError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        cloud = attachments.senses.claude_reason(image=True) == ""
+        notice = ""
+        if item["kind"] == "foto":
+            notice = (
+                "La foto se mira con Claude (sale a la nube); sin internet, en el PC."
+                if cloud
+                else "La foto se mira en el PC (no sale a la nube)."
+            )
+        return {
+            "id": f"a{item['id']}",
+            "name": item["name"],
+            "kind": item["kind"],
+            "pages": item["pages"],
+            "notice": notice,
+        }
+
+    @app.get("/adjuntos/{ref}")
+    def attachment_file(ref: str) -> Response:
+        """La foto adjunta, para verla en el chat."""
+        if attachments is None:
+            raise HTTPException(status_code=404)
+        try:
+            item, data = attachments.store.read(ref)
+        except AttachmentError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+        if item["kind"] != "foto":
+            raise HTTPException(status_code=404)
+        return Response(
+            for_vision(data, 640),
+            media_type="image/jpeg",
+            headers={"Cache-Control": "private, max-age=86400"},
+        )
 
     @app.post("/chat/comando/confirmar", dependencies=[Depends(check_csrf)])
     def confirm_command(respuesta: str = Form("no")) -> dict[str, str]:

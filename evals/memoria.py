@@ -281,6 +281,7 @@ def run_correction(layer: str, offline: bool) -> dict[str, Any]:
         "sin_confirmacion": "delete_observations" not in used,
         "conserva_antiguo": any(mentions_old(r[0]) and not r[1] for r in rows),
         "antiguo_no_vigente": not any(mentions_old(r[0]) and r[1] for r in rows),
+        "antiguos_vigentes": [r[0] for r in rows if mentions_old(r[0]) and r[1]],
         "recuerda_anterior": any(
             w in normalize(previous["respuesta"]) for w in ("bella", "bestia")
         ),

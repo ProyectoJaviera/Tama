@@ -992,8 +992,9 @@ def delete_observations(deletions: list[dict[str, Any]]) -> str:
     description=(
         "Reemplaza un dato que ya no es cierto (otro plan, otra ciudad). Un dato nuevo que no "
         "contradice nada va en create_entities, y las metas en manage_goals. Antes busca el tema "
-        "con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos antiguos), nueva (un "
-        "solo hecho vigente), entidades (lista con TODAS las que menciona) y error=true si el dato "
+        "con search_nodes. En UNA llamada: ids (los [o42] de TODOS los datos antiguos, también los "
+        "de otras personas del mismo plan, como su esposa), nueva (un solo hecho vigente), "
+        "entidades (lista con TODAS las que menciona) y error=true si el dato "
         "antiguo nunca fue cierto (Renzo aclara que no pasó)."
     )
 )
@@ -1073,8 +1074,12 @@ def update_observation(
             "error=true."
         )
     if others:
-        text += " Otros datos del tema, que quizá también cambiaron: " + "; ".join(others) + "."
-        text += " Si alguno quedó antiguo, corrígelo con update_observation."
+        # El modelo decide (regla 3): se le muestran los que siguen vigentes y se le pide revisar.
+        text += " Siguen vigentes y tratan del mismo tema: " + "; ".join(others) + "."
+        text += (
+            " Si alguno ya no vale con lo nuevo (por ejemplo, el plan de otra persona que cambió "
+            "junto con este), llama ahora update_observation con sus ids antes de responder."
+        )
     return text
 
 
