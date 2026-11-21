@@ -360,3 +360,23 @@ def test_after_reloading_the_chat_shows_the_files_by_name(web):
     page = pc.get("/").text
     assert 'class="user-adjuntos"' in page and 'src="/adjuntos/a1"' in page
     assert "taller.jpg" in page and "nunca por el id" not in page  # la nota interna no se ve
+
+
+def test_tools_find_attachments_by_file_name_too(tmp_path):
+    store, attachments = tools_with(tmp_path)
+    store.save("WhatsApp Image 2026-11-18 at 15.39.35.jpeg", "image/jpeg", photo(50, 50))
+    store.save("manual-taller.pdf", "application/pdf", make_pdf([["Aceite cada 10.000 km"]]))
+    # Un nombre con números no se confunde con un id, ni se parte por sus espacios.
+    item = store.get("WhatsApp Image 2026-11-18 at 15.39.35.jpeg")
+    assert item["id"] == 1
+    assert store.get("«manual-taller.pdf»")["id"] == 2
+    assert store.get("«manual-taller.pdf» (pdf, 1 página, id a2)")["id"] == 2
+    assert att.refs_of("a1 a2") == ["a1", "a2"]
+    assert att.refs_of("WhatsApp Image 2026-11-18 at 15.39.35.jpeg, a2") == [
+        "WhatsApp Image 2026-11-18 at 15.39.35.jpeg",
+        "a2",
+    ]
+    text = attachments.resumir_documento("manual-taller.pdf")
+    assert "Resumen de «manual-taller.pdf»" in text
+    with pytest.raises(AttachmentError, match="No encuentro"):
+        store.get("no-existe.pdf")

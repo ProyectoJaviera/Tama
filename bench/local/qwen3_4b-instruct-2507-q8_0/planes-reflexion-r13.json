@@ -1,0 +1,278 @@
+{
+  "nube": {
+    "fechas": {
+      "ok": true,
+      "respuesta": "Tu historial médico es el siguiente: el 3 de marzo de 2026 te operaron la rodilla y el 2 de agosto de 2026 te fracturaste la muñeca. Además, en fecha no indicada, tuviste una alergia fuerte a la penicilina.",
+      "herramientas": [
+        "linea_de_tiempo"
+      ]
+    },
+    "planes": {
+      "correctos": 7,
+      "total": 7,
+      "detalle": [
+        {
+          "caso": "Me voy a disfrazar de Shrek para la fiesta de la oficina.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo se disfrazará de Shrek para la fiesta de la oficina",
+              "plan",
+              "2026-11-06"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": ""
+        },
+        {
+          "caso": "El sábado voy a la playa con Ana.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo irá a la playa con Ana el sábado 7 de noviembre de 2026.",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "El sábado voy a la playa con Frida",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo irá a la playa con Frida este sábado 7 de noviembre de 2026.",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "El 20 de diciembre voy al concierto de Los Bunkers.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo irá al concierto de Los Bunkers el 20 de diciembre.",
+              "plan",
+              "2026-12-20"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-12-20"
+        },
+        {
+          "caso": "En marzo pienso empezar un curso de cerámica.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo piensa empezar un curso de cerámica en marzo.",
+              "plan",
+              "2027-03-01"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2027-03-01"
+        },
+        {
+          "caso": "Mañana voy a almorzar con mi mamá.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a almorzar con su mamá el 7 de noviembre de 2026",
+              "plan",
+              "2026-11-07"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-07"
+        },
+        {
+          "caso": "Ayer fui a la playa con Ana.",
+          "ok": true,
+          "planes": [],
+          "duplicados": [],
+          "esperado": null
+        }
+      ]
+    },
+    "sugerencias": {
+      "ok": true,
+      "respuesta": "Tienes una sugerencia pendiente: retomar las clases de portugués, ya que llevas tres semanas sin avanzar. Creo que sería bueno que vuelvas a empezar para no perder el ritmo.",
+      "herramientas": [
+        "list_suggestions"
+      ]
+    },
+    "avisos": {
+      "correctos": 2,
+      "total": 2,
+      "detalle": [
+        {
+          "caso": "Avísame cuando empiece a llover.",
+          "ok": true,
+          "respuesta": "No puedo monitorear el clima en tiempo real para avisarte exactamente cuando empiece a llover. Si quieres, puedo programar un recordatorio a una hora específica para que revises el pronóstico."
+        },
+        {
+          "caso": "Avísame si mi hermana me escribe un mensaje.",
+          "ok": true,
+          "respuesta": "No puedo monitorear tus mensajes ni aplicaciones externas. Si quieres, puedo crearte un recordatorio para que revises el teléfono a una hora específica."
+        }
+      ]
+    },
+    "planes-reflexion": {
+      "encontrados": 3,
+      "total": 3,
+      "de_mas": [],
+      "lineas": [
+        "plan no guardado: Renzo se va a disfrazar de Shrek para la fiesta (o1)",
+        "plan no guardado: Renzo piensa ir a la playa (o2)",
+        "plan no guardado: Renzo empieza un curso de cerámica (o3)"
+      ]
+    }
+  },
+  "claude": {
+    "fechas": {
+      "ok": true,
+      "respuesta": "Este es tu historial médico, en orden:\n\n1. **3 de marzo de 2026:** operación de la rodilla.\n2. **2 de agosto de 2026:** fractura de la muñeca.\n3. **Fecha no indicada:** alergia fuerte a la penicilina. No dijiste cuándo ocurrió.\n\nSi quieres, puedo agregar la fecha de la alergia cuando la recuerdes, para que el historial quede completo.",
+      "herramientas": [
+        "linea_de_tiempo"
+      ]
+    },
+    "planes": {
+      "correctos": 7,
+      "total": 7,
+      "detalle": [
+        {
+          "caso": "Me voy a disfrazar de Shrek para la fiesta de la oficina.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a disfrazarse de Shrek para la fiesta de la oficina.",
+              "plan",
+              "2026-11-12"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": ""
+        },
+        {
+          "caso": "El sábado voy a la playa con Ana.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a la playa con Ana el sábado 14 de noviembre de 2026",
+              "plan",
+              "2026-11-14"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-14"
+        },
+        {
+          "caso": "El sábado voy a la playa con Frida",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a la playa con Frida el sábado 14 de noviembre de 2026",
+              "plan",
+              "2026-11-14"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-14"
+        },
+        {
+          "caso": "El 20 de diciembre voy al concierto de Los Bunkers.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va al concierto de Los Bunkers el 20 de diciembre",
+              "plan",
+              "2026-12-20"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-12-20"
+        },
+        {
+          "caso": "En marzo pienso empezar un curso de cerámica.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo piensa empezar un curso de cerámica en marzo",
+              "plan",
+              "2027-03-01"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2027-03-01"
+        },
+        {
+          "caso": "Mañana voy a almorzar con mi mamá.",
+          "ok": true,
+          "planes": [
+            [
+              "Renzo va a almorzar con su mamá el 13 de noviembre de 2026",
+              "plan",
+              "2026-11-13"
+            ]
+          ],
+          "duplicados": [],
+          "esperado": "2026-11-13"
+        },
+        {
+          "caso": "Ayer fui a la playa con Ana.",
+          "ok": true,
+          "planes": [],
+          "duplicados": [],
+          "esperado": null
+        }
+      ]
+    },
+    "sugerencias": {
+      "ok": true,
+      "respuesta": "Tengo una pendiente para ti: retomar las clases de portugués, porque llevas tres semanas sin avance. Si te sirve, podemos pensar juntos un horario corto de dos o tres veces por semana para que vuelva a ser fácil. ¿Quieres que te deje un recordatorio para empezar?",
+      "herramientas": [
+        "list_suggestions"
+      ]
+    },
+    "avisos": {
+      "correctos": 2,
+      "total": 2,
+      "detalle": [
+        {
+          "caso": "Avísame cuando empiece a llover.",
+          "ok": true,
+          "respuesta": "Lamentablemente no puedo vigilar el clima, así que no te avisaré cuando empiece a llover. Solo puedo agendar recordatorios a una hora específica. Si quieres, puedo dejarte uno para revisar el pronóstico a una hora concreta, por ejemplo mañana a las 8, o para cualquier otro momento que me digas."
+        },
+        {
+          "caso": "Avísame si mi hermana me escribe un mensaje.",
+          "ok": true,
+          "respuesta": "No puedo vigilar tus mensajes ni avisarte cuando llegue uno de tu hermana, porque solo tengo avisos con hora fija. Si quieres, puedo agendarte un recordatorio para revisar tu bandeja a una hora concreta, por ejemplo \"hoy a las 18\" o \"mañana a las 9\". ¿Te sirve algo así?"
+        }
+      ]
+    },
+    "planes-reflexion": {
+      "encontrados": 2,
+      "total": 3,
+      "de_mas": [],
+      "lineas": [
+        "plan no guardado: Renzo se va a disfrazar de Shrek (o1)",
+        "plan no guardado: Renzo va a ir a la playa con Ana (o2)"
+      ]
+    }
+  },
+  "local": {
+    "planes-reflexion": {
+      "encontrados": 2,
+      "total": 3,
+      "de_mas": [],
+      "lineas": [
+        "plan no guardado: Renzo se va a disfrazar de Shrek (o1)",
+        "plan no guardado: Renzo va a ir a la playa con Ana (o2)"
+      ]
+    }
+  }
+}

@@ -135,15 +135,25 @@ class AttachmentStore:
         return self.get(number)
 
     def get(self, ref: Any) -> dict[str, Any]:
-        found = re.search(r"\d+", str(ref))
-        if not found:
-            raise AttachmentError(f"No entiendo el adjunto {ref!r}: usa su id, como a3.")
+        """Un adjunto por su id ("a3" o "3"), por la etiqueta de la nota ("… id a3)") o por su
+        nombre de archivo (el más reciente con ese nombre): los modelos usan cualquiera."""
+        text = str(ref).strip()
+        number = ID_REF.match(text) or re.search(r"\bid a(\d+)\b", text)
         with self._db() as db:
-            row = db.execute(
-                "SELECT * FROM attachments WHERE id = ?", (int(found.group()),)
-            ).fetchone()
+            if number:
+                row = db.execute(
+                    "SELECT * FROM attachments WHERE id = ?", (int(number.group(1)),)
+                ).fetchone()
+            else:
+                name = text.strip("«»\"' ")
+                row = db.execute(
+                    "SELECT * FROM attachments WHERE lower(name) = lower(?) ORDER BY id DESC",
+                    (name,),
+                ).fetchone()
         if row is None:
-            raise AttachmentError(f"No existe el adjunto a{found.group()}.")
+            raise AttachmentError(
+                f"No encuentro el adjunto {text!r}: usa su id (como a3) o su nombre exacto."
+            )
         return dict(row)
 
     def read(self, ref: Any) -> tuple[dict[str, Any], bytes]:
@@ -170,10 +180,20 @@ def split_note(content: str) -> tuple[str, list[dict[str, str]]]:
     return content[:start].rstrip(), items
 
 
+ID_REF = re.compile(r"^\s*a?(\d+)\s*$", re.IGNORECASE)
+
+
 def refs_of(value: Any) -> list[str]:
-    """Uno o varios ids ("a3", "a3, a4", ["a3", "a4"]), sin repetir."""
-    items = value if isinstance(value, list) else re.split(r"[,;\s]+", str(value))
-    refs = list(dict.fromkeys(str(i).strip() for i in items if str(i).strip()))
+    """Uno o varios adjuntos, por id o por nombre de archivo ("a3", "a3, a4", "a3 a4",
+    ["a3", "foto del taller.jpg"]), sin repetir. Un nombre con espacios no se parte."""
+    if isinstance(value, list):
+        items = [str(i) for i in value]
+    else:
+        items = re.split(r"[,;\n]+", str(value))
+        tokens = str(value).split()
+        if tokens and all(ID_REF.match(tok.strip(",;")) for tok in tokens):
+            items = [tok.strip(",;") for tok in tokens]  # "a3 a4": ids separados por espacios
+    refs = list(dict.fromkeys(i.strip() for i in items if i.strip()))
     if not refs:
         raise AttachmentError("Falta el id del adjunto, como a3.")
     return refs
