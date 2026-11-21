@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 from tama import voice  # noqa: E402
 
+REFERENCE = ROOT / "bench" / "whisper_real_frases.txt"
 MODELS = [
     ("base", "ggml-base-q5_1.bin", False),
     ("small", "ggml-small-q5_1.bin", False),
@@ -54,22 +55,40 @@ def main() -> int:
     if not clips:
         print(f"No hay audios con su .txt en {folder}.")
         return 1
-    print(f"{len(clips)} audios. Referencia: el .txt de cada uno (Scribe, con internet).\n")
-    print("| Modelo | WER medio | Frases exactas | Tiempo medio |")
-    print("|---|---:|---:|---:|")
+    # Si una grabación es una de las frases de referencia (Scribe la escribió casi igual), se usa
+    # el texto exacto de la frase: así se mide también cuánto se equivoca Scribe.
+    phrases = [p for p in REFERENCE.read_text(encoding="utf-8").splitlines() if p.strip()]
+    scribe_errors = []
+    exact_clips = []
+    for wav, heard in clips:
+        best = min(phrases, key=lambda p: wer(p, heard))
+        if wer(best, heard) <= 0.5:
+            scribe_errors.append(wer(best, heard))
+            exact_clips.append((wav, best))
+    print(f"{len(clips)} audios. Referencia: el .txt de cada uno (Scribe, con internet).")
+    if exact_clips:
+        print(
+            f"{len(exact_clips)} son frases de la lista: Scribe se equivocó en "
+            f"{sum(scribe_errors) / len(scribe_errors):.0%} de sus palabras.\n"
+        )
+    print("| Modelo | WER (contra Scribe) | Frases exactas | WER (frases de la lista) | Tiempo |")
+    print("|---|---:|---:|---:|---:|")
     for name, file, fit in MODELS:
         listener = voice.Listener(ROOT / "models" / "voz" / file, threads=6, fit_audio=fit)
         listener.transcribe(clips[0][0].read_bytes())  # carga
-        errors, exact, seconds = [], 0, []
+        errors, exact, seconds, heard_by = [], 0, [], {}
         for wav, reference in clips:
             start = time.perf_counter()
             text = listener.transcribe(wav.read_bytes())
             seconds.append(time.perf_counter() - start)
+            heard_by[wav] = text
             errors.append(wer(reference, text))
             exact += words(reference) == words(text)
+        listed = [wer(ref, heard_by[wav]) for wav, ref in exact_clips]
+        listed_text = f"{sum(listed) / len(listed):.0%}" if listed else "-"
         print(
             f"| {name} | {sum(errors) / len(errors):.0%} | {exact}/{len(clips)} | "
-            f"{sum(seconds) / len(seconds):.1f} s |",
+            f"{listed_text} | {sum(seconds) / len(seconds):.1f} s |",
             flush=True,
         )
     return 0
