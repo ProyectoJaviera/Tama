@@ -389,6 +389,16 @@ new MutationObserver(() => {
 """
 
 
+def end_conversation(page):
+    """Toca hasta que la conversación termine (con voz ya captada, un toque envía)."""
+    for _ in range(10):
+        if page.evaluate("document.body.dataset.conversando") != "1":
+            return
+        page.click("#hablar")
+        page.wait_for_timeout(700)
+    raise AssertionError("la conversación no terminó")
+
+
 def wait_turns(page, voice, turns, timeout=40000):
     page.wait_for_function(
         f"document.querySelectorAll('.assistant').length >= {turns}", timeout=timeout
@@ -403,12 +413,11 @@ def test_one_tap_holds_a_three_turn_conversation_without_touching_again(tmp_path
     with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE) as (page, heard, voice):
         page.click("#hablar")
         page.wait_for_selector("#hablar[data-estado='escuchando']")
-        assert page.text_content("#hablar") == "Conversando… (toca para terminar)"
+        assert page.text_content("#hablar").endswith(("(toca para terminar)", "(toca para enviar)"))
         assert page.evaluate("document.body.dataset.conversando") == "1"
         wait_turns(page, voice, 3)
         page.wait_for_selector("#hablar[data-estado='escuchando']")  # sigue escuchando sola
-        page.click("#hablar")
-        page.wait_for_selector("#hablar[data-estado='idle']")
+        end_conversation(page)
     assert len(heard) >= 3 and all(n > 16000 for n in heard[:3])
     assert voice.said[:3] == ["Te escuché."] * 3
 
@@ -643,3 +652,35 @@ def test_more_files_than_the_limit_are_refused_with_a_clear_message(site, page, 
         "document.querySelectorAll('#adjuntos-pendientes .adjunto.listo').length === 10"
     )
     assert "máximo 10 por mensaje" in page.text_content(".error")
+
+
+def test_a_tap_after_speaking_sends_at_once_and_the_conversation_goes_on(tmp_path, monkeypatch):
+    long_speech = [(6.0, 0.3), (3.0, 0.0)]  # habla 6 s: la pausa tardaría en llegar
+    with talk_site(tmp_path, monkeypatch, long_speech) as (page, heard, voice):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-voz='1']", timeout=10000)
+        assert page.text_content("#hablar") == "Escuchando… (toca para enviar)"
+        page.wait_for_timeout(500)
+        page.click("#hablar")  # envía lo dicho sin esperar la pausa
+        wait_turns(page, voice, 1)
+        assert page.evaluate("document.body.dataset.conversando") == "1"  # sigue conversando
+        page.wait_for_selector("#hablar[data-estado='escuchando']", timeout=10000)
+        end_conversation(page)
+    assert len(heard) >= 1 and heard[0] < 6 * 32000  # se envió antes de terminar de hablar
+
+
+def test_a_tap_while_tama_speaks_ends_the_conversation(tmp_path, monkeypatch):
+    with talk_site(tmp_path, monkeypatch, SPEECH_THEN_PAUSE, answer_seconds=6) as (
+        page,
+        _heard,
+        voice,
+    ):
+        page.click("#hablar")
+        page.wait_for_selector("#hablar[data-estado='hablando']", timeout=20000)
+        assert page.text_content("#hablar") == "Conversando… (toca para terminar)"
+        page.click("#hablar")
+        page.wait_for_function("document.body.dataset.conversando === ''")
+        page.wait_for_selector("#hablar[data-estado='idle']")
+        page.wait_for_timeout(1500)
+        assert page.get_attribute("#hablar", "data-estado") == "idle"
+    assert voice.said == ["Te escuché."]

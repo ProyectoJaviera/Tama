@@ -47,10 +47,18 @@
   let playing = null;
   let conv = null; // { misses, awaiting, ending, wake } mientras dura la conversación
 
+  // En la conversación, el botón dice qué hace un toque: con voz ya captada, enviarla; si no,
+  // terminar la conversación.
+  function convLabel() {
+    return state === "escuchando" && recording && recording.voice
+      ? "Escuchando… (toca para enviar)"
+      : "Conversando… (toca para terminar)";
+  }
+
   function setState(next, message) {
     state = next;
     talk.dataset.estado = next;
-    talk.textContent = conv ? "Conversando… (toca para terminar)" : LABEL[next];
+    talk.textContent = conv ? convLabel() : LABEL[next];
     talk.classList.toggle("on", next === "abriendo" || next === "escuchando");
     if (message !== undefined) status.textContent = message;
     if (conv && raphael()) window.TamaRaphael.state(next);
@@ -180,12 +188,20 @@
             return;
           }
           calibrating = false;
-          if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) voiceAt = now;
+          if (rms > Math.max(MIN_LEVEL, Math.min(floor * 3, MAX_LEVEL))) {
+            voiceAt = now;
+            if (!recording.voice) {
+              recording.voice = true;
+              talk.dataset.voz = "1";
+              if (conv) talk.textContent = convLabel();
+            }
+          }
           if (voiceAt && now - voiceAt > PAUSE_MS) finish();
           else if (!voiceAt && now - started > WAIT_MS) missed();
           else if (now - started > MAX_MS) finish();
         },
       };
+      talk.dataset.voz = "";
       setState("escuchando", "Te escucho… cuando hagas una pausa, lo envío.");
       beep([880]);
     } catch (error) {
@@ -291,9 +307,12 @@
     }
   }
 
-  // Un toque empieza la conversación; otro toque, en cualquier momento, la termina.
+  // Un toque empieza la conversación. Después: si Tama ya te escuchó hablar, un toque envía lo
+  // dicho al tiro (sin esperar la pausa) y la conversación sigue; si no (escuchando en silencio,
+  // pensando o hablando), un toque la termina.
   talk.addEventListener("click", (event) => {
     event.preventDefault();
+    if (conv && state === "escuchando" && recording && recording.voice) { finish(); return; }
     if (conv) { endConversation("Terminaste la conversación."); return; }
     startConversation();
   });
