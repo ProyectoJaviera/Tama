@@ -10,6 +10,8 @@
   {% for kind, text in history %}
   {% if kind == "choices" %}
   <div class="row choices">{% for c in text %}<button type="button" class="plain" data-command="{{ c.command }}">{{ c.label }}</button>{% endfor %}</div>
+  {% elif kind == "user-adjuntos" %}
+  <div class="user-adjuntos">{% for f in text %}<span class="adjunto">{% if f.kind == "foto" %}<img src="/adjuntos/{{ f.id }}" alt="{{ f.name }}">{% endif %}{{ f.name }}</span>{% endfor %}</div>
   {% else %}
   <div class="{{ kind }}">{{ text }}</div>
   {% endif %}

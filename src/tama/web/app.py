@@ -43,6 +43,7 @@ from tama.attachments import (
     AttachmentStore,
     Senses,
     for_vision,
+    split_note,
 )
 from tama.auth import CODE_MINUTES, Access, AuthError
 from tama.brain import Brain
@@ -505,7 +506,14 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
             elif kind == "proactive":
                 shown.append(("notice", f"Aviso · {content}"))
             else:
-                shown.append(("user" if kind == "user_msg" else "assistant", content))
+                if kind == "user_msg":
+                    text, files = split_note(content)
+                    if text:
+                        shown.append(("user", text))
+                    if files:
+                        shown.append(("user-adjuntos", files))
+                else:
+                    shown.append(("assistant", content))
         return shown
 
     def answer_command(

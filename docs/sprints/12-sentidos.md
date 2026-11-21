@@ -37,6 +37,14 @@ mira hasta 5 fotos juntas en una sola llamada de visión; `resumir_documento` ha
 documento y el modelo los combina. Eval con 2 PDF y 1 foto: usa las dos herramientas y trae los
 datos de los tres (6/6); juez 4, 5, 4, 4, 2 (el 2: no puede verificar lo que no ve). US$ 0,006.
 
+## Agregado tras la demo: nombres en vez de ids (pedido de Renzo, 2026-11-20)
+Con Renzo, Tama nombra cada adjunto por su nombre de archivo; el id (a6) queda para las
+herramientas, al final de la etiqueta. Dos archivos con el mismo nombre se distinguen por su orden
+("2 de 6"). Varias fotos van en una sola llamada a `ver_imagen`; la respuesta de visión tiene más
+espacio (se cortaba con 700 tokens). Tu mensaje muestra los adjuntos como miniaturas con su nombre.
+Eval con 6 adjuntos: los 6 nombres en la respuesta, ningún id, una sola llamada de visión para las
+4 fotos; juez 4, 5, 5, 4. US$ 0,003.
+
 ## Fuera de alcance
 Video, audio adjunto, Word y Excel, y la elección final del modelo local de visión (S13).
 

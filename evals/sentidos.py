@@ -10,6 +10,7 @@ nombre los datos clave del PDF y que la descripción hable del taller.
 import argparse
 import io
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -150,7 +151,61 @@ CASES = [
         "palabras": ["10.000", "12 meses", "9 a 18", "primer lunes", "estante c", "martillo"],
         "herramienta": "resumir_documento,ver_imagen",
     },
+    {
+        "id": "seis-adjuntos",
+        "archivos": [
+            ("tablero-taller.jpg", "image/jpeg", workshop_photo),
+            ("cielo-azul.png", "image/png", lambda: drawing("cielo")),
+            ("semaforo.jpg", "image/jpeg", lambda: drawing("semaforo")),
+            ("casa-roja.png", "image/png", lambda: drawing("casa")),
+            ("manual-taller.pdf", "application/pdf", manual_pdf),
+            ("lista-compras.txt", "text/plain", lambda: b"Pan, leche, huevos y cafe."),
+        ],
+        "mensaje": "¿Puedes describirme los adjuntos?",
+        "criterios": [
+            "Describe los seis adjuntos, cada uno por separado",
+            "Nombra cada adjunto por su nombre de archivo (tablero-taller.jpg, cielo-azul.png, "
+            "semaforo.jpg, casa-roja.png, manual-taller.pdf, lista-compras.txt) y nunca por un "
+            "código interno como a3",
+            "No inventa: son un tablero de herramientas, un cielo azul con sol, un semáforo, una "
+            "casa roja (dibujos), un manual de mantención y una lista de compras",
+        ],
+        "palabras": [
+            "tablero-taller.jpg",
+            "cielo-azul.png",
+            "semaforo.jpg",
+            "casa-roja.png",
+            "manual-taller.pdf",
+            "lista-compras.txt",
+        ],
+        "herramienta": "ver_imagen",
+    },
 ]
+
+
+def drawing(what: str) -> bytes:
+    """Dibujos simples y reconocibles para la eval de varios adjuntos."""
+    from PIL import Image, ImageDraw
+
+    img = Image.new("RGB", (800, 600), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    if what == "cielo":
+        d.rectangle([0, 0, 800, 600], fill=(80, 150, 240))
+        d.ellipse([560, 60, 720, 220], fill=(255, 220, 40))
+        d.text((40, 540), "CIELO AZUL", fill=(255, 255, 255))
+    elif what == "semaforo":
+        d.rectangle([330, 80, 470, 520], fill=(40, 40, 40))
+        for y, color in ((100, (220, 30, 30)), (240, (240, 200, 30)), (380, (30, 190, 60))):
+            d.ellipse([350, y, 450, y + 100], fill=color)
+        d.text((330, 540), "SEMAFORO", fill=(0, 0, 0))
+    else:
+        d.rectangle([250, 280, 550, 520], fill=(200, 40, 40))
+        d.polygon([(220, 280), (400, 120), (580, 280)], fill=(120, 60, 30))
+        d.rectangle([370, 400, 430, 520], fill=(90, 50, 20))
+        d.text((330, 540), "CASA ROJA", fill=(0, 0, 0))
+    out = io.BytesIO()
+    img.save(out, "PNG")
+    return out.getvalue()
 
 
 def run_case(case: dict[str, Any], layer: str, offline: bool) -> dict[str, Any]:
@@ -185,6 +240,9 @@ def run_case(case: dict[str, Any], layer: str, offline: bool) -> dict[str, Any]:
         "herramientas": turn["herramientas"],
         "uso_herramienta": all(h in turn["herramientas"] for h in case["herramienta"].split(",")),
         "palabras": f"{len(found)}/{len(case['palabras'])}",
+        # Los ids son internos: con Renzo, los adjuntos se nombran por su archivo.
+        "ids_a_la_vista": sorted(set(re.findall(r"\ba\d+\b", answer))),
+        "llamadas_vision": turn["herramientas"].count("ver_imagen"),
         "respuesta": answer,
     }
 

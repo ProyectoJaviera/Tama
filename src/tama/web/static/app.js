@@ -19,6 +19,26 @@
     return item;
   }
 
+  // Los adjuntos de un mensaje de Renzo, como miniaturas con su nombre (igual que al recargar).
+  function addFilesRow(files) {
+    const row = document.createElement("div");
+    row.className = "user-adjuntos";
+    for (const file of files) {
+      const chip = document.createElement("span");
+      chip.className = "adjunto";
+      if (file.kind === "foto") {
+        const img = document.createElement("img");
+        img.src = "/adjuntos/" + file.id;
+        img.alt = file.name;
+        chip.appendChild(img);
+      }
+      chip.appendChild(document.createTextNode(file.name));
+      row.appendChild(chip);
+    }
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
   function post(url, data) {
     return fetch(url, {
       method: "POST",
@@ -274,8 +294,8 @@
     pendingFiles = pendingFiles.filter((p) => p.status === "error"); // los errores quedan a la vista
     showPending();
     button.disabled = true;
-    const names = sending.map((f) => f.name).join(", ");
-    add("user", text + (sending.length ? (text ? "\n" : "") + "[" + names + "]" : ""));
+    if (text) add("user", text);
+    if (sending.length) addFilesRow(sending); // miniaturas con el nombre de cada archivo
     const fields = { text: text };
     if (sending.length) fields.adjuntos = sending.map((f) => f.id).join(",");
     if (conversing()) fields.voz = "conversacion";

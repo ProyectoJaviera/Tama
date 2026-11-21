@@ -15,6 +15,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   arrastrar y soltar en el PC, miniaturas con Quitar y error por archivo sin perder los demás.
   `ver_imagen` mira hasta 5 fotos juntas en una sola llamada (para compararlas) y
   `resumir_documento` hace un resumen por documento.
+- Tama nombra los adjuntos por su nombre de archivo, nunca por el id interno (con orden si dos
+  se llaman igual); mira varias fotos en una sola llamada; respuestas de visión más largas (no se
+  cortan). El mensaje de Renzo muestra sus adjuntos como miniaturas con nombre, también al recargar.
 - Corregir un plan compartido: `update_observation` muestra los datos del tema que siguen vigentes
   (por ejemplo, el de la esposa) y pide revisarlos en la misma respuesta.
 - Claude como capa principal: orden de la cascada configurable (`TAMA_CASCADE_ORDER`, por defecto

@@ -589,7 +589,7 @@ def test_attach_a_photo_and_send_it_with_the_message(site, page, tmp_path):
         page.fill("#chat-text", "¿Qué ves?")
         page.click("#chat-form button[type=submit]")
     assert "adjuntos=a1" in sent.value.post_data
-    page.wait_for_selector(".user:has-text('[taller.jpg]')")
+    page.wait_for_selector(".user-adjuntos .adjunto:has-text('taller.jpg') img")
     assert page.is_hidden("#adjuntos-pendientes")
 
 
@@ -627,7 +627,7 @@ def test_several_files_at_once_remove_one_and_send(site, page, tmp_path):
         page.fill("#chat-text", "Revisa estos")
         page.click("#chat-form button[type=submit]")
     assert "adjuntos=a1%2Ca2" in sent.value.post_data
-    page.wait_for_selector(".user:has-text('[foto.jpg, manual.pdf]')")
+    page.wait_for_selector(".user-adjuntos:has-text('manual.pdf'):has-text('foto.jpg')")
 
 
 def test_more_files_than_the_limit_are_refused_with_a_clear_message(site, page, tmp_path):

@@ -38,6 +38,13 @@ READ_CHARS = 6000  # texto que devuelve leer_documento por llamada
 SUMMARY_CHUNK = 14000  # caracteres por parte al resumir en el PC
 CLOUD_SUMMARY_MAX = 160000  # hasta aquí, Claude resume el documento entero de una vez
 MAX_PER_LOOK = 5  # fotos por mirada: varias van juntas en una sola llamada de visión
+LOOK_TOKENS = 1000  # respuesta de visión por foto (700 cortaba descripciones detalladas)
+LOOK_TOKENS_EXTRA = 450  # por cada foto más en la misma mirada
+# Encabezado de la nota del mensaje: el id es interno; con Renzo se usa el nombre del archivo.
+NOTE_HEADER = (
+    "Adjuntos (con Renzo nómbralos por su nombre de archivo, nunca por el id; para varias "
+    "fotos, una sola llamada a ver_imagen con todos sus ids)"
+)
 
 
 class AttachmentError(Exception):
@@ -151,6 +158,18 @@ class AttachmentStore:
         return [dict(r) for r in rows]
 
 
+NOTE_ITEM = re.compile(r"«(?P<name>[^»]+)» \((?P<kind>foto|pdf|texto)[^)]*?id (?P<id>a\d+)\)")
+
+
+def split_note(content: str) -> tuple[str, list[dict[str, str]]]:
+    """Separa el texto de Renzo y los adjuntos de la nota, para mostrarlos como miniaturas."""
+    start = content.find(f"[{NOTE_HEADER}")
+    if start < 0:
+        return content, []
+    items = [m.groupdict() for m in NOTE_ITEM.finditer(content[start:])]
+    return content[:start].rstrip(), items
+
+
 def refs_of(value: Any) -> list[str]:
     """Uno o varios ids ("a3", "a3, a4", ["a3", "a4"]), sin repetir."""
     items = value if isinstance(value, list) else re.split(r"[,;\s]+", str(value))
@@ -160,9 +179,13 @@ def refs_of(value: Any) -> list[str]:
     return refs
 
 
-def label(item: dict[str, Any]) -> str:
-    extra = f", {item['pages']} páginas" if item.get("pages") else ""
-    return f"a{item['id']} «{item['name']}» ({item['kind']}{extra})"
+def label(item: dict[str, Any], order: str = "") -> str:
+    """El nombre del archivo primero (así lo llama Renzo); el id va al final, para las
+    herramientas. `order` distingue dos archivos con el mismo nombre ("2 de 6")."""
+    pages = item.get("pages")
+    extra = f", {pages} página{'s' if pages != 1 else ''}" if pages else ""
+    place = f", {order}" if order else ""
+    return f"«{item['name']}» ({item['kind']}{extra}{place}, id a{item['id']})"
 
 
 # --- fotos y PDF ----------------------------------------------------------------------------
@@ -328,7 +351,8 @@ class Senses:
         images = jpeg if isinstance(jpeg, list) else [jpeg]
         several = len(images) > 1
         default = (
-            "Describe cada foto (en orden) y lo que tienen en común o de distinto."
+            "Describe cada foto en orden, nombrándola, en 2 a 4 frases, y lo que tienen en común "
+            "o de distinto."
             if several
             else "Describe la foto: qué se ve, el lugar y los detalles útiles."
         )
@@ -350,7 +374,9 @@ class Senses:
                     for image in images
                 ]
                 content.append({"type": "text", "text": prompt})
-                text = self._ask_claude(content, 700 + 300 * (len(images) - 1))
+                text = self._ask_claude(
+                    content, LOOK_TOKENS + LOOK_TOKENS_EXTRA * (len(images) - 1)
+                )
                 return Seen(text, "Claude")
             except Exception as exc:  # cualquier falla de la nube: se mira en el PC
                 reason = f"Claude no respondió ({type(exc).__name__})"
@@ -421,9 +447,10 @@ TOOLS = [
     ToolInfo(
         "adjuntos",
         "ver_imagen",
-        'Mira una o varias fotos que Renzo adjuntó (ids como a3, o "a3, a4" para mirarlas '
-        "juntas y compararlas, hasta 5) y responde la pregunta. Úsala siempre que Renzo hable de "
-        "una foto adjunta: no la supongas.",
+        "Mira fotos que Renzo adjuntó y responde la pregunta. Si son varias, pásalas TODAS en "
+        'UNA sola llamada (adjunto: "a3, a4, a5", hasta 5): no llames una vez por foto. '
+        "Úsala siempre que Renzo hable de una foto adjunta: no la supongas. Con Renzo, nombra "
+        "cada foto por su nombre de archivo, no por el id.",
         _schema({"adjunto": {"type": "string"}, "pregunta": {"type": "string"}}, ["adjunto"]),
         tier=ALWAYS,
     ),
@@ -445,8 +472,9 @@ TOOLS = [
     ToolInfo(
         "adjuntos",
         "resumir_documento",
-        'Resume uno o varios PDF o textos adjuntos enteros (ids como a4 o "a4, a5"): un '
-        "resumen por documento; enfoque opcional (p. ej., plazos).",
+        'Resume uno o varios PDF o textos adjuntos enteros (ids como a4 o "a4, a5", todos en '
+        "una llamada): un resumen por documento; enfoque opcional (p. ej., plazos). Con Renzo, "
+        "nombra cada documento por su nombre de archivo, no por el id.",
         _schema({"adjunto": {"type": "string"}, "enfoque": {"type": "string"}}, ["adjunto"]),
         tier=ALWAYS,
     ),
@@ -469,8 +497,17 @@ class Attachments:
         self.senses = senses
 
     def note(self, refs: list[str]) -> str:
+        """La nota del mensaje para el modelo: los archivos por su nombre, con su id al final."""
         items = [self.store.get(r) for r in refs]
-        return "[Adjuntos: " + "; ".join(label(i) for i in items) + "]" if items else ""
+        if not items:
+            return ""
+        names = [i["name"] for i in items]
+        total = len(items)
+        listed = "; ".join(
+            label(item, f"{n} de {total}" if names.count(item["name"]) > 1 else "")
+            for n, item in enumerate(items, 1)
+        )
+        return f"[{NOTE_HEADER}: {listed}]"
 
     def wrap(self, tools: Any) -> AttachmentTools:
         return AttachmentTools(tools, self)

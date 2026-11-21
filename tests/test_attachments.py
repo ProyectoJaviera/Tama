@@ -205,7 +205,7 @@ def test_the_tools_appear_only_inside_the_wrapper_and_answer(tmp_path):
     read = wrapped.call("leer_documento", {"adjunto": "a2", "desde": 3, "hasta": 4})
     assert "[pág. 3]" in read.text and "[pág. 5]" not in read.text
     summary = wrapped.call("resumir_documento", {"adjunto": "a2"})
-    assert summary.ok and "Resumen de a2" in summary.text
+    assert summary.ok and "Resumen de «manual.pdf»" in summary.text
     assert wrapped.call("ver_imagen", {"adjunto": "a2"}).ok is False  # un PDF no es foto
     assert "a1" in wrapped.call("listar_adjuntos", {}).text
 
@@ -268,9 +268,7 @@ def test_upload_and_send_a_photo_from_the_pc(web):
     assert turn.status_code == 200
     session = app.state.session
     assert session.attachments is app.state.attachments  # desde aquí, con sus herramientas
-    assert "[Adjuntos: a1 «taller.jpg» (foto)]" in session.messages[-1]["content"] or any(
-        "[Adjuntos: a1" in str(m.get("content")) for m in session.messages
-    )
+    assert any("«taller.jpg» (foto, id a1)" in str(m.get("content")) for m in session.messages)
     refused = pc.post(
         "/adjuntos",
         files={"archivo": ("x.exe", b"MZ", "application/x-msdownload")},
@@ -336,6 +334,29 @@ def test_a_message_takes_up_to_the_limit_of_attachments(web):
     assert refused.status_code == 422 and "máximo por mensaje es 10" in refused.json()["detail"]
     ok = pc.post("/chat", data={"text": "léelos", "adjuntos": "a1,a2,a3"}, headers=headers)
     assert ok.status_code == 200
-    note = next(m["content"] for m in app.state.session.messages if "[Adjuntos:" in str(m))
+    note = next(m["content"] for m in app.state.session.messages if "id a1)" in str(m))
     assert note.count("«f") == 3
     assert 'max-adjuntos="10"' in pc.get("/").text.replace("data-", "")
+
+
+def test_the_note_names_files_by_name_and_tells_apart_repeated_names(tmp_path):
+    store, attachments = tools_with(tmp_path)
+    store.save("foto.jpg", "image/jpeg", photo(50, 50))
+    store.save("foto.jpg", "image/jpeg", photo(60, 60))
+    store.save("pagomayo.pdf", "application/pdf", make_pdf([["Comprobante de pago de mayo"]]))
+    note = attachments.note(["a1", "a2", "a3"])
+    assert "nunca por el id" in note and "una sola llamada a ver_imagen" in note
+    assert "«foto.jpg» (foto, 1 de 3, id a1)" in note
+    assert "«foto.jpg» (foto, 2 de 3, id a2)" in note
+    assert "«pagomayo.pdf» (pdf, 1 página, id a3)" in note  # sin orden: su nombre es único
+
+
+def test_after_reloading_the_chat_shows_the_files_by_name(web):
+    app, _ = web
+    pc = TestClient(app, base_url="http://127.0.0.1")
+    headers = {"x-csrf-token": token(pc)}
+    pc.post("/adjuntos", files={"archivo": ("taller.jpg", photo(), "image/jpeg")}, headers=headers)
+    pc.post("/chat", data={"text": "¿Qué ves?", "adjuntos": "a1"}, headers=headers)
+    page = pc.get("/").text
+    assert 'class="user-adjuntos"' in page and 'src="/adjuntos/a1"' in page
+    assert "taller.jpg" in page and "nunca por el id" not in page  # la nota interna no se ve
