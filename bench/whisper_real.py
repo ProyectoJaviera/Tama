@@ -62,7 +62,7 @@ def main() -> int:
     exact_clips = []
     for wav, heard in clips:
         best = min(phrases, key=lambda p: wer(p, heard))
-        if wer(best, heard) <= 0.5:
+        if wer(best, heard) <= 0.3:  # solo coincidencias claras
             scribe_errors.append(wer(best, heard))
             exact_clips.append((wav, best))
     print(f"{len(clips)} audios. Referencia: el .txt de cada uno (Scribe, con internet).")
