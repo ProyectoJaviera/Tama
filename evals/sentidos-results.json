@@ -1,0 +1,75 @@
+[
+  {
+    "caso": "foto-taller",
+    "capa": "claude",
+    "herramientas": [
+      "ver_imagen"
+    ],
+    "uso_herramienta": true,
+    "palabras": "5/6",
+    "respuesta": "Lo que llegó parece ser una ilustración más que una foto real de tu taller. Muestra un banco de trabajo con el texto \"TALLER FLORES - BANCO DE TRABAJO\", un panel verde con una llave, un martillo y un destornillador colgados, y una caja azul sobre una superficie marrón. Se ve ordenado, pero no sé si es tu taller. ¿Podrías revisar si adjuntaste el archivo correcto y volver a mandarlo?",
+    "puntajes": [
+      4,
+      5,
+      5,
+      4
+    ],
+    "comentario": "La respuesta describe el banco con herramientas y nombra la llave, el martillo, el destornillador y la caja con un español natural, aunque afirma que es una ilustración sin base clara y omite detalles como el mango rojo y los rótulos."
+  },
+  {
+    "caso": "pdf-20-paginas",
+    "capa": "claude",
+    "herramientas": [
+      "resumir_documento"
+    ],
+    "uso_herramienta": true,
+    "palabras": "5/5",
+    "respuesta": "Este es el resumen del manual del Taller Flores:\n\n1. **Tema general:** el trabajo diario del taller, el orden de las herramientas y la limpieza del puesto.\n2. **Registro:** cada técnico anota lo que hizo en la ficha del vehículo.\n3. **Aceite del motor:** se cambia cada 10.000 km o una vez al año, lo que ocurra primero.\n4. **Neumáticos:** 32 psi adelante y 30 psi atrás.\n5. **Pastillas de freno:** se revisan cada 20.000 km.\n6. **Garantía:** cubre repuestos y mano de obra por 12 meses.\n7. **Pago:** dentro de 30 días desde la entrega del vehículo.\n\nUna observación: en la página 3, la frase del aceite dice «o una vez al año» sin aclarar si rige lo que ocurra primero. Conviene confirmarlo con el manual original antes de usarlo como referencia.",
+    "puntajes": [
+      4,
+      5,
+      5,
+      2
+    ],
+    "comentario": "El resumen está en español neutro y ordena bien los datos clave, pero la observación sobre la frase del aceite en la página 3 no se sostiene con lo que el juez puede verificar, así que el criterio de no inventar queda debilitado."
+  },
+  {
+    "caso": "varios-adjuntos",
+    "capa": "claude",
+    "herramientas": [
+      "resumir_documento",
+      "ver_imagen"
+    ],
+    "uso_herramienta": true,
+    "palabras": "6/6",
+    "respuesta": "Aquí tienes los resúmenes. Ojo: el texto de los PDF llegó incompleto, así que conviene revisar los originales.\n\n**Manual del taller (20 páginas):**\n- Cambio de aceite del motor cada 10.000 km o una vez al año, lo que ocurra primero (pág. 3).\n- Presión de neumáticos: 32 psi adelante y 30 psi atrás (pág. 7).\n- Revisión de pastillas de freno cada 20.000 km (pág. 11).\n- Garantía de 12 meses que cubre repuestos y mano de obra (pág. 15).\n- Pago a 30 días desde la entrega del vehículo (pág. 19).\n- Cada técnico anota su trabajo en la ficha del vehículo. Las demás páginas repiten el mismo párrafo introductorio.\n\n**Reglamento de la bodega (5 páginas):**\n- La bodega abre de 9 a 18 h, de lunes a viernes (pág. 1).\n- El inventario de repuestos se hace el primer lunes de cada mes (pág. 2).\n- Los aceites se guardan en el estante C, lejos del calor (pág. 3).\n- Las páginas 4 y 5 no tienen normas legibles.\n\n**La foto:** no es una foto real sino un dibujo de un banco de trabajo con la leyenda \"TALLER FLORES - BANCO DE TRABAJO\". Muestra un panel perforado verde con una llave, un martillo y un destornillador colgados, y una caja azul abajo a la derecha.",
+    "puntajes": [
+      4,
+      5,
+      4,
+      4,
+      2
+    ],
+    "comentario": "Respuesta clara y bien separada por documento, con los datos clave y la descripción de la foto, aunque el español es neutro más que chileno, y el criterio de no inventar baja porque el juez no puede verificar los documentos ni la foto, y Tama describe contenido que no se le mostró."
+  },
+  {
+    "caso": "seis-adjuntos",
+    "capa": "claude",
+    "herramientas": [
+      "ver_imagen",
+      "resumir_documento"
+    ],
+    "uso_herramienta": true,
+    "palabras": "6/6",
+    "ids_a_la_vista": [],
+    "llamadas_vision": 1,
+    "respuesta": "Estas son las descripciones de tus adjuntos:\n\n**Fotos (en realidad son ilustraciones simples):**\n- **tablero-taller.jpg:** un tablero verde oscuro con una llave, un martillo y un destornillador, y una caja azul abajo a la derecha. Dice «TALLER FLORES - BANCO DE TRABAJO».\n- **cielo-azul.png:** fondo azul celeste con un sol amarillo arriba a la derecha y el texto «CIELO AZUL».\n- **semaforo.jpg:** un semáforo gris oscuro con luz roja, amarilla y verde, sobre fondo blanco.\n- **casa-roja.png:** una casa de paredes rojas, techo marrón y puerta marrón, con el texto «CASA ROJA».\n\n**Documentos:**\n- **manual-taller.pdf** (20 páginas): manual de mantención del Taller Flores. Indica cambio de aceite cada 10.000 km o una vez al año, presión de neumáticos de 32 psi adelante y 30 psi atrás, revisión de pastillas de freno cada 20.000 km, garantía de 12 meses y pago dentro de 30 días. La descripción general se repite en todas las páginas, así que hay poco detalle extra.\n- **lista-compras.txt:** una lista corta con pan, leche, huevos y café.",
+    "puntajes": [
+      4,
+      5,
+      5,
+      4
+    ],
+    "comentario": "La respuesta describe los seis adjuntos por separado con sus nombres de archivo y sin inventar contenido, aunque el tono es algo formal para un registro chileno y el criterio de no inventar se cumple salvo por detalles menores como la descripción de la página del manual."
+  }
+]

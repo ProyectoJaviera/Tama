@@ -6,6 +6,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 12 (sentidos): adjuntar fotos, PDF y texto desde el chat y el celular (cámara o
+  galería). Herramientas `ver_imagen`, `leer_documento`, `resumir_documento` y `listar_adjuntos`,
+  solo cuando la conversación tiene adjuntos. Visión en cascada: Claude (mismo tope) → modelo
+  local en CPU (`gemma4:e4b`); aviso de privacidad al adjuntar una foto. Texto de PDF en el PC con
+  pypdfium2 y páginas escaneadas leídas con visión. Desde fuera del PC se puede adjuntar con passkey.
+- Varios adjuntos por mensaje (hasta 10 y 60 MB en total, configurables): selección múltiple y
+  arrastrar y soltar en el PC, miniaturas con Quitar y error por archivo sin perder los demás.
+  `ver_imagen` mira hasta 5 fotos juntas en una sola llamada (para compararlas) y
+  `resumir_documento` hace un resumen por documento.
+- Tama nombra los adjuntos por su nombre de archivo, nunca por el id interno (con orden si dos
+  se llaman igual); mira varias fotos en una sola llamada; respuestas de visión más largas (no se
+  cortan). El mensaje de Renzo muestra sus adjuntos como miniaturas con nombre, también al recargar.
+- Corregir un plan compartido: `update_observation` muestra los datos del tema que siguen vigentes
+  (por ejemplo, el de la esposa) y pide revisarlos en la misma respuesta.
 - Claude como capa principal: orden de la cascada configurable (`TAMA_CASCADE_ORDER`, por defecto
   `claude,nube,local`), gasto contado en cada llamada con la caché, tope mensual con aviso al 80 % y
   gasto en Estado, y caché de prompt automática. Prueba de humo `evals.humo_claude`.

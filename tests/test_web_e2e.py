@@ -567,3 +567,79 @@ def test_on_a_phone_the_chat_box_uses_the_whole_width_below_the_buttons(site, ph
         desk = phone.context.browser.new_page(viewport={"width": 1280, "height": 800})
         desk.goto(url)
         desk.screenshot(path=os.path.join(os.environ["E2E_CAPTURAS"], "pc.png"))
+
+
+def test_attach_a_photo_and_send_it_with_the_message(site, page, tmp_path):
+    import io
+
+    from PIL import Image
+
+    url, _ = site
+    memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
+    image = tmp_path / "taller.jpg"
+    buffer = io.BytesIO()
+    Image.new("RGB", (800, 600), (90, 60, 30)).save(buffer, "JPEG")
+    image.write_bytes(buffer.getvalue())
+    page.goto(url)
+    page.set_input_files("#archivo", str(image))
+    page.wait_for_selector("#adjuntos-pendientes .adjunto img")
+    assert "taller.jpg" in page.text_content("#adjuntos-pendientes")
+    assert page.locator(".line:has-text('La foto se mira')").count() == 1  # aviso de privacidad
+    with page.expect_request("**/chat") as sent:
+        page.fill("#chat-text", "¿Qué ves?")
+        page.click("#chat-form button[type=submit]")
+    assert "adjuntos=a1" in sent.value.post_data
+    page.wait_for_selector(".user-adjuntos .adjunto:has-text('taller.jpg') img")
+    assert page.is_hidden("#adjuntos-pendientes")
+
+
+def test_several_files_at_once_remove_one_and_send(site, page, tmp_path):
+    import io
+
+    from PIL import Image
+
+    from tests.pdf_helper import make_pdf
+
+    url, _ = site
+    memoria.list_notices()  # crea la base antes que la página y el servidor la usen a la vez
+    files = []
+    buffer = io.BytesIO()
+    Image.new("RGB", (300, 200), (90, 60, 30)).save(buffer, "JPEG")
+    for name, data in (
+        ("foto.jpg", buffer.getvalue()),
+        ("manual.pdf", make_pdf([["Manual"]])),
+        ("lista.txt", b"pan y leche"),
+        ("virus.exe", b"MZ"),
+    ):
+        (tmp_path / name).write_bytes(data)
+        files.append(str(tmp_path / name))
+    page.goto(url)
+    page.set_input_files("#archivo", files)
+    page.wait_for_function(
+        "document.querySelectorAll('#adjuntos-pendientes .adjunto.listo').length === 3"
+        " && document.querySelectorAll('#adjuntos-pendientes .adjunto.error').length === 1"
+    )
+    error = page.locator("#adjuntos-pendientes .adjunto.error")
+    assert error.count() == 1 and "Solo puedo" in error.text_content()  # los demás siguen
+    page.click("button[aria-label='Quitar lista.txt']")
+    assert page.locator("#adjuntos-pendientes .adjunto.listo").count() == 2
+    with page.expect_request("**/chat") as sent:
+        page.fill("#chat-text", "Revisa estos")
+        page.click("#chat-form button[type=submit]")
+    assert "adjuntos=a1%2Ca2" in sent.value.post_data
+    page.wait_for_selector(".user-adjuntos:has-text('manual.pdf'):has-text('foto.jpg')")
+
+
+def test_more_files_than_the_limit_are_refused_with_a_clear_message(site, page, tmp_path):
+    url, _ = site
+    memoria.list_notices()
+    files = []
+    for n in range(12):
+        (tmp_path / f"nota{n}.txt").write_bytes(b"hola")
+        files.append(str(tmp_path / f"nota{n}.txt"))
+    page.goto(url)
+    page.set_input_files("#archivo", files)
+    page.wait_for_function(
+        "document.querySelectorAll('#adjuntos-pendientes .adjunto.listo').length === 10"
+    )
+    assert "máximo 10 por mensaje" in page.text_content(".error")

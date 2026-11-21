@@ -254,3 +254,15 @@ body.con-raphael #log { display: none; }
 @media (max-width: 640px) {
   #raphael { height: calc(100dvh - 200px); }
 }
+
+/* Adjuntos pendientes del próximo mensaje. */
+#adjuntos-pendientes { gap: 6px; margin: 0 0 6px; }
+#adjuntos-pendientes[hidden] { display: none; }
+.adjunto { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px; border: 1px solid var(--line);
+  border-radius: 8px; font-size: 0.85rem; background: var(--panel); }
+.adjunto img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
+.adjunto button { padding: 2px 6px; font-size: 0.8rem; }
+.adjunto.subiendo { opacity: 0.7; }
+.adjunto.error { border-color: var(--bad); color: var(--bad); }
+#chat-form.soltar { outline: 2px dashed var(--accent); outline-offset: 4px; }
+.user-adjuntos { align-self: flex-end; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; max-width: 80%; }

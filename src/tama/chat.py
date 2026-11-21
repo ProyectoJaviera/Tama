@@ -5,6 +5,7 @@ Registra lo ocurrido en events.db y actualiza el historial; quien llama solo mue
 
 import re
 from collections.abc import Iterator
+from typing import Any
 
 from tama import agent, history
 from tama.brain import Brain
@@ -126,6 +127,7 @@ def run_turn(
     confirm: agent.Confirm,
     remote: bool = False,
     voice: bool = False,
+    attachments: Any = None,
 ) -> Iterator[agent.AgentEvent]:
     """Corre un turno completo; si falla, el historial queda como estaba.
 
@@ -139,6 +141,8 @@ def run_turn(
     tools = RemoteTools(brain.tools) if remote and brain.tools is not None else brain.tools
     if voice:  # conversación por voz: el modelo puede terminarla (ver voice_tools.py)
         tools = VoiceTools(tools)
+    if attachments is not None:  # hay fotos o documentos en la conversación (attachments.py)
+        tools = attachments.wrap(tools)
     answered: Answered | None = None
     for event in whole_words(
         agent.run_turn(

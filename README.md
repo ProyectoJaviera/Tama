@@ -119,6 +119,15 @@ notas u objetivos, `/olvidar`): eso se hace en el PC. Corregir un dato, editar u
 la versión anterior), descartar un objetivo o cancelar un recordatorio siguen disponibles,
 porque conservan el historial.
 
+### Fotos y documentos
+
+Con "Adjuntar" en el chat (en el celular, desde la cámara o la galería) le muestras a Tama una
+foto (JPG, PNG o WebP, hasta 15 MB), un PDF (hasta 30 MB y 300 páginas) o un texto. Tama la
+describe, lee el documento o lo resume. Las fotos las mira Claude (sale a la nube, con el mismo
+tope de gasto); sin internet, o con `TAMA_VISION_CLOUD=false`, las mira un modelo local de visión
+en el PC (`gemma4:e4b`, más lento). El texto de los PDF se lee en el PC. Los adjuntos quedan en
+`data/adjuntos/` y nunca se borran; Tama solo guarda en su memoria lo que le pidas.
+
 ### Voz
 
 Toca "Hablar" en el chat (también en el celular) y conversa: Tama envía cuando haces una
@@ -290,6 +299,8 @@ Variables en `.env` (ver `.env.example`):
 | `TAMA_ELEVENLABS_VOICE_ID` | (vacío) | Voz de ElevenLabs (de `tama voz disenar` o `listar`) |
 | `TAMA_ELEVENLABS_MONTHLY_CHARS` | `10000` | Tope de caracteres por mes en ElevenLabs |
 | `TAMA_WHISPER_MODEL` | `ggml-base-q5_1.bin` | Modelo de whisper.cpp en `models/voz` |
+| `TAMA_VISION_CLOUD` | `true` | Las fotos adjuntas las mira Claude; `false`, siempre en el PC |
+| `TAMA_VISION_LOCAL_MODEL` | `gemma4:e4b` | Modelo local de visión (Ollama) sin internet |
 | `TAMA_SCRIBE_TOPE_MIN_MES` | `60` | Minutos de audio al mes que transcribe ElevenLabs Scribe; después, whisper local |
 | `TAMA_WHISPER_FIT_AUDIO` | `false` | Procesa solo lo que dura el audio: `small` queda en ~1 s, pero a veces repite la frase |
 | `TAMA_VOICE_DEBUG_DIR` | (vacío) | Solo para diagnosticar: guarda cada audio recibido y lo que entendió whisper |

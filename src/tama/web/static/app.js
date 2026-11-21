@@ -19,6 +19,26 @@
     return item;
   }
 
+  // Los adjuntos de un mensaje de Renzo, como miniaturas con su nombre (igual que al recargar).
+  function addFilesRow(files) {
+    const row = document.createElement("div");
+    row.className = "user-adjuntos";
+    for (const file of files) {
+      const chip = document.createElement("span");
+      chip.className = "adjunto";
+      if (file.kind === "foto") {
+        const img = document.createElement("img");
+        img.src = "/adjuntos/" + file.id;
+        img.alt = file.name;
+        chip.appendChild(img);
+      }
+      chip.appendChild(document.createTextNode(file.name));
+      row.appendChild(chip);
+    }
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
   function post(url, data) {
     return fetch(url, {
       method: "POST",
@@ -162,14 +182,122 @@
   // Modo conversación por voz (voz.js): cada mensaje lo indica y el teclado no se abre solo.
   const conversing = () => document.body.dataset.conversando === "1";
 
+  // Adjuntos: fotos (en el celular, de la cámara o la galería), PDF o textos; varios a la vez,
+  // también arrastrándolos al chat en el PC. Cada uno se sube al elegirlo, con su estado (y su
+  // error, sin perder los demás), y van todos con el próximo mensaje. Tama decide cómo mirarlos.
+  const attachButton = document.getElementById("adjuntar");
+  const fileInput = document.getElementById("archivo");
+  const pendingBox = document.getElementById("adjuntos-pendientes");
+  const maxFiles = Number(form.dataset.maxAdjuntos || 10);
+  const maxBytes = Number(form.dataset.maxMb || 60) * 1024 * 1024;
+  let pendingFiles = []; // { file, status: "subiendo" | "listo" | "error", data, error }
+  const ready = () => pendingFiles.filter((p) => p.status === "listo");
+  const uploading = () => pendingFiles.some((p) => p.status === "subiendo");
+
+  function showPending() {
+    pendingBox.replaceChildren();
+    pendingBox.hidden = pendingFiles.length === 0;
+    for (const item of pendingFiles) {
+      const chip = document.createElement("span");
+      chip.className = "adjunto " + item.status;
+      if (item.status === "listo" && item.data.kind === "foto") {
+        const img = document.createElement("img");
+        img.src = "/adjuntos/" + item.data.id;
+        img.alt = item.data.name;
+        chip.appendChild(img);
+      }
+      const pages = item.data && item.data.pages ? " (" + item.data.pages + " pág.)" : "";
+      let text = item.file.name + pages;
+      if (item.status === "subiendo") text += " · subiendo…";
+      if (item.status === "error") text += " · " + item.error;
+      chip.appendChild(document.createTextNode(text));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "plain";
+      remove.textContent = "Quitar";
+      remove.setAttribute("aria-label", "Quitar " + item.file.name);
+      remove.onclick = () => { pendingFiles = pendingFiles.filter((p) => p !== item); showPending(); };
+      chip.appendChild(remove);
+      pendingBox.appendChild(chip);
+    }
+    button.disabled = uploading(); // no se envía a medio subir
+  }
+
+  async function uploadOne(item) {
+    try {
+      const body = new FormData();
+      body.append("archivo", item.file);
+      const response = await fetch("/adjuntos", { method: "POST", headers: { "X-CSRF-Token": csrf }, body });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "no se pudo subir");
+      item.data = data;
+      item.status = "listo";
+    } catch (error) {
+      item.status = "error";
+      item.error = error.message;
+    }
+    showPending();
+  }
+
+  async function addFiles(files) {
+    const kept = pendingFiles.filter((p) => p.status !== "error");
+    let room = maxFiles - kept.length;
+    let total = kept.reduce((sum, p) => sum + p.file.size, 0);
+    const accepted = [];
+    const refused = [];
+    for (const file of files) {
+      if (room <= 0) refused.push(file.name + " (máximo " + maxFiles + " por mensaje)");
+      else if (total + file.size > maxBytes) refused.push(file.name + " (pasa el total de " + form.dataset.maxMb + " MB)");
+      else { accepted.push({ file, status: "subiendo" }); room--; total += file.size; }
+    }
+    if (refused.length) add("error", "No agregué: " + refused.join("; ") + ".");
+    if (!accepted.length) return;
+    pendingFiles = [...pendingFiles, ...accepted];
+    showPending();
+    for (const item of accepted) await uploadOne(item); // de a uno: menos carga en el PC
+    const notices = [...new Set(accepted.map((p) => p.data && p.data.notice).filter(Boolean))];
+    for (const notice of notices) add("line", notice);
+    if (!conversing()) input.focus();
+  }
+
+  if (attachButton && fileInput) {
+    attachButton.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+      const files = [...fileInput.files];
+      fileInput.value = "";
+      addFiles(files);
+    };
+    // Arrastrar y soltar en el PC: sobre el chat o el formulario.
+    for (const zone of [log, form]) {
+      zone.addEventListener("dragover", (event) => {
+        if (![...event.dataTransfer.types].includes("Files")) return;
+        event.preventDefault();
+        form.classList.add("soltar");
+      });
+      zone.addEventListener("dragleave", () => form.classList.remove("soltar"));
+      zone.addEventListener("drop", (event) => {
+        if (!event.dataTransfer.files.length) return;
+        event.preventDefault();
+        form.classList.remove("soltar");
+        addFiles([...event.dataTransfer.files]);
+      });
+    }
+  }
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
-    if (!text || button.disabled) return;
+    if ((!text && ready().length === 0) || button.disabled || uploading()) return;
     button.disabled = true;
     input.value = "";
-    add("user", text);
+    const sending = ready().map((p) => p.data);
+    pendingFiles = pendingFiles.filter((p) => p.status === "error"); // los errores quedan a la vista
+    showPending();
+    button.disabled = true;
+    if (text) add("user", text);
+    if (sending.length) addFilesRow(sending); // miniaturas con el nombre de cada archivo
     const fields = { text: text };
+    if (sending.length) fields.adjuntos = sending.map((f) => f.id).join(",");
     if (conversing()) fields.voz = "conversacion";
     const response = await post("/chat", fields);
     if (!response.ok) {

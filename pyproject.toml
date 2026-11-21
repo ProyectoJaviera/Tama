@@ -22,6 +22,8 @@ dependencies = [
     "webauthn==2.7.0",
     "pywhispercpp==1.5.1",
     "piper-tts==1.8.0",
+    "pypdfium2==5.15.2",
+    "pillow==13.0.0",
 ]
 
 [project.scripts]
