@@ -55,5 +55,23 @@
     "errores": 22,
     "ttft_p50": 1.5160000000032596,
     "total_p50": 13.99250810000376
+  },
+  "memoria": {
+    "estado": "ok",
+    "minutos": 8.9,
+    "ram_pico_gb": 21.5,
+    "abre_grupos": 0,
+    "hechos": "8/10",
+    "negativos": "3/3",
+    "tokens_prompt_max": 3121
+  },
+  "reflexion": {
+    "estado": "ok",
+    "minutos": 4.9,
+    "ram_pico_gb": 21.6,
+    "abre_grupos": 0,
+    "duplicados": "5/5",
+    "fusiones_incorrectas": [],
+    "contradicciones": "3/3"
   }
 }
