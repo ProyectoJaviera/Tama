@@ -135,6 +135,9 @@ def run_eval(
     ):
         with contextlib.suppress(OSError, ValueError):
             fresh[f] = json.loads((EVALS / f).read_text(encoding="utf-8"))
+            if (EVALS / f).read_bytes() != saved.get(f):
+                # Las respuestas completas quedan con el modelo: así se pueden juzgar después.
+                (folder(model) / f"{name}{tag}-{f}").write_bytes((EVALS / f).read_bytes())
     result = {
         "estado": status,
         "minutos": round((time.perf_counter() - start) / 60, 1),
