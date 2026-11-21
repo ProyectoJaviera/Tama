@@ -262,3 +262,6 @@ body.con-raphael #log { display: none; }
   border-radius: 8px; font-size: 0.85rem; background: var(--panel); }
 .adjunto img { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; }
 .adjunto button { padding: 2px 6px; font-size: 0.8rem; }
+.adjunto.subiendo { opacity: 0.7; }
+.adjunto.error { border-color: var(--bad); color: var(--bad); }
+#chat-form.soltar { outline: 2px dashed var(--accent); outline-offset: 4px; }

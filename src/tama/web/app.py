@@ -523,7 +523,14 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def home(request: Request) -> HTMLResponse:
-        return page(request, "chat.html", history=chat_history(), commands=commands.COMMANDS)
+        return page(
+            request,
+            "chat.html",
+            history=chat_history(),
+            commands=commands.COMMANDS,
+            max_adjuntos=settings.attachments_max_per_message,
+            max_mb=settings.attachments_max_total_mb,
+        )
 
     @app.post("/chat", dependencies=[Depends(check_csrf)])
     def send(
@@ -531,6 +538,12 @@ def create_app(brain: Brain, settings: Settings) -> FastAPI:
     ) -> dict[str, Any]:
         text = text.strip()
         refs = [r for r in re.split(r"[,\s]+", adjuntos) if r]
+        if len(refs) > settings.attachments_max_per_message:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Son {len(refs)} archivos: el máximo por mensaje es "
+                f"{settings.attachments_max_per_message}.",
+            )
         if refs and attachments is not None:
             # La nota con el id va en el mensaje: el modelo decide qué herramienta usar (regla 3).
             try:

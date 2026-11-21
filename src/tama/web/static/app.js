@@ -162,70 +162,118 @@
   // Modo conversación por voz (voz.js): cada mensaje lo indica y el teclado no se abre solo.
   const conversing = () => document.body.dataset.conversando === "1";
 
-  // Adjuntos: una foto (en el celular, de la cámara o la galería), un PDF o un texto. Se suben al
-  // elegirlos y van con el próximo mensaje; Tama decide cómo mirarlos (ver attachments.py).
+  // Adjuntos: fotos (en el celular, de la cámara o la galería), PDF o textos; varios a la vez,
+  // también arrastrándolos al chat en el PC. Cada uno se sube al elegirlo, con su estado (y su
+  // error, sin perder los demás), y van todos con el próximo mensaje. Tama decide cómo mirarlos.
   const attachButton = document.getElementById("adjuntar");
   const fileInput = document.getElementById("archivo");
   const pendingBox = document.getElementById("adjuntos-pendientes");
-  let pendingFiles = [];
+  const maxFiles = Number(form.dataset.maxAdjuntos || 10);
+  const maxBytes = Number(form.dataset.maxMb || 60) * 1024 * 1024;
+  let pendingFiles = []; // { file, status: "subiendo" | "listo" | "error", data, error }
+  const ready = () => pendingFiles.filter((p) => p.status === "listo");
+  const uploading = () => pendingFiles.some((p) => p.status === "subiendo");
+
   function showPending() {
     pendingBox.replaceChildren();
     pendingBox.hidden = pendingFiles.length === 0;
     for (const item of pendingFiles) {
       const chip = document.createElement("span");
-      chip.className = "adjunto";
-      if (item.kind === "foto") {
+      chip.className = "adjunto " + item.status;
+      if (item.status === "listo" && item.data.kind === "foto") {
         const img = document.createElement("img");
-        img.src = "/adjuntos/" + item.id;
-        img.alt = item.name;
+        img.src = "/adjuntos/" + item.data.id;
+        img.alt = item.data.name;
         chip.appendChild(img);
       }
-      chip.appendChild(document.createTextNode(item.name + (item.pages ? " (" + item.pages + " pág.)" : "")));
+      const pages = item.data && item.data.pages ? " (" + item.data.pages + " pág.)" : "";
+      let text = item.file.name + pages;
+      if (item.status === "subiendo") text += " · subiendo…";
+      if (item.status === "error") text += " · " + item.error;
+      chip.appendChild(document.createTextNode(text));
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "plain";
       remove.textContent = "Quitar";
+      remove.setAttribute("aria-label", "Quitar " + item.file.name);
       remove.onclick = () => { pendingFiles = pendingFiles.filter((p) => p !== item); showPending(); };
       chip.appendChild(remove);
       pendingBox.appendChild(chip);
     }
+    button.disabled = uploading(); // no se envía a medio subir
   }
+
+  async function uploadOne(item) {
+    try {
+      const body = new FormData();
+      body.append("archivo", item.file);
+      const response = await fetch("/adjuntos", { method: "POST", headers: { "X-CSRF-Token": csrf }, body });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "no se pudo subir");
+      item.data = data;
+      item.status = "listo";
+    } catch (error) {
+      item.status = "error";
+      item.error = error.message;
+    }
+    showPending();
+  }
+
+  async function addFiles(files) {
+    const kept = pendingFiles.filter((p) => p.status !== "error");
+    let room = maxFiles - kept.length;
+    let total = kept.reduce((sum, p) => sum + p.file.size, 0);
+    const accepted = [];
+    const refused = [];
+    for (const file of files) {
+      if (room <= 0) refused.push(file.name + " (máximo " + maxFiles + " por mensaje)");
+      else if (total + file.size > maxBytes) refused.push(file.name + " (pasa el total de " + form.dataset.maxMb + " MB)");
+      else { accepted.push({ file, status: "subiendo" }); room--; total += file.size; }
+    }
+    if (refused.length) add("error", "No agregué: " + refused.join("; ") + ".");
+    if (!accepted.length) return;
+    pendingFiles = [...pendingFiles, ...accepted];
+    showPending();
+    for (const item of accepted) await uploadOne(item); // de a uno: menos carga en el PC
+    const notices = [...new Set(accepted.map((p) => p.data && p.data.notice).filter(Boolean))];
+    for (const notice of notices) add("line", notice);
+    if (!conversing()) input.focus();
+  }
+
   if (attachButton && fileInput) {
     attachButton.onclick = () => fileInput.click();
-    fileInput.onchange = async () => {
-      const file = fileInput.files[0];
+    fileInput.onchange = () => {
+      const files = [...fileInput.files];
       fileInput.value = "";
-      if (!file) return;
-      attachButton.disabled = true;
-      attachButton.textContent = "Subiendo…";
-      try {
-        const body = new FormData();
-        body.append("archivo", file);
-        const response = await fetch("/adjuntos", { method: "POST", headers: { "X-CSRF-Token": csrf }, body });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.detail || "No pude subir el archivo.");
-        pendingFiles.push(data);
-        showPending();
-        if (data.notice) add("line", data.notice);
-        input.focus();
-      } catch (error) {
-        add("error", error.message);
-      } finally {
-        attachButton.disabled = false;
-        attachButton.textContent = "Adjuntar";
-      }
+      addFiles(files);
     };
+    // Arrastrar y soltar en el PC: sobre el chat o el formulario.
+    for (const zone of [log, form]) {
+      zone.addEventListener("dragover", (event) => {
+        if (![...event.dataTransfer.types].includes("Files")) return;
+        event.preventDefault();
+        form.classList.add("soltar");
+      });
+      zone.addEventListener("dragleave", () => form.classList.remove("soltar"));
+      zone.addEventListener("drop", (event) => {
+        if (!event.dataTransfer.files.length) return;
+        event.preventDefault();
+        form.classList.remove("soltar");
+        addFiles([...event.dataTransfer.files]);
+      });
+    }
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = input.value.trim();
-    if ((!text && pendingFiles.length === 0) || button.disabled) return;
+    if ((!text && ready().length === 0) || button.disabled || uploading()) return;
     button.disabled = true;
     input.value = "";
-    const sending = pendingFiles;
-    pendingFiles = [];
+    const sending = ready().map((p) => p.data);
+    pendingFiles = pendingFiles.filter((p) => p.status === "error"); // los errores quedan a la vista
     showPending();
+    button.disabled = true;
     const names = sending.map((f) => f.name).join(", ");
     add("user", text + (sending.length ? (text ? "\n" : "") + "[" + names + "]" : ""));
     const fields = { text: text };

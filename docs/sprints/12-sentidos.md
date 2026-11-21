@@ -29,6 +29,14 @@ lo resuma. Sin internet también, más lento.
    la carpeta de adjuntos, no los archivos del PC; lo demás del S10 sigue bloqueado.
 6. Memoria: lo visto en un adjunto no se guarda solo; se guarda si Renzo lo pide.
 
+## Agregado tras la demo: varios adjuntos por mensaje (pedido de Renzo, 2026-11-20)
+Hasta 10 archivos y 60 MB en total por mensaje (`TAMA_ATTACHMENTS_MAX_PER_MESSAGE`,
+`TAMA_ATTACHMENTS_MAX_TOTAL_MB`). Selección múltiple, arrastrar y soltar en el PC, miniaturas con
+Quitar, estado y error por archivo (un archivo que falla no se lleva a los demás). `ver_imagen`
+mira hasta 5 fotos juntas en una sola llamada de visión; `resumir_documento` hace un resumen por
+documento y el modelo los combina. Eval con 2 PDF y 1 foto: usa las dos herramientas y trae los
+datos de los tres (6/6); juez 4, 5, 4, 4, 2 (el 2: no puede verificar lo que no ve). US$ 0,006.
+
 ## Fuera de alcance
 Video, audio adjunto, Word y Excel, y la elección final del modelo local de visión (S13).
 

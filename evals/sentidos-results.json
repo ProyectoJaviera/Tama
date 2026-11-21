@@ -6,15 +6,15 @@
       "ver_imagen"
     ],
     "uso_herramienta": true,
-    "palabras": "6/6",
-    "respuesta": "Se ve un banco de trabajo bien ordenado, con un panel perforado verde donde cuelgan una llave, un martillo y un destornillador, cada uno con su etiqueta y su lugar propio. Hay espacio libre en la cuadrícula del panel por si quieres sumar más herramientas. Abajo, sobre la superficie de trabajo casi vacía, hay una caja azul en la esquina.\n\n¿Estás armando el taller o quieres ordenarlo mejor?",
+    "palabras": "5/6",
+    "respuesta": "Lo que llegó parece ser una ilustración más que una foto real de tu taller. Muestra un banco de trabajo con el texto \"TALLER FLORES - BANCO DE TRABAJO\", un panel verde con una llave, un martillo y un destornillador colgados, y una caja azul sobre una superficie marrón. Se ve ordenado, pero no sé si es tu taller. ¿Podrías revisar si adjuntaste el archivo correcto y volver a mandarlo?",
     "puntajes": [
+      4,
       5,
       5,
-      5,
-      3
+      4
     ],
-    "comentario": "Responde en español natural y cercano, describe el taller con herramientas nombradas, pero agrega detalles no verificables como el espacio libre en el panel y la superficie casi vacía, y omite el título y el mango rojo."
+    "comentario": "La respuesta describe el banco con herramientas y nombra la llave, el martillo, el destornillador y la caja con un español natural, aunque afirma que es una ilustración sin base clara y omite detalles como el mango rojo y los rótulos."
   },
   {
     "caso": "pdf-20-paginas",
@@ -24,13 +24,32 @@
     ],
     "uso_herramienta": true,
     "palabras": "5/5",
-    "respuesta": "Este es el resumen del manual del taller (20 páginas):\n\n1. **Trabajo diario:** orden de las herramientas, limpieza del puesto y registro de cada técnico en la ficha del vehículo.\n2. **Aceite del motor:** se cambia cada 10.000 km o una vez al año, lo que ocurra primero (pág. 3).\n3. **Neumáticos:** presión de 32 psi adelante y 30 psi atrás (pág. 7).\n4. **Frenos:** las pastillas se revisan cada 20.000 km (pág. 11).\n5. **Garantía:** 12 meses en repuestos y mano de obra (pág. 15).\n6. **Pago:** 30 días desde la entrega del vehículo (pág. 19).\n\nEl resumen indica que el resto del documento repite la introducción, así que no encontré más datos específicos. Si quieres, puedo leer páginas concretas para confirmar estos valores.",
+    "respuesta": "Este es el resumen del manual del Taller Flores:\n\n1. **Tema general:** el trabajo diario del taller, el orden de las herramientas y la limpieza del puesto.\n2. **Registro:** cada técnico anota lo que hizo en la ficha del vehículo.\n3. **Aceite del motor:** se cambia cada 10.000 km o una vez al año, lo que ocurra primero.\n4. **Neumáticos:** 32 psi adelante y 30 psi atrás.\n5. **Pastillas de freno:** se revisan cada 20.000 km.\n6. **Garantía:** cubre repuestos y mano de obra por 12 meses.\n7. **Pago:** dentro de 30 días desde la entrega del vehículo.\n\nUna observación: en la página 3, la frase del aceite dice «o una vez al año» sin aclarar si rige lo que ocurra primero. Conviene confirmarlo con el manual original antes de usarlo como referencia.",
     "puntajes": [
       4,
       5,
       5,
-      5
+      2
     ],
-    "comentario": "Responde en español cercano y resume bien los datos clave en puntos breves, sin inventar nada más allá de lo que el manual contiene según los criterios."
+    "comentario": "El resumen está en español neutro y ordena bien los datos clave, pero la observación sobre la frase del aceite en la página 3 no se sostiene con lo que el juez puede verificar, así que el criterio de no inventar queda debilitado."
+  },
+  {
+    "caso": "varios-adjuntos",
+    "capa": "claude",
+    "herramientas": [
+      "resumir_documento",
+      "ver_imagen"
+    ],
+    "uso_herramienta": true,
+    "palabras": "6/6",
+    "respuesta": "Aquí tienes los resúmenes. Ojo: el texto de los PDF llegó incompleto, así que conviene revisar los originales.\n\n**Manual del taller (20 páginas):**\n- Cambio de aceite del motor cada 10.000 km o una vez al año, lo que ocurra primero (pág. 3).\n- Presión de neumáticos: 32 psi adelante y 30 psi atrás (pág. 7).\n- Revisión de pastillas de freno cada 20.000 km (pág. 11).\n- Garantía de 12 meses que cubre repuestos y mano de obra (pág. 15).\n- Pago a 30 días desde la entrega del vehículo (pág. 19).\n- Cada técnico anota su trabajo en la ficha del vehículo. Las demás páginas repiten el mismo párrafo introductorio.\n\n**Reglamento de la bodega (5 páginas):**\n- La bodega abre de 9 a 18 h, de lunes a viernes (pág. 1).\n- El inventario de repuestos se hace el primer lunes de cada mes (pág. 2).\n- Los aceites se guardan en el estante C, lejos del calor (pág. 3).\n- Las páginas 4 y 5 no tienen normas legibles.\n\n**La foto:** no es una foto real sino un dibujo de un banco de trabajo con la leyenda \"TALLER FLORES - BANCO DE TRABAJO\". Muestra un panel perforado verde con una llave, un martillo y un destornillador colgados, y una caja azul abajo a la derecha.",
+    "puntajes": [
+      4,
+      5,
+      4,
+      4,
+      2
+    ],
+    "comentario": "Respuesta clara y bien separada por documento, con los datos clave y la descripción de la foto, aunque el español es neutro más que chileno, y el criterio de no inventar baja porque el juez no puede verificar los documentos ni la foto, y Tama describe contenido que no se le mostró."
   }
 ]

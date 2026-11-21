@@ -160,6 +160,8 @@ class Settings(BaseSettings):
     # Sentidos (Sprint 12): fotos y documentos adjuntos. Las fotos las mira Claude (mismo tope de
     # gasto) y, sin red o con TAMA_VISION_CLOUD=false, un modelo local de visión en CPU.
     attachments_enabled: bool = True
+    attachments_max_per_message: int = 10
+    attachments_max_total_mb: int = 60
     vision_cloud: bool = True
     vision_local_model: str = "gemma4:e4b"
     vision_timeout_s: float = 300.0

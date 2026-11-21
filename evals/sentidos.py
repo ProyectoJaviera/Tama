@@ -81,6 +81,23 @@ def workshop_photo() -> bytes:
     return out.getvalue()
 
 
+BODEGA_FACTS = [
+    "La bodega abre de 9 a 18 horas de lunes a viernes.",
+    "El inventario de repuestos se hace el primer lunes de cada mes.",
+    "Los aceites se guardan en el estante C, lejos del calor.",
+]
+
+
+def bodega_pdf() -> bytes:
+    pages = []
+    for number in range(1, 6):
+        lines = [f"Reglamento de la bodega del Taller Flores - página {number}", "", FILLER[:90]]
+        if number <= len(BODEGA_FACTS):
+            lines += ["", BODEGA_FACTS[number - 1]]
+        pages.append(lines)
+    return make_pdf(pages)
+
+
 CASES = [
     {
         "id": "foto-taller",
@@ -112,6 +129,27 @@ CASES = [
         "palabras": ["10.000", "32", "20.000", "12 meses", "30 días"],
         "herramienta": "resumir_documento",
     },
+    {
+        "id": "varios-adjuntos",
+        "archivos": [
+            ("manual-taller.pdf", "application/pdf", manual_pdf),
+            ("reglamento-bodega.pdf", "application/pdf", bodega_pdf),
+            ("taller.jpg", "image/jpeg", workshop_photo),
+        ],
+        "mensaje": "Te mando los dos documentos del taller y una foto: resúmeme los dos y "
+        "dime qué hay en la foto.",
+        "criterios": [
+            "Resume los dos documentos por separado o claramente distinguidos",
+            "Del manual incluye datos clave (aceite cada 10.000 km, garantía 12 meses, pago a 30 "
+            "días); del reglamento, horario 9 a 18, inventario el primer lunes y aceites en el "
+            "estante C",
+            "Describe la foto: un tablero con llave, martillo y destornillador, banco y caja azul",
+            "No inventa: los documentos y la foto (que el juez no ve) solo tienen eso, los otros "
+            "datos del manual (neumáticos, frenos) y texto general sobre el trabajo del taller",
+        ],
+        "palabras": ["10.000", "12 meses", "9 a 18", "primer lunes", "estante c", "martillo"],
+        "herramienta": "resumir_documento,ver_imagen",
+    },
 ]
 
 
@@ -129,9 +167,9 @@ def run_case(case: dict[str, Any], layer: str, offline: bool) -> dict[str, Any]:
     store = AttachmentStore(settings.data_dir)
     online = brain.connectivity.online if brain.connectivity else (lambda: True)
     attachments = Attachments(store, Senses(settings, brain.spend, online))
-    name, kind, make = case["archivo"]
-    item = store.save(name, kind, make())
-    text = f"{case['mensaje']}\n\n{attachments.note([f'a{item["id"]}'])}"
+    files = case.get("archivos") or [case["archivo"]]
+    refs = [f"a{store.save(name, kind, make())['id']}" for name, kind, make in files]
+    text = f"{case['mensaje']}\n\n{attachments.note(refs)}"
     brain.tools = AttachmentTools(brain.tools, attachments)
     messages = [{"role": "system", "content": session_prompt(settings.memory_dir, brain.store)}]
     try:
@@ -145,7 +183,7 @@ def run_case(case: dict[str, Any], layer: str, offline: bool) -> dict[str, Any]:
         "caso": case["id"],
         "capa": layer,
         "herramientas": turn["herramientas"],
-        "uso_herramienta": case["herramienta"] in turn["herramientas"],
+        "uso_herramienta": all(h in turn["herramientas"] for h in case["herramienta"].split(",")),
         "palabras": f"{len(found)}/{len(case['palabras'])}",
         "respuesta": answer,
     }
@@ -169,10 +207,12 @@ def main() -> int:
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--con-claude", action="store_true")
     parser.add_argument("--sin-juez", action="store_true")
+    parser.add_argument("--solo", nargs="+", help="ids de los casos a correr")
     args = parser.parse_args()
+    cases = [c for c in CASES if not args.solo or c["id"] in args.solo]
     results = []
     for layer in args.capas:
-        for case in CASES:
+        for case in cases:
             result = run_case(case, layer, args.offline)
             print(
                 f"[{layer}] {case['id']}: {result['herramientas']} palabras {result['palabras']}",
@@ -182,11 +222,15 @@ def main() -> int:
     if not args.sin_juez:
         judge, _used, close = make_judge(get_settings())
         try:
-            for case, result in zip(CASES * len(args.capas), results, strict=True):
+            for case, result in zip(cases * len(args.capas), results, strict=True):
                 judge_case(case, result, judge)
                 print(f"[juez] {result['caso']}: {result['puntajes']}", flush=True)
         finally:
             close()
+    if args.solo and RESULTS.exists():  # se reemplazan solo esos casos en lo guardado
+        fresh = {(r["caso"], r["capa"]): r for r in results}
+        old = json.loads(RESULTS.read_text(encoding="utf-8"))
+        results = [fresh.pop((r["caso"], r["capa"]), r) for r in old] + list(fresh.values())
     RESULTS.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
 

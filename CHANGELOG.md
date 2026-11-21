@@ -11,6 +11,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
   solo cuando la conversación tiene adjuntos. Visión en cascada: Claude (mismo tope) → modelo
   local en CPU (`gemma4:e4b`); aviso de privacidad al adjuntar una foto. Texto de PDF en el PC con
   pypdfium2 y páginas escaneadas leídas con visión. Desde fuera del PC se puede adjuntar con passkey.
+- Varios adjuntos por mensaje (hasta 10 y 60 MB en total, configurables): selección múltiple y
+  arrastrar y soltar en el PC, miniaturas con Quitar y error por archivo sin perder los demás.
+  `ver_imagen` mira hasta 5 fotos juntas en una sola llamada (para compararlas) y
+  `resumir_documento` hace un resumen por documento.
 - Corregir un plan compartido: `update_observation` muestra los datos del tema que siguen vigentes
   (por ejemplo, el de la esposa) y pide revisarlos en la misma respuesta.
 - Claude como capa principal: orden de la cascada configurable (`TAMA_CASCADE_ORDER`, por defecto

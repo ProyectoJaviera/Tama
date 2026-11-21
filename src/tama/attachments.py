@@ -37,6 +37,7 @@ VISION_SIDE = 1568  # px: lo que Claude mira sin achicar
 READ_CHARS = 6000  # texto que devuelve leer_documento por llamada
 SUMMARY_CHUNK = 14000  # caracteres por parte al resumir en el PC
 CLOUD_SUMMARY_MAX = 160000  # hasta aquí, Claude resume el documento entero de una vez
+MAX_PER_LOOK = 5  # fotos por mirada: varias van juntas en una sola llamada de visión
 
 
 class AttachmentError(Exception):
@@ -148,6 +149,15 @@ class AttachmentStore:
                 "SELECT * FROM attachments ORDER BY id DESC LIMIT ?", (limit,)
             ).fetchall()
         return [dict(r) for r in rows]
+
+
+def refs_of(value: Any) -> list[str]:
+    """Uno o varios ids ("a3", "a3, a4", ["a3", "a4"]), sin repetir."""
+    items = value if isinstance(value, list) else re.split(r"[,;\s]+", str(value))
+    refs = list(dict.fromkeys(str(i).strip() for i in items if str(i).strip()))
+    if not refs:
+        raise AttachmentError("Falta el id del adjunto, como a3.")
+    return refs
 
 
 def label(item: dict[str, Any]) -> str:
@@ -311,28 +321,42 @@ class Senses:
         )
         return reply["message"]["content"].strip()
 
-    def look(self, jpeg: bytes, question: str) -> Seen:
-        prompt = question.strip() or "Describe la foto: qué se ve, el lugar y los detalles útiles."
+    def look(
+        self, jpeg: bytes | list[bytes], question: str, names: list[str] | None = None
+    ) -> Seen:
+        """Mira una foto o varias juntas (una sola llamada: compara y ahorra)."""
+        images = jpeg if isinstance(jpeg, list) else [jpeg]
+        several = len(images) > 1
+        default = (
+            "Describe cada foto (en orden) y lo que tienen en común o de distinto."
+            if several
+            else "Describe la foto: qué se ve, el lugar y los detalles útiles."
+        )
+        prompt = question.strip() or default
+        if several and names:
+            prompt = "Fotos, en orden: " + ", ".join(names) + ".\n" + prompt
         reason = self.claude_reason(image=True)
         if not reason:
             try:
-                b64 = base64.b64encode(jpeg).decode()
-                text = self._ask_claude(
-                    [
-                        {
-                            "type": "image",
-                            "source": {"type": "base64", "media_type": "image/jpeg", "data": b64},
+                content: list[dict[str, Any]] = [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": base64.b64encode(image).decode(),
                         },
-                        {"type": "text", "text": prompt},
-                    ],
-                    700,
-                )
+                    }
+                    for image in images
+                ]
+                content.append({"type": "text", "text": prompt})
+                text = self._ask_claude(content, 700 + 300 * (len(images) - 1))
                 return Seen(text, "Claude")
             except Exception as exc:  # cualquier falla de la nube: se mira en el PC
                 reason = f"Claude no respondió ({type(exc).__name__})"
         log.info("visión en el PC: %s", reason)
         try:
-            text = self._ask_local(self.settings.vision_local_model, prompt, [jpeg])
+            text = self._ask_local(self.settings.vision_local_model, prompt, images)
         except Exception as exc:
             raise AttachmentError(
                 f"No pude mirar la foto: {reason}, y el modelo local de visión "
@@ -397,8 +421,9 @@ TOOLS = [
     ToolInfo(
         "adjuntos",
         "ver_imagen",
-        "Mira una foto que Renzo adjuntó (id como a3) y la describe o responde la pregunta sobre "
-        "ella. Úsala siempre que Renzo hable de una foto adjunta: no la supongas.",
+        'Mira una o varias fotos que Renzo adjuntó (ids como a3, o "a3, a4" para mirarlas '
+        "juntas y compararlas, hasta 5) y responde la pregunta. Úsala siempre que Renzo hable de "
+        "una foto adjunta: no la supongas.",
         _schema({"adjunto": {"type": "string"}, "pregunta": {"type": "string"}}, ["adjunto"]),
         tier=ALWAYS,
     ),
@@ -420,7 +445,8 @@ TOOLS = [
     ToolInfo(
         "adjuntos",
         "resumir_documento",
-        "Resume un PDF o texto adjunto entero (id como a4); enfoque opcional (p. ej., plazos).",
+        'Resume uno o varios PDF o textos adjuntos enteros (ids como a4 o "a4, a5"): un '
+        "resumen por documento; enfoque opcional (p. ej., plazos).",
         _schema({"adjunto": {"type": "string"}, "enfoque": {"type": "string"}}, ["adjunto"]),
         tier=ALWAYS,
     ),
@@ -450,12 +476,22 @@ class Attachments:
         return AttachmentTools(tools, self)
 
     # Lo que hace cada herramienta.
-    def ver_imagen(self, adjunto: str, pregunta: str = "") -> str:
-        item, data = self.store.read(adjunto)
-        if item["kind"] != "foto":
-            raise AttachmentError(f"{label(item)} no es una foto: usa leer_documento.")
-        seen = self.senses.look(for_vision(data), pregunta)
-        return f"{label(item)}, mirada con {seen.provider}:\n{seen.text}"
+    def ver_imagen(self, adjunto: Any, pregunta: str = "") -> str:
+        refs = refs_of(adjunto)
+        if len(refs) > MAX_PER_LOOK:
+            raise AttachmentError(
+                f"Son {len(refs)} fotos: mira hasta {MAX_PER_LOOK} por vez (en varias llamadas)."
+            )
+        items, images = [], []
+        for ref in refs:
+            item, data = self.store.read(ref)
+            if item["kind"] != "foto":
+                raise AttachmentError(f"{label(item)} no es una foto: usa leer_documento.")
+            items.append(item)
+            images.append(for_vision(data))
+        names = [label(i) for i in items]
+        seen = self.senses.look(images if len(images) > 1 else images[0], pregunta, names)
+        return f"{', '.join(names)}, mirada(s) con {seen.provider}:\n{seen.text}"
 
     def _document_text(
         self, item: dict[str, Any], data: bytes, first: int, last: int
@@ -495,14 +531,18 @@ class Attachments:
         more = f" Sigue en la página {shown + 1} (de {total})." if shown < last else ""
         return f"{label(item)}:\n" + "\n".join(out) + more
 
-    def resumir_documento(self, adjunto: str, enfoque: str = "") -> str:
-        item, data = self.store.read(adjunto)
-        if item["kind"] == "foto":
-            raise AttachmentError(f"{label(item)} es una foto: usa ver_imagen.")
-        pages = self._document_text(item, data, 1, item.get("pages") or 1)
-        text = "\n".join(f"[pág. {n}] {t}" if item["kind"] == "pdf" else t for n, t in pages)
-        seen = self.senses.summarize(text, enfoque, item["name"])
-        return f"Resumen de {label(item)} ({seen.provider}):\n{seen.text}"
+    def resumir_documento(self, adjunto: Any, enfoque: str = "") -> str:
+        """Un resumen por documento; el modelo los combina (cuida el contexto y el gasto)."""
+        parts = []
+        for ref in refs_of(adjunto):
+            item, data = self.store.read(ref)
+            if item["kind"] == "foto":
+                raise AttachmentError(f"{label(item)} es una foto: usa ver_imagen.")
+            pages = self._document_text(item, data, 1, item.get("pages") or 1)
+            text = "\n".join(f"[pág. {n}] {t}" if item["kind"] == "pdf" else t for n, t in pages)
+            seen = self.senses.summarize(text, enfoque, item["name"])
+            parts.append(f"Resumen de {label(item)} ({seen.provider}):\n{seen.text}")
+        return "\n\n".join(parts)
 
     def listar_adjuntos(self) -> str:
         items = self.store.recent()

@@ -289,3 +289,53 @@ def test_from_outside_uploading_needs_the_passkey_and_then_works(web):
     web_sign_in(phone, device)
     sent = phone.post("/adjuntos", files=files, headers={"x-csrf-token": token(phone)})
     assert sent.status_code == 200 and sent.json()["id"] == "a1"
+
+
+# --- varios adjuntos en un mensaje -----------------------------------------------------------
+
+
+def test_several_photos_are_looked_at_together_in_one_call(tmp_path):
+    claude = FakeClaude("La primera tiene un torno; la segunda, un taladro.")
+    store, attachments = tools_with(tmp_path, claude=claude)
+    store.save("antes.jpg", "image/jpeg", photo())
+    store.save("despues.png", "image/png", photo(800, 600, "PNG"))
+    seen = attachments.wrap(Tools()).call(
+        "ver_imagen", {"adjunto": "a1, a2", "pregunta": "¿qué diferencia hay?"}
+    )
+    assert seen.ok and "a1" in seen.text and "a2" in seen.text
+    assert len(claude.sent) == 1  # una sola llamada de visión
+    content = claude.sent[0]["messages"][0]["content"]
+    assert [c["type"] for c in content] == ["image", "image", "text"]
+    assert "antes.jpg" in content[-1]["text"] and "diferencia" in content[-1]["text"]
+    for n in range(4):
+        store.save(f"f{n}.jpg", "image/jpeg", photo(50, 50))
+    too_many = attachments.wrap(Tools()).call("ver_imagen", {"adjunto": "a1 a2 a3 a4 a5 a6"})
+    assert not too_many.ok and "hasta 5" in too_many.text
+
+
+def test_several_documents_get_one_summary_each(tmp_path):
+    claude = FakeClaude("Puntos del documento.")
+    store, attachments = tools_with(tmp_path, claude=claude)
+    store.save("uno.pdf", "application/pdf", make_pdf([["Manual uno: cambio de aceite cada año"]]))
+    store.save("dos.md", "text/markdown", b"# Lista dos")
+    text = attachments.resumir_documento(["a1", "a2"])
+    assert text.count("Resumen de") == 2 and "uno.pdf" in text and "dos.md" in text
+    assert len(claude.sent) == 2  # uno por documento; el modelo los combina
+
+
+def test_a_message_takes_up_to_the_limit_of_attachments(web):
+    app, _ = web
+    pc = TestClient(app, base_url="http://127.0.0.1")
+    headers = {"x-csrf-token": token(pc)}
+    for n in range(11):
+        pc.post(
+            "/adjuntos", files={"archivo": (f"f{n}.txt", b"hola", "text/plain")}, headers=headers
+        )
+    refs = ",".join(f"a{n}" for n in range(1, 12))
+    refused = pc.post("/chat", data={"text": "léelos", "adjuntos": refs}, headers=headers)
+    assert refused.status_code == 422 and "máximo por mensaje es 10" in refused.json()["detail"]
+    ok = pc.post("/chat", data={"text": "léelos", "adjuntos": "a1,a2,a3"}, headers=headers)
+    assert ok.status_code == 200
+    note = next(m["content"] for m in app.state.session.messages if "[Adjuntos:" in str(m))
+    assert note.count("«f") == 3
+    assert 'max-adjuntos="10"' in pc.get("/").text.replace("data-", "")
