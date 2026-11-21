@@ -102,6 +102,7 @@ def run_eval(
         "TAMA_BACKGROUND_MODEL": model,
         "TAMA_CLAUDE_ENABLED": "false",
         "TAMA_NUM_GPU": "0",
+        "TAMA_EVALS_NO_LOCAL_JUDGE": "1",
         "PYTHONIOENCODING": "utf-8",
     }
     log = folder(model) / f"{name}{tag}.log"

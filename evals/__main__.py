@@ -1,6 +1,7 @@
 """Corre las evals: `uv run python -m evals` (con red) o `uv run python -m evals --offline`."""
 
 import argparse
+import os
 import sys
 import time
 
@@ -83,7 +84,10 @@ def make_judge(settings, local_only: bool = False):
         True,
         {"num_ctx": 8192, "num_gpu": settings.num_gpu, "num_predict": 8192},
     )
-    judges = [local_judge]
+    # Decisión de Renzo: el modelo local nunca juzga. Con TAMA_EVALS_NO_LOCAL_JUDGE=1 (el banco del
+    # modelo local lo pone) se quita; si la nube no responde, el juicio queda pendiente y la
+    # respuesta guardada para --rejuzgar con Claude.
+    judges = [] if os.environ.get("TAMA_EVALS_NO_LOCAL_JUDGE") == "1" else [local_judge]
     host, _, port = settings.connectivity_probe.rpartition(":")
     if not local_only and tcp_probe(host, int(port)):
         if settings.ollama_api_key:
