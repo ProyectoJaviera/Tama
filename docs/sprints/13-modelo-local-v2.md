@@ -31,6 +31,20 @@ entonces.
 2. Ida y vuelta hablada sin red (whisper + modelo local + Piper): `bench/voz_ida_vuelta.py` con
    la capa local.
 
+3. Whisper con `audio_ctx` (`TAMA_WHISPER_FIT_AUDIO=true`): `small` baja a ~1 s, pero a veces
+   repite la frase; `large-v3-turbo` q5 tarda ~18 s y con `audio_ctx` empeora. Con internet,
+   Scribe ya transcribe (5/5 en las pruebas), así que esto es solo para el modo sin red.
+4. Raphael y el modo conversación sin red: Piper con la figura y la conversación continua.
+
+### Del Sprint 12 (sentidos)
+1. Modelo local de visión: `gemma4:e4b` (por defecto; humo: describió bien una imagen en 19 s)
+   frente a `ministral-3:8b` y `nemotron-3.5-bolt:e4b` (ya instalados, con visión). Medir con
+   fotos reales del taller y varias fotos juntas (`ver_imagen` con hasta 5), calidad y tiempo en
+   CPU, y el cambio de modelo en RAM (uno a la vez) frente al de conversación.
+2. Resumen de un PDF de 20 páginas sin red (por partes con el modelo de fondo):
+   `python -m evals.sentidos --capas local --offline --solo pdf-20-paginas`; medir tiempo.
+3. Páginas escaneadas leídas con el modelo local de visión (OCR por visión), sin red.
+
 ## Reglas
 - Las mismas de `XX-modelo-local.md`: sin Claude, modelos descargados solo con el OK de Renzo y
   resultado en un ADR.
