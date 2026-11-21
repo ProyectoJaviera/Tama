@@ -1,0 +1,26 @@
+[
+  {
+    "caso": "una-foto",
+    "segundos": 39.3,
+    "ram_modelo_gb": 1.9,
+    "palabras": "5/5",
+    "error": null,
+    "respuesta": "En la imagen se observa una representación de un panel de trabajo o tablero, titulado \"TALLER FLORES- BANCO DE TRABAJO\".\n\nEn el panel, hay tres herramientas representadas verticalmente sobre un fondo verde grisáceo con puntos pequeños:\n1.  Una llave (representada en color gris claro) a la izquierda, con la leyenda \"LLAVE\" debajo.\n2.  Un martillo (representado en color marrón rojizo) en el centro, con la leyenda \"MARTILLO\" debajo.\n3.  Un destornillador (representado en color rojo) a la derecha, con la leyenda \"DESTORNILLADOR\" debajo.\n\nDebajo del panel, hay un área marrón oscuro y, en la parte inferior derecha, un rectángulo de color azul con la palabra \"CAJA\" escrita debajo."
+  },
+  {
+    "caso": "cuatro-juntas",
+    "segundos": 47.9,
+    "ram_modelo_gb": 1.9,
+    "palabras": "6/6",
+    "error": null,
+    "respuesta": "Aquí está la descripción de las fotos en orden:\n\n**tablero-taller.jpg:** Esta imagen muestra un tablero de trabajo con tres herramientas representadas: una llave, un martillo y un destornillador. Debajo de cada herramienta hay su nombre correspondiente en español. Al pie del tablero, hay una caja azul.\n\n**cielo-azul.png:** Este documento representa un cielo azul con un sol amarillo visible en la parte superior derecha. En la esquina inferior izquierda, se lee la frase \"CIELO AZUL\".\n\n**semaforo.jpg:** La imagen muestra un semáforo vertical con tres luces: roja arriba, amarilla en el centro y verde abajo. Debajo del semáforo, está escrito la palabra \"SEMAFORO\".\n\n**casa-roja.png:** Esta imagen presenta una casa de color rojo con un techo marrón. En la parte inferior de la imagen, se identifica la figura como \"CASA ROJA\"."
+  },
+  {
+    "caso": "escaneo",
+    "segundos": 21.3,
+    "ram_modelo_gb": 1.9,
+    "palabras": "4/4",
+    "error": null,
+    "respuesta": "Manual de mantención del Taller Flores - página 7\n\nEste capítulo describe el trabajo diario del taller, el orden de las herramientas y la lim pieza del puesto. Cada técnico registra lo que hizo en la ficha del vehículo.\n\nLa presión de los neumáticos es de 32 psi adelante y 30 psi atrás."
+  }
+]

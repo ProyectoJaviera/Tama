@@ -1,0 +1,26 @@
+[
+  {
+    "caso": "una-foto",
+    "segundos": 48.7,
+    "ram_modelo_gb": 2.9,
+    "palabras": "5/5",
+    "error": null,
+    "respuesta": "Se ve un taller o banco de trabajo con tres herramientas dispuestas sobre un fondo verde con puntos. Las herramientas son una llave (gris), un martillo (marrón) y un destornillador (rojo). Debajo de cada herramienta se indica su nombre: \"LLAVE\", \"MARTILLO\" y \"DESTORNILLADOR\".\n\nDebajo de la imagen principal, hay un espacio marrón con un rectángulo azul y la palabra \"CAJA\".\n\nNo se distingue el lugar exacto, solo la representación del taller/banco de trabajo."
+  },
+  {
+    "caso": "cuatro-juntas",
+    "segundos": 68.5,
+    "ram_modelo_gb": 2.9,
+    "palabras": "6/6",
+    "error": null,
+    "respuesta": "**tablero-taller.jpg:** Se muestra un tablero de trabajo con tres herramientas: una llave gris, un martillo marrón y un destornillador rojo. Debajo de cada herramienta hay su nombre: LLAVE, MARTILLO y DESTORNILLADOR. En la parte inferior hay un espacio para una CAJA.\n\n**cielo-azul.png:** Esta imagen presenta un fondo azul claro con un círculo amarillo que representa el sol. Debajo del dibujo se lee el texto \"CIELO AZUL\".\n\n**semaforo.jpg:** La imagen muestra un semáforo vertical con tres círculos: rojo arriba, amarillo en el medio y verde abajo. Debajo aparece la etiqueta \"SEMAFORO\".\n\n**casa-roja.png:** Se observa una casa con paredes rojas y un techo marrón. La puerta es marrón y debajo de la imagen se identifica como \"CASA ROJA\"."
+  },
+  {
+    "caso": "escaneo",
+    "segundos": 28.2,
+    "ram_modelo_gb": 2.9,
+    "palabras": "4/4",
+    "error": null,
+    "respuesta": "Manual de mantenimiento del Taller Flores - página 7\n\nEste capítulo describe el trabajo diario del taller, el orden de las herramientas y la lim pieza del puesto. Cada técnico registra lo que hizo en la ficha del vehículo.\n\nLa presión de los neumáticos es de 32 psi adelante y 30 psi atrás."
+  }
+]

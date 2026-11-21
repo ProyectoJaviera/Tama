@@ -1,0 +1,26 @@
+[
+  {
+    "caso": "una-foto",
+    "segundos": 92.3,
+    "ram_modelo_gb": 6.2,
+    "palabras": "5/5",
+    "error": null,
+    "respuesta": "En la imagen se observa un **banco de trabajo** etiquetado como **\"TALLER FLORES: BANCO DE TRABAJO\"**.\n\nSobre el banco, en el área de trabajo (superficie perforada), hay tres objetos colocados en filas con sus respectivas etiquetas:\n\n1. **Llave**: Representada por un dibujo de una llave metálica blanca.\n2. **Martillo**: Representado por un martillo de color marrón oscuro.\n3. **Destornillador**: Representado por un destornillador de punta plana y color rojo.\n\nBajo el banco, en la parte inferior, se ve una **caja** de color azul oscuro, también etiquetada como **\"CAJA\"**."
+  },
+  {
+    "caso": "cuatro-juntas",
+    "segundos": 152.0,
+    "ram_modelo_gb": 6.2,
+    "palabras": "6/6",
+    "error": null,
+    "respuesta": "1. **Tablero-taller.jpg**:\n   Este tablero muestra tres herramientas y una caja dentro de un banco de trabajo. Las herramientas son una **llave** (de color gris), un **martillo** (marrón), y un **destornillador** (rojo). Debajo de todo se observa una **caja** de color azul oscuro.\n\n2. **Cielo-azul.png**:\n   La imagen muestra un cielo de color azul claro con un **sol amarillo** en la parte superior derecha. No hay otros elementos visibles, solo el cielo y el sol.\n\n3. **Semaforo.jpg**:\n   Se observa un **semáforo** con tres luces encendidas: la luz superior es **roja**, la del medio es **amarilla**, y la inferior es **verde**. Las luces están en un marco negro vertical.\n\n4. **Casa-roja.png**:\n   La imagen muestra una **casa roja** con un techo marrón. La casa tiene una puerta marrón en el centro y una ventana pequeña en la parte superior de la puerta."
+  },
+  {
+    "caso": "escaneo",
+    "segundos": 60.5,
+    "ram_modelo_gb": 6.2,
+    "palabras": "4/4",
+    "error": null,
+    "respuesta": "Manual de mantención del Taller Flores - página 7\n\nEste capítulo describe el trabajo diario del taller, el orden de las herramientas y la limpieza del puesto. Cada técnico registra lo que hizo en la ficha del vehículo.\n\nLa presión de los neumáticos es de 32 psi adelante y 30 psi atrás."
+  }
+]
