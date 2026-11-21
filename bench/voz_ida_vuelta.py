@@ -4,6 +4,7 @@ Mide cada parte en frases cortas. La pregunta se genera con Piper (no hace falta
 Claude y con la voz que esté configurada (Piper si no hay key de ElevenLabs).
 
     uv run python bench/voz_ida_vuelta.py
+    uv run python bench/voz_ida_vuelta.py --sin-red   # whisper + modelo local + Piper
 """
 
 import io
@@ -50,8 +51,14 @@ def main() -> int:
             "local_preload": False,
         }
     )
-    brain = brain_module.build(settings, only=["nube"])
-    voice = voice_module.build(settings)
+    # --sin-red: whisper + modelo local + Piper, como con el PC desconectado (S13).
+    offline = "--sin-red" in sys.argv
+    if offline:
+        settings = settings.model_copy(update={"local_preload": True, "claude_enabled": False})
+    brain = brain_module.build(
+        settings, force_offline=offline, only=["local" if offline else "nube"]
+    )
+    voice = voice_module.build(settings, online=(lambda: False) if offline else (lambda: True))
     voice.warm()
     messages = [{"role": "system", "content": session_prompt(settings.memory_dir, brain.store)}]
     totals = []
