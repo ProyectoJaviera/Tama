@@ -1,0 +1,2 @@
+ok: Recuérdame en 2 minutos sacar la ropa de la lavadora. -> [('2026-11-21T01:44:33-03:00', '¡Recuerda sacar la ropa de la lavadora!')] ['crear_recordatorio']
+ok: Avísame en media hora que debo llamar al banco. -> [('2026-11-21T02:13:00-03:00', 'Llamar al banco: no olvides tu cita.')] ['crear_recordatorio']

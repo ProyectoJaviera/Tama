@@ -1,0 +1,31 @@
+ok: Recuérdame en 2 minutos sacar la ropa de la lavadora. -> [('2026-11-21T01:03:34-03:00', 'sacar la ropa de la lavadora')] ['crear_recordatorio']
+ok: Avísame en media hora que debo llamar al banco. -> [('2026-11-21T01:31:57-03:00', 'Debes llamar al banco')] ['crear_recordatorio']
+ok: En una hora recuérdame tomar agua. -> [('2026-11-21T02:02:19-03:00', 'tomar agua')] ['crear_recordatorio']
+ok: Recuérdame mañana a las 9 pagar la luz. -> [('2026-11-22T09:00:00-03:00', 'pagar la luz')] ['crear_recordatorio']
+ok: Mañana a las 3 de la tarde tengo dentista, recuérdamelo. -> [('2026-11-22T15:00:00-03:00', 'Tienes cita de dentista')] ['crear_recordatorio']
+ok: Recuérdame el viernes a las 10 revisar el auto. -> [('2026-11-27T10:00:00-03:00', 'Revisar el auto')] ['crear_recordatorio']
+ok: Avísame el 5 de diciembre a las 8 que es el cumpleaños de Ana. -> [('2024-12-05T08:00:00-03:00', 'Cumpleaños de Ana')] ['crear_recordatorio']
+  error de crear_recordatorio: Error executing tool crear_recordatorio: No entendí la fecha «en 21:30». Pídele a Renzo el día y la hora.
+FALLA: Recuérdame hoy en la noche, a las 21:30, regar las plantas. -> [] ['crear_recordatorio']
+ok: En tres días recuérdame comprar pan. -> [('2026-11-24T01:04:56-03:00', 'comprar pan')] ['crear_recordatorio']
+ok: Agenda un recordatorio urgente en 10 minutos para apagar el horno. -> [('2026-11-21T01:15:19-03:00', 'Apagar el horno')] ['crear_recordatorio']
+ok: Recuérdame el lunes a las 8:15 llevar el informe. -> [('2026-11-23T08:15:00-03:00', 'l llevar el informe')] ['crear_recordatorio']
+ok: La próxima semana recuérdame renovar la licencia. -> [('2026-11-28T09:00:00-03:00', 'Renovación de licencia')] ['crear_recordatorio']
+Recordatorios: 11/12
+Hoy: 01:36 Reunión con Tomás (pendiente, avisaré hoy 08:00)
+Objetivo: Terminar el reloj Arduino, quedan 3 días
+Sugerencia: Retomar el libro que dejaste
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Estudio\IA\Proyecto_Tama\Tama-s12\evals\avisos.py", line 130, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "D:\Estudio\IA\Proyecto_Tama\Tama-s12\evals\avisos.py", line 125, in main
+    run_summary()
+  File "D:\Estudio\IA\Proyecto_Tama\Tama-s12\evals\avisos.py", line 105, in run_summary
+    verdict = judge(
+              ^^^^^^
+  File "D:\Estudio\IA\Proyecto_Tama\Tama-s12\evals\__main__.py", line 118, in judge
+    raise ValueError(f"ningún juez respondió: {error}")
+ValueError: ningún juez respondió: Unauthorized

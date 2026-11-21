@@ -1,0 +1,12 @@
+[local sin red] hora: ok
+[local sin red] hora-ciudad: ok
+[local sin red] nota-banco: ok
+[local sin red] nota-titulo: ok
+[local sin red] buscar-impresora: ok
+[local sin red] buscar-dentista: FALLA: la respuesta no menciona 'martes'
+[local sin red] notas-recientes: ok
+[local sin red] leer-plan: ok
+[local sin red] listar-archivos: ok
+[local sin red] archivo-presupuesto: ok
+[local sin red] crear-archivo: ok
+[local sin red] cadena-tareas: ok

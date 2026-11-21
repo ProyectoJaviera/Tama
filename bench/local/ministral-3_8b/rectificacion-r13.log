@@ -1,0 +1,3 @@
+  error de update_observation: Error executing tool update_observation: Faltan ids o el dato nuevo. Si es un dato nuevo que no reemplaza a otro, guárdalo con create_entities; si reemplaza a uno, busca su id con search_nodes y reintenta.
+[local] En verdad no me operaron, se sanó sola. -> ['update_observation'] FALLA
+[local] Me equivoqué, Pablo vive en Osorno. -> ['update_observation'] ok

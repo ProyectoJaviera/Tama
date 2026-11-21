@@ -1,0 +1,44 @@
+{
+  "modelo": "ornith-1.5:9b",
+  "correccion": {
+    "estado": "ok",
+    "minutos": 6.2,
+    "ram_pico_gb": 22.8,
+    "abre_grupos": 0,
+    "checks": "5/5"
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 4.1,
+    "ram_pico_gb": 22.9,
+    "abre_grupos": 0,
+    "checks": "2/2"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 5.9,
+    "ram_pico_gb": 23.8,
+    "abre_grupos": 0,
+    "correctas": "2/3"
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 3.5,
+    "ram_pico_gb": 23.0,
+    "abre_grupos": 0,
+    "checks": "4/4"
+  },
+  "herramientas": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 4.8,
+    "ram_pico_gb": 28.0,
+    "abre_grupos": 0
+  },
+  "avisos": {
+    "estado": "ok",
+    "minutos": 6.0,
+    "ram_pico_gb": 27.5,
+    "abre_grupos": 0,
+    "recordatorios": "12/12"
+  }
+}
