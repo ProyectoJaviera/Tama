@@ -1,6 +1,6 @@
 # Sprint 12: Sentidos (fotos y documentos)
 
-Estado: en curso
+Estado: cerrado (demo aprobada por Renzo, 2026-11-21)
 
 ## Objetivo
 Mostrarle a Tama una foto o un documento, desde el PC o el celular, y que lo describa, lo lea o
