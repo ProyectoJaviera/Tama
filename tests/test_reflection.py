@@ -407,3 +407,42 @@ def test_json_wrapped_in_a_code_block_is_read():
     assert parse_json('```json\n{"planes": []}\n```') == {"planes": []}
     assert parse_json("no sé") == {}
     assert parse_json("[1, 2]") == {}
+
+
+def test_after_a_background_task_the_chat_model_is_reloaded_even_if_cancelled():
+    from tama.reflection import Cancelled
+
+    reloads = []
+
+    def cancelled_work(cancel):
+        raise Cancelled()
+
+    for work in (lambda cancel: None, cancelled_work):
+        clock = Clock()
+        item = Reflector(work, 100, lambda: True, clock, after=lambda: reloads.append(1))
+        clock.now = 100
+        item.tick()
+        wait(item)
+    assert reloads == [1, 1]
+
+
+def test_background_model_falls_back_to_the_chat_model_if_missing():
+    from tama import brain as brain_module
+    from tama.config import Settings
+
+    class Client:
+        def __init__(self, names):
+            self.names = names
+
+        def _request(self, method, path):
+            return {"models": [{"name": n} for n in self.names]}
+
+    brain_module._INSTALLED.clear()
+    settings = Settings(_env_file=None, background_model="ornith-1.5:9b")
+    assert brain_module.background_model(settings, Client(["ornith-1.5:9b"])) == "ornith-1.5:9b"
+    brain_module._INSTALLED.clear()
+    missing = brain_module.background_model(settings, Client(["qwen3:4b-instruct-2507-q8_0"]))
+    assert missing == settings.local_model
+    brain_module._INSTALLED.clear()
+    same = Settings(_env_file=None, background_model=settings.local_model)
+    assert brain_module.background_model(same, Client([])) == settings.local_model

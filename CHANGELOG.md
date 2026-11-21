@@ -6,6 +6,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ### Añadido
 
+- Sprint 13 (modelo local): las tareas de fondo en el PC (reflexión, diario, resúmenes por partes)
+  usan `ornith-1.5:9b` (`TAMA_BACKGROUND_MODEL`), más preciso; si no está instalado, el del chat.
+  Al terminar una tarea de fondo sin red, se vuelve a cargar el modelo del chat. Conversación
+  local: `qwen3:4b-instruct-2507-q8_0`; visión local: `gemma4:e4b`. Bancos en `bench/local/S13.md`.
+- Las herramientas de adjuntos aceptan el nombre del archivo además del id.
 - Sprint 12 (sentidos): adjuntar fotos, PDF y texto desde el chat y el celular (cámara o
   galería). Herramientas `ver_imagen`, `leer_documento`, `resumir_documento` y `listar_adjuntos`,
   solo cuando la conversación tiene adjuntos. Visión en cascada: Claude (mismo tope) → modelo

@@ -271,6 +271,7 @@ Variables en `.env` (ver `.env.example`):
 | `OLLAMA_HOST` | Compose: `http://host.docker.internal:11434` | Dirección de Ollama |
 | `TAMA_OLLAMA_HOST` | `http://127.0.0.1:11434` | Igual, pero con prioridad (fuera de Docker) |
 | `TAMA_LOCAL_MODEL` | `qwen3:4b-instruct-2507-q8_0` | Modelo local (ADR 0004) |
+| `TAMA_BACKGROUND_MODEL` | `ornith-1.5:9b` | Modelo local de las tareas de fondo (reflexión, diario, resúmenes); si falta, el del chat (S13) |
 | `TAMA_NUM_CTX` | `8192` | Contexto por petición (siempre explícito) |
 | `TAMA_NUM_GPU` | `0` | Capas en GPU; 0 = solo CPU y RAM |
 | `TAMA_NUM_THREAD` | `10` | Hilos de CPU del modelo local; 0 = los que decida Ollama |

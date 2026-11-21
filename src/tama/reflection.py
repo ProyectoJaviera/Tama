@@ -379,8 +379,11 @@ class Reflector:
         ram_ok: Callable[[], bool] = lambda: True,
         clock: Callable[[], float] = time.monotonic,
         tick_s: float = 5.0,
+        after: Callable[[], None] | None = None,
     ) -> None:
         self._work = work
+        # Al terminar (o cancelarse) una tarea: p. ej., volver a cargar el modelo del chat.
+        self._after = after
         self._idle_s = idle_s
         self._ram_ok = ram_ok
         self._clock = clock
@@ -423,6 +426,12 @@ class Reflector:
                 log.debug("reflexión cancelada")
             except (OllamaError, OSError) as exc:
                 log.debug("reflexión interrumpida: %s", exc)
+            finally:
+                if self._after is not None:
+                    try:
+                        self._after()
+                    except Exception as exc:  # recargar el chat nunca tumba a Tama
+                        log.debug("no pude recargar el modelo del chat: %s", exc)
 
         self._job = threading.Thread(target=job, name="tama-reflexion", daemon=True)
         self._job.start()

@@ -17,7 +17,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:11434", validation_alias=AliasChoices("TAMA_OLLAMA_HOST", "OLLAMA_HOST")
     )
     local_model: str = "qwen3:4b-instruct-2507-q8_0"
-    background_model: str = "qwen3:4b-instruct-2507-q8_0"
+    # Tareas de fondo en el PC (reflexión, diario, resúmenes por partes): ornith-1.5:9b, más
+    # preciso y más lento (decisión de Renzo, S13). Si no está instalado, se usa el del chat.
+    background_model: str = Field(
+        "ornith-1.5:9b",
+        validation_alias=AliasChoices("TAMA_BACKGROUND_MODEL", "TAMA_LOCAL_BACKGROUND_MODEL"),
+    )
     think: bool = False
     # Siempre explícito: si no, Ollama usa su default (puede ser enorme y llenar la RAM).
     num_ctx: int = 8192

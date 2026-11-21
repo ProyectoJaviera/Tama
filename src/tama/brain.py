@@ -1,7 +1,9 @@
 """Arma el cerebro en cascada a partir de la configuración."""
 
+import logging
 import os
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -20,6 +22,8 @@ from tama.reflection import Reflector, Thinker, close_days, enough_ram, reflect
 from tama.selector import ToolFocus
 from tama.spend import Spend
 from tama.warmup import LocalWarmer
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -174,7 +178,7 @@ def build(
     if tools is not None:
         brain.thinker = thinker(settings, local, threading.Event())
     if tools is not None and settings.reflection:
-        brain.reflector = build_reflector(settings, local)
+        brain.reflector = build_reflector(settings, local, after=reload_chat(brain, settings))
     if tools is not None and settings.proactive:
         brain.proactive = build_proactive(settings)
     return brain
@@ -202,13 +206,48 @@ def build_proactive(settings: Settings) -> Engine:
     )
 
 
+_INSTALLED: dict[str, bool] = {}
+
+
+def background_model(settings: Settings, client: OllamaClient) -> str:
+    """El modelo de las tareas de fondo; si no está instalado, el del chat (y se avisa una vez)."""
+    wanted = settings.background_model
+    if wanted == settings.local_model:
+        return wanted
+    if wanted not in _INSTALLED:
+        try:
+            names = {m["name"] for m in client._request("GET", "/api/tags").get("models", [])}
+            _INSTALLED[wanted] = wanted in names
+        except Exception:
+            _INSTALLED[wanted] = False
+        if not _INSTALLED[wanted]:
+            log.warning("modelo de fondo %s no instalado: uso %s", wanted, settings.local_model)
+    return wanted if _INSTALLED[wanted] else settings.local_model
+
+
 def thinker(settings: Settings, client: OllamaClient, cancel: threading.Event) -> Thinker:
-    # El mismo modelo del chat: así la reflexión nunca obliga a cargar un segundo modelo.
+    # Las tareas de fondo usan su propio modelo (S13); con OLLAMA_MAX_LOADED_MODELS=1 eso
+    # descarga el del chat: al terminar, la reflexión lo vuelve a cargar si hace falta.
     options = local_options(settings)
-    return Thinker(client, settings.local_model, options, cancel)
+    return Thinker(client, background_model(settings, client), options, cancel)
 
 
-def build_reflector(settings: Settings, client: OllamaClient) -> Reflector:
+def reload_chat(brain: Brain, settings: Settings) -> Callable[[], None] | None:
+    """Tras una tarea de fondo con otro modelo, se vuelve a cargar el del chat si Tama está sin
+    red (la capa local es la que responde): así el próximo mensaje no espera la carga."""
+    if background_model(settings, brain.local) == settings.local_model:
+        return None
+
+    def reload() -> None:
+        if brain.connectivity is None or not brain.connectivity.online():
+            brain.preload()
+
+    return reload
+
+
+def build_reflector(
+    settings: Settings, client: OllamaClient, after: Callable[[], None] | None = None
+) -> Reflector:
     """Prepara la reflexión; usa la memoria directamente, desde su propia conexión."""
     os.environ["TAMA_DATA_DIR"] = str(settings.data_dir.resolve())
     os.environ["TAMA_MEMORY_DIR"] = str(settings.memory_dir.resolve())
@@ -224,6 +263,7 @@ def build_reflector(settings: Settings, client: OllamaClient) -> Reflector:
         lambda cancel: run(reflect, cancel),
         settings.reflection_idle_min * 60,
         lambda: enough_ram(settings.reflection_min_free_gb),
+        after=after,
     )
     reflector.close_days = lambda: reflector.run_now(lambda cancel: run(close_days, cancel))
     return reflector
