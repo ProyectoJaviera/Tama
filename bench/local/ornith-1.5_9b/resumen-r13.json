@@ -29,10 +29,14 @@
     "checks": "4/4"
   },
   "herramientas": {
-    "estado": "RAM sobre 28 GB",
-    "minutos": 4.8,
-    "ram_pico_gb": 28.0,
-    "abre_grupos": 0
+    "estado": "ok",
+    "minutos": 9.5,
+    "ram_pico_gb": 23.0,
+    "abre_grupos": 0,
+    "correctos": "20/22",
+    "pct": "90.9%",
+    "ttft_p50": 1.4134999999987485,
+    "voseo": 3
   },
   "avisos": {
     "estado": "ok",

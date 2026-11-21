@@ -1,0 +1,48 @@
+{
+  "modelo": "nemotron-3.5-bolt:e4b",
+  "correccion": {
+    "estado": "ok",
+    "minutos": 4.4,
+    "ram_pico_gb": 25.1,
+    "abre_grupos": 0,
+    "checks": "2/5"
+  },
+  "historial": {
+    "estado": "ok",
+    "minutos": 2.6,
+    "ram_pico_gb": 25.4,
+    "abre_grupos": 0,
+    "checks": "0/2"
+  },
+  "rectificacion": {
+    "estado": "ok",
+    "minutos": 4.5,
+    "ram_pico_gb": 27.4,
+    "abre_grupos": 0,
+    "correctas": "3/3"
+  },
+  "objetivos": {
+    "estado": "ok",
+    "minutos": 2.5,
+    "ram_pico_gb": 26.3,
+    "abre_grupos": 0,
+    "checks": "4/4"
+  },
+  "herramientas": {
+    "estado": "ok",
+    "minutos": 4.6,
+    "ram_pico_gb": 26.1,
+    "abre_grupos": 0,
+    "correctos": "17/22",
+    "pct": "77.3%",
+    "ttft_p50": 0.7730000000010477,
+    "voseo": 1
+  },
+  "avisos": {
+    "estado": "RAM sobre 28 GB",
+    "minutos": 2.1,
+    "ram_pico_gb": 27.8,
+    "abre_grupos": 0,
+    "recordatorios": "-"
+  }
+}
