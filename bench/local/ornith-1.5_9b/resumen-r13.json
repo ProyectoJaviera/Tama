@@ -44,5 +44,16 @@
     "ram_pico_gb": 27.5,
     "abre_grupos": 0,
     "recordatorios": "12/12"
+  },
+  "conversacion": {
+    "estado": "ok",
+    "minutos": 21.6,
+    "ram_pico_gb": 24.3,
+    "abre_grupos": 0,
+    "puntaje_medio": null,
+    "aprobados": "0/22",
+    "errores": 22,
+    "ttft_p50": 6.953000000001339,
+    "total_p50": 36.98419339999964
   }
 }

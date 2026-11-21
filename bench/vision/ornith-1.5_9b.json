@@ -1,0 +1,26 @@
+[
+  {
+    "caso": "una-foto",
+    "segundos": 126.5,
+    "ram_modelo_gb": 6.0,
+    "palabras": "5/5",
+    "error": null,
+    "respuesta": "Aquí está la descripción de lo que se ve:\n\n**Escena principal**\nEs un banco de trabajo o taller. En la parte superior, sobre un fondo beige claro, hay una etiqueta que dice \"TALLER FLORES - BANCO DE TRABAJO\".\n\n**Banco de trabajo**\nEl elemento central es un tablero verde oscuro con muchos agujeros pequeños y regulares, como un tablero para colgar herramientas (estilo \"pegboard\" o \"cuadrícula\").\n\n**Herramientas colgadas (de izquierda a derecha)**\n1.  **Llave:** Una llave ajustable de color gris con un anillo o aro en la parte superior. Debajo, está etiquetada \"LLAVE\".\n2.  **Martillo:** Un martillo con una cabeza de color gris oscuro y un mango de madera de color marrón. Debajo, está etiquetado \"MARTILLO\".\n3.  **Destornillador:** Un destornillador con un mango rojo y la punta metálica apuntando hacia abajo. Debajo, está etiquetado \"DESTORNILLADOR\".\n\n**Parte inferior**\nDebajo del tablero, sobre un fondo de color marrón más oscuro, hay un rectángulo azul sólido. Debajo de él, está etiquetado \"CAJA\".\n\n**Detalles útiles**\n*   Todas las herramientas y el rectángulo tienen una etiqueta de texto blanco justo debajo de ellos.\n*   La imagen tiene un estilo gráfico, plano y simplificado, con formas geométricas básicas.\n*   El diseño es limpio, con mucho espacio vacío (fondo con agujeros) en el tablero, lo que sugiere que puede haber más herramientas o es una plantilla para organizar el espacio."
+  },
+  {
+    "caso": "cuatro-juntas",
+    "segundos": 164.5,
+    "ram_modelo_gb": 6.0,
+    "palabras": "6/6",
+    "error": null,
+    "respuesta": "Aquí están las descripciones de cada foto, en orden:\n\n**tablero-taller.jpg**\nEs un tablero de trabajo (banco de trabajo) de color verde oscuro con un patrón de puntos. Colgados en la parte superior hay tres herramientas: una llave plateada, un martillo de madera y un destornillador rojo. Debajo de cada una, hay una etiqueta con su nombre. En la parte inferior, sobre un fondo marrón, hay un rectángulo azul etiquetado como \"CAJA\".\n\n**cielo-azul.png**\nEs una imagen muy simple de un cielo de color azul sólido. En la esquina superior derecha hay un sol representado como un círculo de color amarillo. La imagen está etiquetada en la esquina inferior izquierda con las palabras \"CIELO AZUL\".\n\n**semaforo.jpg**\nEs un semáforo vertical sobre un fondo blanco. Tiene una carcasa oscura con tres luces circulares apiladas de arriba hacia abajo: roja, amarilla y verde. Debajo del semáforo, la imagen está etiquetada con la palabra \"SEMAFORO\".\n\n**casa-roja.png**\nEs una casa estilizada sobre un fondo blanco. El cuerpo de la casa es de color rojo y tiene un techo triangular de color marrón. En el centro de la pared hay una puerta de color marrón. La imagen está etiquetada debajo de la casa con las palabras \"CASA ROJA\"."
+  },
+  {
+    "caso": "escaneo",
+    "segundos": 70.1,
+    "ram_modelo_gb": 6.0,
+    "palabras": "4/4",
+    "error": null,
+    "respuesta": "Manual de mantención del Taller Flores - página 7\n\nEste capítulo describe el trabajo diario del taller, el orden de las herramientas y la limpieza del puesto. Cada técnico registra lo que hizo en la ficha del vehículo.\n\nLa presión de los neumáticos es de 32 psi adelante y 30 psi atrás."
+  }
+]
